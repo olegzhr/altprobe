@@ -1,0 +1,7 @@
+Package: altprobe
+Version: 1.0-5
+Section: base
+Priority: optional
+Architecture: amd64
+Maintainer: Oleg Zharkov <olegzhr@gmail.com>
+Description: Alertflex collector/runner

@@ -1,0 +1,44 @@
+%YAML 1.1
+---
+# Altprobe configuration file version 0.9
+altprobe:
+  project_id: "xxxxxxx"
+  probe_name: "xxxxxxx"
+  sensors_group: "xxxx"
+  # time difference (hours) between Collector and Controller
+  timezone_offset: 0
+  # interval (in seconds) for generating Altprobe status report
+  report_interval: 30
+
+# Active MQ configuration for communication with Controller
+controller:
+  url: "tcp://127.0.0.1:61616"
+  user: "admin"
+  pwd: "*****"
+  # enable unconditional sending events to Controller
+  enable_alerts: "false"
+  # enable sending events to OpenSearch via Controller 
+  # (opensearch url address, user, pwd should be defined on cnode side)
+  enable_logs: "false"
+  
+scanners:
+  # path to working dir, contains loaded from Cnode artifacts - tests, plugins, cloned repos
+  workspace: "/tmp/altprobe-workspace"
+  # path to generated test reports
+  output: "/tmp/altprobe-reports"
+  
+sensors:
+  # Altprobe supports two methods for reading Application logs, Falco and Suricata events:
+  # 1. directly from app and sensors log files (configured via the xxx_log parameter).
+  # 2. from a Redis list using the RPOP command (configured via the xxx_redis parameter).
+  # If xxx_redis is set to "indef", the Redis interface is disabled,
+  # if xxx_log (log file reading) is also "indef", the sensor is out of service.
+  app_log: "indef"
+  app_redis: "indef"
+  falco_log: "/var/log/falco.json"
+  falco_redis: "indef"
+  suricata_log: "/var/log/suricata/eve.json"
+  suricata_redis: "indef"
+  # Redis interface configuraion
+  redis_host: "127.0.0.1"
+  redis_port: 6379
