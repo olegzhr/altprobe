@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ./.env.sh
+
 echo "*** installation supp packages ***"
 sudo apt-get update
 sudo apt-get -y install build-essential make cmake automake autoconf autoconf-archive pkg-config libtool libdaemon-dev libboost-all-dev libapr1-dev libaprutil1-dev libssl-dev
@@ -34,21 +36,30 @@ sudo make install
 sudo ldconfig
 cd ..
 
-echo "*** create altprobe package***"
-cd src
-make
-sudo make install
-sudo chmod o-rwx /etc/altprobe/altprobe.yaml
-cd ../pkg
-sudo mkdir -p dpkg/altprobe_1.0-5/usr/local/bin/
-sudo cp /usr/local/bin/altprob* dpkg/altprobe_1.0-5/usr/local/bin/
-sudo mkdir -p dpkg/altprobe_1.0-5/usr/local/lib/
-sudo cp /usr/local/lib/libyaml.so dpkg/altprobe_1.0-5/usr/local/lib/
-sudo cp /usr/local/lib/libhiredis.so.1.3.0 dpkg/altprobe_1.0-5/usr/local/lib/
-sudo cp /usr/local/lib/libactivemq-cpp.so.19.0.5 dpkg/altprobe_1.0-5/usr/local/lib/libactivemq-cpp.so.19
-sudo chown -R root:root dpkg
-cd dpkg
-sudo dpkg-deb --build altprobe_1.0-5
+if [[ $BUILD_PACKAGE == yes ]]
+then
+	echo "*** create altprobe package***"
+	cd src
+	make
+	sudo make install
+	sudo chmod o-rwx /etc/altprobe/altprobe.yaml
+	cd ../pkg
+	sudo mkdir -p dpkg/altprobe_1.0-5/usr/local/bin/
+	sudo cp /usr/local/bin/altprob* dpkg/altprobe_1.0-5/usr/local/bin/
+	sudo mkdir -p dpkg/altprobe_1.0-5/usr/local/lib/
+	sudo cp /usr/local/lib/libyaml.so dpkg/altprobe_1.0-5/usr/local/lib/
+	sudo cp /usr/local/lib/libhiredis.so.1.3.0 dpkg/altprobe_1.0-5/usr/local/lib/
+	sudo cp /usr/local/lib/libactivemq-cpp.so.19.0.5 dpkg/altprobe_1.0-5/usr/local/lib/libactivemq-cpp.so.19
+	sudo chown -R root:root dpkg
+	cd dpkg
+	sudo dpkg-deb --build altprobe_1.0-5
+fi
+
+if [[ $INSTALL_REDIS == yes ]]
+then
+	echo "*** installation redis ***"
+	sudo apt-get -y install redis-server 
+fi
 
 
 

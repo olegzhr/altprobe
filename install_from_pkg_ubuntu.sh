@@ -1,5 +1,6 @@
 #!/bin/bash
-INSTALL_REDIS=yes
+
+source ./.env.sh
 
 echo "*** Installation altprobe started***"
 sudo apt-get update
