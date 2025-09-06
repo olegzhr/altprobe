@@ -1,6 +1,6 @@
 %YAML 1.1
 ---
-# Altprobe configuration file version 0.9
+# Altprobe configuration file version 1.0.5
 altprobe:
   project_id: "xxxxxxxx-ef05-49b8-9d21-14567b58d4e7"
   probe_name: "devhost"
