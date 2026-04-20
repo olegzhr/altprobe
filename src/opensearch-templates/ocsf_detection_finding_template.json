@@ -1,0 +1,42 @@
+PUT _index_template/ocsf_detection_finding_template
+{
+  "index_patterns": ["ocsf-1.1.0-2004-detection_finding*"],
+  "priority": 10,
+  "template": {
+    "mappings": {
+      "properties": {
+        "activity_id": { "type": "long" },
+        "category_name": { "type": "keyword" },
+        "category_uid": { "type": "long" },
+        "class_name": { "type": "keyword" },
+        "class_uid": { "type": "long" },
+        "finding_info": {
+          "properties": {
+            "title": { "type": "keyword" },
+            "uid": { "type": "keyword" }
+          }
+        },
+        "metadata": {
+          "properties": {
+            "logged_time": { "type": "long" },
+            "log_name": { "type": "keyword" },
+            "log_provider": { "type": "keyword" },
+            "uid": { "type": "keyword" },
+            "version": { "type": "keyword" },
+            "product": {
+              "properties": {
+                "vendor_name": { "type": "keyword" }
+              }
+            }
+          }
+        },
+        "severity": { "type": "keyword" },
+        "severity_id": { "type": "long" },
+        "time": {"type": "date",
+          "format": "epoch_millis"
+        },
+        "type_uid": { "type": "long" }
+      }
+    }
+  }
+}

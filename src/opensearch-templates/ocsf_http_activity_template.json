@@ -1,0 +1,93 @@
+PUT _index_template/ocsf_http_activity_template
+{
+  "index_patterns": ["ocsf-1.1.0-4002-http_activity*"],
+  "priority": 10,
+  "template": {
+    "mappings": {
+      "properties": {
+
+        "activity_id": { "type": "long" },
+        "category_name": { "type": "keyword" },
+        "category_uid": { "type": "long" },
+        "class_name": { "type": "keyword" },
+        "class_uid": { "type": "long" },
+        "type_uid": { "type": "long" },
+
+        "severity": { "type": "keyword" },
+        "severity_id": { "type": "long" },
+
+        "duration": { "type": "long" },
+        "time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+
+        "metadata": {
+          "properties": {
+            "uid": { "type": "keyword" },
+            "log_name": { "type": "keyword" },
+            "log_provider": { "type": "keyword" },
+            "logged_time": { "type": "long" },
+            "version": { "type": "keyword" },
+
+            "product": {
+              "properties": {
+                "vendor_name": { "type": "keyword" }
+              }
+            }
+          }
+        },
+
+        "src_endpoint": {
+          "properties": {
+            "ip": { "type": "ip" },
+            "port": { "type": "integer" }
+          }
+        },
+
+        "dst_endpoint": {
+          "properties": {
+            "ip": { "type": "ip" },
+            "port": { "type": "integer" }
+          }
+        },
+
+        "http_request": {
+          "properties": {
+            "http_method": { "type": "keyword" },
+            "version": { "type": "keyword" },
+            "url": { "type": "keyword" },
+
+            "http_headers": {
+              "type": "nested",
+              "properties": {
+                "name": { "type": "keyword" },
+                "value": { "type": "keyword" }
+              }
+            }
+          }
+        },
+
+        "http_response": {
+          "properties": {
+            "code": { "type": "integer" },
+            "message": {
+              "properties": {
+                "test": { "type": "text" }
+              }
+            }
+          }
+        },
+
+        "message": {
+          "properties": {
+            "text_sample": { "type": "text" },
+            "artifact_type": { "type": "keyword" },
+            "text_type": { "type": "keyword" }
+          }
+        }
+
+      }
+    }
+  }
+}

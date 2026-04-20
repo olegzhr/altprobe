@@ -1,0 +1,245 @@
+# ==============================
+# MCP / Shadow AI Detection Ruleset (Alertflex MVP+)
+# ==============================
+
+# ------------------------------
+# MACROS / LISTS
+# ------------------------------
+
+- list: trusted_processes
+  items: [nginx, apache2, httpd, postgres, redis-server, mysqld, dockerd, containerd]
+
+- list: dev_processes
+  items: [bash, sh, zsh]
+
+- list: ai_runtimes
+  items: [python, python3, node, java, go]
+
+- macro: is_trusted_proc
+  condition: proc.name in (trusted_processes)
+
+- macro: is_dev_proc
+  condition: proc.name in (dev_processes)
+
+- macro: is_ai_runtime
+  condition: proc.name in (ai_runtimes)
+
+# ------------------------------
+# 1. Known MCP frameworks
+# ------------------------------
+
+- rule: MCP Known Framework Execution
+  desc: Detect known MCP frameworks and AI agents
+  condition: >
+    spawned_process and
+    not is_trusted_proc and
+    (
+      proc.cmdline contains "modelcontextprotocol" or
+      proc.cmdline contains "mcp-server" or
+      proc.cmdline contains "mcp_agent" or
+      proc.cmdline contains "langchain" or
+      proc.cmdline contains "autogen" or
+      proc.cmdline contains "llama_index"
+    )
+  output: >
+    MCP framework detected (user=%user.name cmd=%proc.cmdline)
+  priority: WARNING
+  tags: [mcp, ai, framework]
+
+# ------------------------------
+# 2. AI runtime execution
+# ------------------------------
+
+- rule: MCP AI Runtime Execution
+  desc: Detect suspicious AI runtime usage
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    not is_dev_proc and
+    not proc.pname in (bash, sh, zsh) and
+    (
+      proc.cmdline contains "agent" or
+      proc.cmdline contains "tool" or
+      proc.cmdline contains "mcp"
+    )
+  output: >
+    MCP AI runtime (cmd=%proc.cmdline)
+  priority: NOTICE
+  tags: [mcp, runtime]
+
+# ------------------------------
+# 3. IPC (CRITICAL SIGNAL)
+# ------------------------------
+
+- rule: MCP IPC Unix Socket
+  desc: Detect MCP-like IPC over unix sockets
+  condition: >
+    evt.type in (connect, accept) and
+    fd.type=unix and
+    is_ai_runtime and
+    not is_trusted_proc
+  output: >
+    MCP IPC via unix socket (proc=%proc.name socket=%fd.name)
+  priority: CRITICAL
+  tags: [mcp, ipc, critical]
+
+# ------------------------------
+# 4. Pipe-based IPC
+# ------------------------------
+
+- rule: MCP Pipe Communication
+  desc: Detect MCP-like pipe communication
+  condition: >
+    evt.type in (read, write) and
+    fd.type=pipe and
+    is_ai_runtime and
+    not is_dev_proc
+  output: >
+    MCP pipe IPC detected (proc=%proc.name)
+  priority: WARNING
+  tags: [mcp, ipc]
+
+# ------------------------------
+# 5. Network behavior (internal)
+# ------------------------------
+
+- rule: MCP Network Client
+  desc: Detect AI runtime internal connections
+  condition: >
+    evt.type=connect and
+    fd.type=ipv4 and
+    is_ai_runtime and
+    not is_trusted_proc
+  output: >
+    MCP network connection (proc=%proc.name dest=%fd.rip)
+  priority: NOTICE
+  tags: [mcp, network]
+
+# ------------------------------
+# 6. Network behavior (external)
+# ------------------------------
+
+- rule: MCP External Network
+  desc: Detect outbound external connections
+  condition: >
+    evt.type=connect and
+    fd.type=ipv4 and
+    is_ai_runtime and
+    not fd.rip in (127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16)
+  output: >
+    External connection from AI runtime (proc=%proc.name dest=%fd.rip)
+  priority: WARNING
+  tags: [mcp, network]
+
+# ------------------------------
+# 7. Tool invocation patterns
+# ------------------------------
+
+- rule: MCP Tool Invocation
+  desc: Detect tool-like execution patterns
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    (
+      proc.cmdline contains "tools/" or
+      proc.cmdline contains "tool_call" or
+      proc.cmdline contains "function_call"
+    )
+  output: >
+    MCP tool invocation (cmd=%proc.cmdline)
+  priority: NOTICE
+  tags: [mcp, tools]
+
+# ------------------------------
+# 8. Shell execution (CRITICAL)
+# ------------------------------
+
+- rule: MCP Shell Execution
+  desc: Detect shell spawned by AI runtime
+  condition: >
+    spawned_process and
+    proc.name in (bash, sh, zsh) and
+    proc.pname in (ai_runtimes)
+  output: >
+    AI runtime spawned shell (parent=%proc.pname)
+  priority: ERROR
+  tags: [mcp, critical]
+
+# ------------------------------
+# 9. Suspicious parent-child
+# ------------------------------
+
+- rule: MCP Suspicious Parent Chain
+  desc: Detect unusual parent-child execution
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    not proc.pname in (trusted_processes, dev_processes)
+  output: >
+    Suspicious parent-child execution (parent=%proc.pname child=%proc.name)
+  priority: WARNING
+  tags: [mcp, behavior]
+
+# ------------------------------
+# 10. Sensitive file access
+# ------------------------------
+
+- rule: MCP File Access Sensitive
+  desc: Detect sensitive file access
+  condition: >
+    open_read and
+    is_ai_runtime and
+    (
+      fd.name contains "/etc/" or
+      fd.name contains ".env" or
+      fd.name contains "config"
+    )
+  output: >
+    AI runtime accessed sensitive file (file=%fd.name)
+  priority: WARNING
+  tags: [mcp, data]
+
+# ------------------------------
+# 11. Burst execution
+# ------------------------------
+
+- rule: MCP Process Burst
+  desc: Detect burst of short-lived processes
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    not is_dev_proc
+  output: >
+    MCP process burst (proc=%proc.name cmd=%proc.cmdline)
+  priority: INFO
+  tags: [mcp, anomaly]
+
+# ------------------------------
+# 12. Repetitive execution
+# ------------------------------
+
+- rule: MCP Repetitive Execution
+  desc: Detect repeated execution pattern
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    proc.duration < 1000000000
+  output: >
+    Rapid AI process execution (proc=%proc.name)
+  priority: INFO
+  tags: [mcp, anomaly]
+
+# ------------------------------
+# 13. Container activity
+# ------------------------------
+
+- rule: MCP Container Activity
+  desc: MCP activity inside container
+  condition: >
+    container.id != host and
+    is_ai_runtime and
+    evt.type=connect
+  output: >
+    MCP container activity (container=%container.id proc=%proc.name)
+  priority: NOTICE
+  tags: [mcp, container]

@@ -1,0 +1,298 @@
+# ==============================
+# Alertflex Suricata Ruleset
+# MCP / Shadow API / AI Detection
+# ==============================
+
+
+# ==========================================================
+# 1. TLS SNI (weak signal)
+# ==========================================================
+
+alert tls any any -> any any (
+    msg:"SIG_MCP_SNI_GENERIC";
+    tls.sni;
+    content:"mcp"; nocase;
+    classtype:trojan-activity;
+    sid:1000001;
+    rev:2;
+)
+
+alert tls any any -> any any (
+    msg:"SIG_MCP_SNI_AGENT";
+    tls.sni;
+    content:"agent"; nocase;
+    classtype:trojan-activity;
+    sid:1000002;
+    rev:2;
+)
+
+alert tls any any -> any any (
+    msg:"SIG_MCP_SNI_LLM";
+    tls.sni;
+    content:"openai"; nocase;
+    classtype:trojan-activity;
+    sid:1000003;
+    rev:1;
+)
+
+
+# ==========================================================
+# 2. JA3 fingerprint (STRONG SIGNAL)
+# ==========================================================
+
+alert tls any any -> any any (
+    msg:"SIG_TLS_JA3_AI";
+    ja3.hash;
+    content:"e7d705a3286e19ea42f587b344ee6865";
+    classtype:bad-unknown;
+    sid:1000010;
+    rev:2;
+)
+
+# 👉 add real JA3 fingerprints here
+# python / requests / node / grpc / openai sdk
+
+
+# ==========================================================
+# 3. Small TLS request (LLM pattern)
+# ==========================================================
+
+alert tls any any -> any any (
+    msg:"SIG_SMALL_TLS_REQ";
+    flow:established,to_server;
+    dsize:<300;
+    threshold:type both, track by_src, count 40, seconds 10;
+    classtype:attempted-recon;
+    sid:1000020;
+    rev:2;
+)
+
+
+# ==========================================================
+# 4. TLS burst (agent loop)
+# ==========================================================
+
+alert tcp any any -> any 443 (
+    msg:"SIG_TLS_BURST";
+    flags:S;
+    threshold:type both, track by_src, count 25, seconds 5;
+    classtype:attempted-dos;
+    sid:1000030;
+    rev:2;
+)
+
+
+# ==========================================================
+# 5. Long-lived session (streaming / agents)
+# ==========================================================
+
+alert tls any any -> any any (
+    msg:"SIG_LONG_TLS_SESSION";
+    flow:established;
+    threshold:type both, track by_src, count 1, seconds 600;
+    classtype:policy-violation;
+    sid:1000040;
+    rev:2;
+)
+
+
+# ==========================================================
+# 6. Repetitive request size (tool loop)
+# ==========================================================
+
+alert tls any any -> any any (
+    msg:"SIG_REPETITIVE_TLS_PATTERN";
+    flow:established,to_server;
+    dsize:200<>400;
+    threshold:type both, track by_src, count 60, seconds 30;
+    classtype:attempted-recon;
+    sid:1000050;
+    rev:2;
+)
+
+
+# ==========================================================
+# 7. HTTP MCP fallback (IMPORTANT)
+# ==========================================================
+
+alert http any any -> any any (
+    msg:"SIG_HTTP_TOOLS_LIST";
+    flow:to_server,established;
+    http.uri;
+    content:"/tools"; nocase;
+    classtype:web-application-activity;
+    sid:1000100;
+    rev:2;
+)
+
+alert http any any -> any any (
+    msg:"SIG_HTTP_TOOL_CALL";
+    flow:to_server,established;
+    http.client_body;
+    content:"tool_call"; nocase;
+    classtype:web-application-activity;
+    sid:1000101;
+    rev:2;
+)
+
+alert http any any -> any any (
+    msg:"SIG_HTTP_AGENT_PATTERN";
+    flow:to_server,established;
+    http.user_agent;
+    content:"python"; nocase;
+    classtype:web-application-activity;
+    sid:1000102;
+    rev:1;
+)
+
+
+# ==========================================================
+# 8. API burst (Shadow API indicator)
+# ==========================================================
+
+alert http any any -> any any (
+    msg:"SIG_HTTP_API_BURST";
+    flow:to_server,established;
+    threshold:type both, track by_src, count 120, seconds 10;
+    classtype:attempted-recon;
+    sid:1000110;
+    rev:2;
+)
+
+
+# ==========================================================
+# 9. Generic anomaly fallback
+# ==========================================================
+
+alert ip any any -> any any (
+    msg:"SIG_ANOMALY_BEHAVIOR";
+    threshold:type both, track by_src, count 250, seconds 10;
+    classtype:misc-activity;
+    sid:1000200;
+    rev:2;
+)
+
+
+
+# ==========================================================
+# 10. LLM DNS DETECTION (🔥 STRONG SIGNAL)
+# ==========================================================
+
+alert dns any any -> any any (
+    msg:"SIG_LLM_DNS_OPENAI";
+    dns.query;
+    content:"openai.com"; nocase;
+    classtype:policy-violation;
+    sid:1001001;
+    rev:1;
+)
+
+alert dns any any -> any any (
+    msg:"SIG_LLM_DNS_ANTHROPIC";
+    dns.query;
+    content:"anthropic.com"; nocase;
+    classtype:policy-violation;
+    sid:1001002;
+    rev:1;
+)
+
+alert dns any any -> any any (
+    msg:"SIG_LLM_DNS_GOOGLE_AI";
+    dns.query;
+    content:"generativelanguage.googleapis.com"; nocase;
+    classtype:policy-violation;
+    sid:1001003;
+    rev:1;
+)
+
+alert dns any any -> any any (
+    msg:"SIG_LLM_DNS_COHERE";
+    dns.query;
+    content:"cohere.ai"; nocase;
+    classtype:policy-violation;
+    sid:1001004;
+    rev:1;
+)
+
+alert dns any any -> any any (
+    msg:"SIG_LLM_DNS_MISTRAL";
+    dns.query;
+    content:"mistral.ai"; nocase;
+    classtype:policy-violation;
+    sid:1001005;
+    rev:1;
+)
+
+
+# ==========================================================
+# 11. TLS CERT DETECTION (🔥 VERY STRONG SIGNAL)
+# ==========================================================
+
+alert tls any any -> any any (
+    msg:"SIG_LLM_TLS_CERT_OPENAI";
+    tls.cert_subject;
+    content:"openai"; nocase;
+    classtype:trojan-activity;
+    sid:1001101;
+    rev:1;
+)
+
+alert tls any any -> any any (
+    msg:"SIG_LLM_TLS_CERT_ANTHROPIC";
+    tls.cert_subject;
+    content:"anthropic"; nocase;
+    classtype:trojan-activity;
+    sid:1001102;
+    rev:1;
+)
+
+alert tls any any -> any any (
+    msg:"SIG_LLM_TLS_CERT_GOOGLE";
+    tls.cert_subject;
+    content:"google"; nocase;
+    classtype:trojan-activity;
+    sid:1001103;
+    rev:1;
+)
+
+alert tls any any -> any any (
+    msg:"SIG_LLM_TLS_CERT_COHERE";
+    tls.cert_subject;
+    content:"cohere"; nocase;
+    classtype:trojan-activity;
+    sid:1001104;
+    rev:1;
+)
+
+
+# ==========================================================
+# 12. ASN DETECTION (INFRA SIGNAL)
+# ==========================================================
+# ⚠️ Requires Suricata with GeoIP / ASN enabled
+
+alert ip any any -> any any (
+    msg:"SIG_LLM_ASN_MICROSOFT_AZURE";
+    geoip.asn;
+    content:"AS8075";   # Microsoft (OpenAI infra)
+    classtype:policy-violation;
+    sid:1001201;
+    rev:1;
+)
+
+alert ip any any -> any any (
+    msg:"SIG_LLM_ASN_GOOGLE";
+    geoip.asn;
+    content:"AS15169";  # Google
+    classtype:policy-violation;
+    sid:1001202;
+    rev:1;
+)
+
+alert ip any any -> any any (
+    msg:"SIG_LLM_ASN_AMAZON";
+    geoip.asn;
+    content:"AS16509";  # AWS
+    classtype:policy-violation;
+    sid:1001203;
+    rev:1;
+)
