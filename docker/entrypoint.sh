@@ -1,6 +1,4 @@
 #!/bin/bash
+set -e
 
-# Start docker
-start-docker.sh
-
-altprobe run
+exec /usr/local/bin/altprobe run
