@@ -3,9 +3,6 @@
 # MCP / Shadow API / AI Detection
 # ==============================
 
-alert tls any any -> any any (msg:"SIG_MCP_SNI_GENERIC"; tls.sni; content:"mcp"; nocase; classtype:trojan-activity; sid:1000001; rev:2;)
-alert tls any any -> any any (msg:"SIG_MCP_SNI_AGENT"; tls.sni; content:"agent"; nocase; classtype:trojan-activity; sid:1000002; rev:2;)
-alert tls any any -> any any (msg:"SIG_MCP_SNI_LLM"; tls.sni; content:"openai"; nocase; classtype:trojan-activity; sid:1000003; rev:1;)
 alert tls any any -> any any (msg:"SIG_TLS_JA3_AI"; ja3.hash; content:"e7d705a3286e19ea42f587b344ee6865"; classtype:bad-unknown; sid:1000010; rev:2;)
 alert tls any any -> any any (msg:"SIG_SMALL_TLS_REQ"; flow:established,to_server; dsize:<300; threshold:type both, track by_src, count 40, seconds 10; classtype:attempted-recon; sid:1000020; rev:2;)
 alert tcp any any -> any 443 (msg:"SIG_TLS_BURST"; flags:S; threshold:type both, track by_src, count 25, seconds 5; classtype:attempted-dos; sid:1000030; rev:2;)
@@ -25,5 +22,5 @@ alert tls any any -> any any (msg:"SIG_LLM_TLS_CERT_OPENAI"; tls.cert_subject; c
 alert tls any any -> any any (msg:"SIG_LLM_TLS_CERT_ANTHROPIC"; tls.cert_subject; content:"anthropic"; nocase; classtype:trojan-activity; sid:1001102; rev:1;)
 alert tls any any -> any any (msg:"SIG_LLM_TLS_CERT_GOOGLE"; tls.cert_subject; content:"google"; nocase; classtype:trojan-activity; sid:1001103; rev:1;)
 alert tls any any -> any any (msg:"SIG_LLM_TLS_CERT_COHERE"; tls.cert_subject; content:"cohere"; nocase; classtype:trojan-activity; sid:1001104; rev:1;)
-alert http any any -> $HOME_NET any (msg:"HTTP server response, alertflex"; flow:to_client; http.response_line; content:"HTTP/"; sid:1001201; rev:1;)
-drop ip any any -> any any (msg:"Detected malicious host"; hostbits:isset,dropip,src; sid:1001202; rev:1;)
+alert http any any -> $HOME_NET any (msg:"SIG_ALERTFLEX_HTTP"; flow:to_client; http.response_line; content:"HTTP/"; sid:1001201; rev:1;)
+drop ip any any -> any any (msg:"SIG_ALERTFLEX_HOSTBITS"; hostbits:isset,dropip,src; sid:1001202; rev:1;)
