@@ -41,7 +41,69 @@ sudo ldconfig
 
 ## Configure
 
-See `/etc/altprobe/altprobe.yaml`
+Modify the file  `/etc/altprobe/altprobe.yaml` according to your configuration
+
+```yaml
+%YAML 1.1
+---
+# Altprobe configuration file version 1.0.1
+# Configuration for monitoring sidecar agent
+
+# Main Altprobe settings
+altprobe:
+  asset_name: "altprobe"
+  syslog_debug: "true"
+
+# Configuration for sending logs
+sinks:
+  # Alertflex cloud service url "https://cs.alertflex.org/sce/api/v1/logs/"
+  af_url: "http://192.168.1.40:8080/api/v1/"
+  af_key: "71341554-c568-46a4-a043-6959876fc6b9"
+  
+  # OpenSearch "https://192.168.1.30:9200"
+  os_url: "https://192.168.1.30:9200"
+  os_user: "admin"
+  os_pwd: "Password-12345"
+  
+# Sources configurations
+sources:
+  # Redis interface configuration
+  redis_host: "192.168.1.40"
+  redis_port: 6379
+  
+  # Altprobe supports two methods for reading logs:
+  # 1. Directly from application and sensor log files
+  # 2. From Redis list using RPOP command
+  # If both xxx_log and xxx_redis are set to "indef", sensor is disabled
+  
+  # Falco Host IDS (runtime host/container security) log configuration
+  falco_log: "indef"          # Example: "/var/log/falco.json"
+  falco_redis: "indef"
+  
+  # Proxy log configuration (Nginx, Envoy, etc)
+  proxy_log: "indef"          # Example: "/var/log/proxy.json"
+  proxy_redis: "indef"
+  
+  # Suricata Network IDS log configuration
+  suricata_log: "/var/log/suricata/eve.json"  # Example: "/var/log/suricata/eve.json"
+  suricata_redis:  "indef"                    # Example: "log_suricata"
+
+# Embedded ModSecurity WAF and Suricata IPS configuration
+waf:
+  # Path to OWASP Core Rule Set (CRS)
+  ruleset_path: "/etc/altprobe/coreruleset"
+  # Path to Suricata's Unix socket for IP blocking
+  # Check suricata.yaml config, it also should be enabled
+  # unix-command:
+  #   enabled: yes
+  #   filename: /var/run/suricata-command.socket
+  suricata_socket: "indef"    # Example: "/var/run/suricata-command.socket"
+  # Hostbit Suricata rule to block IP detected by CRS, should be loaded by Suricata
+  # example: alert ip !$HOME_NET any -> any any (msg:"Detected malicious host outside HOME_NET"; hostbit:malicious-ip; sid:1000002; rev:1;)
+  hostbit_rule: "indef"       # example: malicious-ip
+  # Timeout in seconds for automatic IP unblocking (1h default)
+  ipblock_timeout: 3600
+```
 
 ## Run altprobe
 
