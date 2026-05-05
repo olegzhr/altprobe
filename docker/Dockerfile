@@ -1,4 +1,4 @@
-FROM ubuntu:jammy-latest
+FROM ubuntu:jammy
 
 RUN apt-get update && apt-get -y install libyaml-cpp-dev libdaemon-dev libboost-all-dev libmodsecurity3
 RUN wget https://github.com/alertflex/altprobe/releases/download/v1.0.5/altprobe_1.0-5.deb 
