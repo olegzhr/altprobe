@@ -37,6 +37,7 @@ wget https://github.com/alertflex/altprobe/releases/download/v1.0.5/altprobe_1.0
 # Install the package
 sudo dpkg -i altprobe_1.0-5.deb
 sudo ldconfig
+```
 
 ## Configure
 
@@ -47,7 +48,7 @@ See `/etc/altprobe/altprobe.yaml`
 ```bash
 altprobe-start   # daemon mode
 altprobe run     # cli mode
-
+```
 
 ## Run container
 
@@ -73,3 +74,4 @@ docker run -d \
   -e WAF_HOSTBIT_RULE="indef" \
   -e WAF_IPBLOCK_TIMEOUT="3600" \
   altprobe:latest
+```
