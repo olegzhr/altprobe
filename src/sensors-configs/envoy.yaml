@@ -1,0 +1,88 @@
+static_resources:
+  listeners:
+    - name: https_listener
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 443
+      filter_chains:
+        - filter_chain_match: {}
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "/etc/envoy/certs/server.crt"
+                    private_key:
+                      filename: "/etc/envoy/certs/server.key"
+          filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: backend
+                      domains: ["*"]
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: backend_servers
+                http_filters:
+                  - name: envoy.filters.http.lua
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                      default_source_code:
+                        inline_string: |
+                          function envoy_on_request(request_handle)
+                            local headers = request_handle:headers()
+                            local headersMap = {}
+                            for key, value in pairs(headers) do
+                              headersMap[key] = value
+                            end                
+                            request_handle:streamInfo():dynamicMetadata():set("envoy.lua","request_headers",headersMap)                    
+                            local requestBody = ""
+                            for chunk in request_handle:bodyChunks() do
+                              if (chunk:length() > 0) then
+                                requestBody = requestBody .. chunk:getBytes(0, chunk:length())
+                              end
+                            end
+                            request_handle:streamInfo():dynamicMetadata():set("envoy.lua","request_body",requestBody)                    
+                          end
+                          function envoy_on_response(response_handle)
+                            local responseBody = ""
+                            for chunk in response_handle:bodyChunks() do
+                              if (chunk:length() > 0) then
+                                responseBody = responseBody .. chunk:getBytes(0, chunk:length())
+                              end
+                              end
+                              response_handle:streamInfo():dynamicMetadata():set("envoy.lua","response_body",responseBody)
+                          end
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                access_log:
+                  - name: envoy.access_loggers.file
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+                      path: "/var/log/envoy_access.log"
+                      format: |
+                        {"request_id":"%REQ(X-REQUEST-ID)%","server_port":%DOWNSTREAM_LOCAL_PORT%,"request_uri":"%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%","request_method":"%REQ(:METHOD)%","http_version":"%REQ(:PROTOCOL)%","remote_addr":"%DOWNSTREAM_REMOTE_ADDRESS%","remote_user":"%REQ(AUTHORIZATION)%","time_local":"%START_TIME%","duration":%DURATION%,"status":%RESPONSE_CODE%,"body_bytes_sent":%BYTES_SENT%,"http_referer":"%REQ(REFERER)%","http_x_forwarded_for":"%REQ(X-FORWARDED-FOR)%","http_x_real_ip":"%REQ(X-REAL-IP)%","http_host":"%REQ(:AUTHORITY)%","http_user_agent":"%REQ(USER-AGENT)%","http_authorization":"%REQ(AUTHORIZATION)%","http_accept_language":"%REQ(ACCEPT-LANGUAGE)%","http_accept_encoding":"%REQ(ACCEPT-ENCODING)%","http_connection":"%REQ(CONNECTION)%","http_cookie":"%REQ(COOKIE)%","request_body":%DYNAMIC_METADATA(envoy.lua:request_body)%,"response_body":%DYNAMIC_METADATA(envoy.lua:response_body)%}
+  clusters:
+    - name: backend_servers
+      connect_timeout: 0.25s
+      type: STATIC
+      load_assignment:
+        cluster_name: backend_servers
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 192.168.1.40
+                      port_value: 8000
+
