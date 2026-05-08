@@ -1,6 +1,6 @@
 # Altprobe
 
-Altprobe is a lightweight security collector for monitoring and controlling API and MCP services.
+Altprobe is a security collector for monitoring and controlling API and MCP services.
 
 It collects runtime, network, normalizes events into OCSF, stores events in OpenSearch / ELK, and adds reactive protection through a log-based WAF workflow.
 
@@ -32,10 +32,10 @@ sudo apt-get update
 sudo apt-get -y install libyaml-cpp-dev libdaemon-dev libboost-all-dev libmodsecurity3
 
 # Download the package
-wget https://github.com/alertflex/altprobe/releases/download/v1.0.5/altprobe_1.0-5.deb
+wget https://github.com/alertflex/altprobe/releases/download/v1.0.6/altprobe_1.0-6.deb
 
 # Install the package
-sudo dpkg -i altprobe_1.0-5.deb
+sudo dpkg -i altprobe_1.0-6.deb
 sudo ldconfig
 ```
 
@@ -55,8 +55,6 @@ altprobe run     # start in cli mode
 ## Run container
 
 ```bash
-docker build -t altprobe:latest .
-
 docker run -d \
   --name altprobe \
   -e ALTPROBE_ASSET_NAME="my-server" \
