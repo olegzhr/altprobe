@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  altprobe:
+    image: altprobe/altprobe:latest
+    container_name: altprobe
+    environment:
+      - ALTPROBE_ASSET_NAME=my-server
+      - ALTPROBE_SYSLOG_DEBUG=true
+      - SINKS_AF_URL=indef
+      - SINKS_AF_KEY=your-key
+      - SINKS_OS_URL=indef
+      - SINKS_OS_USER=admin
+      - SINKS_OS_PWD=pass
+      - SOURCES_REDIS_HOST=redis
+      - SOURCES_REDIS_PORT=6379
+      - SOURCES_FALCO_REDIS=log_falco
+      - SOURCES_PROXY_REDIS=log_proxy
+      - SOURCES_SURICATA_REDIS=log_suri
+      - WAF_RULESET_PATH=indef
+      - WAF_SURICATA_SOCKET=indef
+      - WAF_HOSTBIT_RULE=indef
+      - WAF_IPBLOCK_TIMEOUT=3600
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: altprobe-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    # volumes:
+    #   - redis_data:/data
+
+# volumes:
+#   redis_data:
