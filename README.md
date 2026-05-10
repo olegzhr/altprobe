@@ -8,6 +8,8 @@ It collects runtime, network, normalizes events into OCSF, stores events in Open
 
 Altprobe is built for environments where API services, AI agents, MCP servers, and service-to-service traffic need continuous visibility without deploying a full SIEM.
 
+![Altprobe architecture](images/altprobe.png)
+
 Its primary role is to monitor and control API and MCP activity while also providing:
 
 - security findings and correlation
