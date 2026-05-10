@@ -12,7 +12,7 @@ Altprobe is built for environments where API services, AI agents, MCP servers, a
 
 Its primary role is to monitor and control API and MCP activity while also providing:
 
-- security findings and correlation
+- security findings
 - centralized event logging to OpenSearch / ELK
 - reactive WAF / IPS-style response
 
