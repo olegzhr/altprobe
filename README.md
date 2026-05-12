@@ -1,6 +1,6 @@
 # Altprobe
 
-Altprobe is a security collector for monitoring and controlling API and MCP services.
+Altprobe is a collector for monitoring and controlling API and MCP services.
 
 It collects runtime, network, normalizes events into OCSF, stores events in OpenSearch / ELK, and adds reactive protection through a log-based WAF workflow.
 
