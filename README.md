@@ -75,5 +75,5 @@ docker run -d \
   -e WAF_SURICATA_SOCKET="indef" \
   -e WAF_HOSTBIT_RULE="indef" \
   -e WAF_IPBLOCK_TIMEOUT="3600" \
-  altprobe/altprobe:latest
+  altprobe/altprobe:v1.0.6
 ```
