@@ -2,7 +2,7 @@
 
 Altprobe is a collector for monitoring and controlling API and MCP services.
 
-It collects runtime, network, normalizes events into OCSF, stores events in OpenSearch / ELK, and adds reactive protection through a log-based WAF workflow.
+It collects runtime and network events from sensors, normalizes them into OCSF, stores events in OpenSearch/ELK, and can additionally analyze them using an embedded log-based WAF that provides reactive protection through Suricata IPS.
 
 ## Overview
 
