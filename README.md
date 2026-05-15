@@ -14,6 +14,7 @@ Its primary role is to monitor and control API and MCP activity while also provi
 
 - security findings
 - centralized event logging to OpenSearch / ELK
+- multifactor AI/MCP behavioral correlator
 - reactive WAF / IPS-style response
 
 ## Requirements
