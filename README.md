@@ -10,13 +10,6 @@ Altprobe is built for environments where API services, AI agents, MCP servers, a
 
 ![Altprobe architecture](images/altprobe.png)
 
-Its primary role is to monitor and control API and MCP activity while also providing:
-
-- security findings
-- centralized event logging to OpenSearch / ELK
-- multifactor behavioral correlator
-- reactive WAF / IPS-style response
-
 ## Requirements
 
 - **Operating System**: Ubuntu 20.04 or higher (for binary package)
