@@ -4,7 +4,7 @@ services:
     container_name: altprobe
     environment:
       - ALTPROBE_ASSET_NAME=my-server
-      - ALTPROBE_SYSLOG_DEBUG=true
+      - ALTPROBE_LOG_DEBUG=true
       - SINKS_AF_URL=indef
       - SINKS_AF_KEY=your-key
       - SINKS_OS_URL=indef
