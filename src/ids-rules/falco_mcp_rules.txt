@@ -13,7 +13,7 @@
   items: [bash, sh, zsh]
 
 - list: ai_runtimes
-  items: [python, python3, node, java, go]
+  items: [python, python3, node, java, go, uv, uvx, npx, npm, bun, deno, ruby]
 
 - macro: is_trusted_proc
   condition: proc.name in (trusted_processes)
@@ -23,6 +23,9 @@
 
 - macro: is_ai_runtime
   condition: proc.name in (ai_runtimes)
+
+- macro: spawned_process
+  condition: evt.type in (execve, execveat)
 
 # ------------------------------
 # 1. Known MCP frameworks
@@ -42,7 +45,7 @@
       proc.cmdline contains "llama_index"
     )
   output: >
-    MCP framework detected (user=%user.name cmd=%proc.cmdline)
+    MCP framework detected (user=%user.name proc=%proc.name pid=%proc.pid parent=%proc.pname cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: WARNING
   tags: [mcp, ai, framework]
 
@@ -63,7 +66,7 @@
       proc.cmdline contains "mcp"
     )
   output: >
-    MCP AI runtime (cmd=%proc.cmdline)
+    MCP AI runtime (user=%user.name proc=%proc.name pid=%proc.pid parent=%proc.pname cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: NOTICE
   tags: [mcp, runtime]
 
@@ -79,7 +82,7 @@
     is_ai_runtime and
     not is_trusted_proc
   output: >
-    MCP IPC via unix socket (proc=%proc.name socket=%fd.name)
+    MCP IPC via unix socket (user=%user.name proc=%proc.name pid=%proc.pid socket=%fd.name container=%container.id pod=%k8s.pod.id)
   priority: CRITICAL
   tags: [mcp, ipc, critical]
 
@@ -95,7 +98,7 @@
     is_ai_runtime and
     not is_dev_proc
   output: >
-    MCP pipe IPC detected (proc=%proc.name)
+    MCP pipe IPC detected (user=%user.name proc=%proc.name pid=%proc.pid pipe=%fd.name container=%container.id pod=%k8s.pod.id)
   priority: WARNING
   tags: [mcp, ipc]
 
@@ -111,7 +114,7 @@
     is_ai_runtime and
     not is_trusted_proc
   output: >
-    MCP network connection (proc=%proc.name dest=%fd.rip)
+    MCP network connection (user=%user.name proc=%proc.name pid=%proc.pid cip=%fd.cip sip=%fd.sip cport=%fd.cport sport=%fd.sport dest=%fd.rip container=%container.id pod=%k8s.pod.id)
   priority: NOTICE
   tags: [mcp, network]
 
@@ -124,10 +127,10 @@
   condition: >
     evt.type=connect and
     fd.type=ipv4 and
-    is_ai_runtime and
-    not fd.rip in (127.0.0.0/8, 10.0.0.0/8, 192.168.0.0/16)
+    is_ai_runtime
   output: >
-    External connection from AI runtime (proc=%proc.name dest=%fd.rip)
+    External connection from AI runtime
+    (user=%user.name proc=%proc.name pid=%proc.pid dest=%fd.rip)
   priority: WARNING
   tags: [mcp, network]
 
@@ -146,7 +149,7 @@
       proc.cmdline contains "function_call"
     )
   output: >
-    MCP tool invocation (cmd=%proc.cmdline)
+    MCP tool invocation (user=%user.name proc=%proc.name pid=%proc.pid cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: NOTICE
   tags: [mcp, tools]
 
@@ -161,7 +164,7 @@
     proc.name in (bash, sh, zsh) and
     proc.pname in (ai_runtimes)
   output: >
-    AI runtime spawned shell (parent=%proc.pname)
+    AI runtime spawned shell (user=%user.name parent=%proc.pname proc=%proc.name pid=%proc.pid cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: ERROR
   tags: [mcp, critical]
 
@@ -176,7 +179,7 @@
     is_ai_runtime and
     not proc.pname in (trusted_processes, dev_processes)
   output: >
-    Suspicious parent-child execution (parent=%proc.pname child=%proc.name)
+    Suspicious parent-child execution (user=%user.name parent=%proc.pname child=%proc.name pid=%proc.pid cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: WARNING
   tags: [mcp, behavior]
 
@@ -187,7 +190,8 @@
 - rule: MCP File Access Sensitive
   desc: Detect sensitive file access
   condition: >
-    open_read and
+    evt.type in (openat, openat2) and
+    evt.is_open_read=true and
     is_ai_runtime and
     (
       fd.name contains "/etc/" or
@@ -195,7 +199,7 @@
       fd.name contains "config"
     )
   output: >
-    AI runtime accessed sensitive file (file=%fd.name)
+    AI runtime accessed sensitive file (user=%user.name proc=%proc.name pid=%proc.pid file=%fd.name cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: WARNING
   tags: [mcp, data]
 
@@ -210,7 +214,7 @@
     is_ai_runtime and
     not is_dev_proc
   output: >
-    MCP process burst (proc=%proc.name cmd=%proc.cmdline)
+    MCP process burst (user=%user.name proc=%proc.name pid=%proc.pid cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: INFO
   tags: [mcp, anomaly]
 
@@ -225,7 +229,7 @@
     is_ai_runtime and
     proc.duration < 1000000000
   output: >
-    Rapid AI process execution (proc=%proc.name)
+    Rapid AI process execution (user=%user.name proc=%proc.name pid=%proc.pid cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
   priority: INFO
   tags: [mcp, anomaly]
 
@@ -240,6 +244,122 @@
     is_ai_runtime and
     evt.type=connect
   output: >
-    MCP container activity (container=%container.id proc=%proc.name)
+    MCP container activity (user=%user.name container=%container.id pod=%k8s.pod.id proc=%proc.name pid=%proc.pid cip=%fd.cip sip=%fd.sip cport=%fd.cport sport=%fd.sport)
   priority: NOTICE
   tags: [mcp, container]
+
+# ------------------------------
+# 14. MCP package runners
+# ------------------------------
+
+- rule: MCP Package Runner Execution
+  desc: Detect MCP servers launched through package runners
+  condition: >
+    spawned_process and
+    (
+      proc.cmdline contains "@modelcontextprotocol/server-" or
+      proc.cmdline contains "modelcontextprotocol" or
+      proc.cmdline contains "mcp-server" or
+      proc.cmdline contains "uvx " or
+      proc.cmdline contains "npx "
+    )
+  output: >
+    MCP package runner (user=%user.name proc=%proc.name pid=%proc.pid parent=%proc.pname cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: WARNING
+  tags: [mcp, ai, framework]
+
+# ------------------------------
+# 15. Runtime outbound TLS
+# ------------------------------
+
+- rule: MCP Runtime External TLS
+  desc: Detect outbound TLS connections from AI/MCP runtimes
+  condition: >
+    evt.type=connect and
+    fd.type=ipv4 and
+    fd.rport=443 and
+    is_ai_runtime and
+    not is_trusted_proc
+  output: >
+    AI runtime TLS connection
+    (user=%user.name proc=%proc.name pid=%proc.pid cmd=%proc.cmdline dest=%fd.rip port=%fd.rport)
+  priority: NOTICE
+  tags: [mcp, ai, network, tls]
+
+# ------------------------------
+# 16. Secret discovery by runtime
+# ------------------------------
+
+- rule: MCP Runtime Secret Discovery
+  desc: Detect AI/MCP runtime access to credentials and orchestration secrets
+  condition: >
+    evt.type in (openat, openat2) and
+    evt.is_open_read=true and
+    is_ai_runtime and
+    (
+      fd.name contains ".env" or
+      fd.name contains "/.ssh/" or
+      fd.name contains "/.aws/credentials" or
+      fd.name contains "/.config/gcloud/" or
+      fd.name contains "/var/run/docker.sock" or
+      fd.name contains "/var/run/secrets/kubernetes.io/"
+    )
+  output: >
+    AI runtime secret access (user=%user.name proc=%proc.name pid=%proc.pid file=%fd.name cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: ERROR
+  tags: [mcp, ai, credential_access]
+
+# ------------------------------
+# 17. Tool abuse by AI runtime
+# ------------------------------
+
+- rule: MCP Tool Abuse Command Execution
+  desc: Detect AI/MCP runtime spawning high-risk administration or shell tools
+  condition: >
+    spawned_process and
+    proc.pname in (ai_runtimes) and
+    (
+      proc.name in (bash, sh, zsh, curl, wget, nc, ncat, python, python3, kubectl, docker) or
+      proc.cmdline contains "rm -rf" or
+      proc.cmdline contains "docker.sock" or
+      proc.cmdline contains "subprocess" or
+      proc.cmdline contains "powershell"
+    )
+  output: >
+    MCP tool abuse command (user=%user.name parent=%proc.pname proc=%proc.name pid=%proc.pid cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: ERROR
+  tags: [mcp, ai, tool_abuse]
+
+# ------------------------------
+# 18. AI agent lateral movement
+# ------------------------------
+
+- rule: AI Agent Lateral Movement
+  desc: Detect AI/MCP runtime attempting lateral movement tooling
+  condition: >
+    spawned_process and
+    proc.pname in (ai_runtimes) and
+    (
+      proc.name in (ssh, scp, kubectl, docker) or
+      proc.cmdline contains "kubectl exec" or
+      proc.cmdline contains "psexec" or
+      proc.cmdline contains "winrm" or
+      proc.cmdline contains "aws sts" or
+      proc.cmdline contains "assume-role"
+    )
+  output: >
+    AI agent lateral movement (user=%user.name parent=%proc.pname proc=%proc.name pid=%proc.pid cmd=%proc.cmdline cip=%fd.cip sip=%fd.sip cport=%fd.cport sport=%fd.sport container=%container.id pod=%k8s.pod.id)
+  priority: CRITICAL
+  tags: [mcp, ai, lateral_movement]
+
+
+- rule: Open sensitive file
+  desc: Detect opening of a sensitive file
+  condition: >
+    evt.type = openat and
+    fd.name = "/root/falco_test.txt"
+  output: >
+    Sensitive file opened
+    (user=%user.name uid=%user.uid pid=%proc.pid proc=%proc.name fd=%fd.name)
+  priority: WARNING
+  tags: [filesystem, sensitive]
