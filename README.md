@@ -2,11 +2,11 @@
 
 Altprobe is a collector for monitoring and controlling API and MCP services.
 
-It collects runtime and network events from sensors, normalizes them into OCSF, stores events in OpenSearch/ELK, and can additionally analyze them using an embedded log-based WAF that provides reactive protection through Suricata IPS.
+It collects runtime and network events from sensors, normalizes them into OCSF, stores events in OpenSearch/ELK, and can additionally analyze them using an embedded log-based WAF.
 
 ## Overview
 
-Altprobe is built for environments where API services, AI agents, MCP servers, and service-to-service traffic need continuous visibility without deploying a full SIEM.
+Altprobe is built for environments where API services and MCP servers, and service-to-service traffic need continuous visibility without deploying a full SIEM.
 
 ![Altprobe architecture](images/altprobe.png)
 
