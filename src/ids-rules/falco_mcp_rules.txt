@@ -40,6 +40,10 @@
       proc.cmdline contains "modelcontextprotocol" or
       proc.cmdline contains "mcp-server" or
       proc.cmdline contains "mcp_agent" or
+      proc.cmdline contains "agent-card" or
+      proc.cmdline contains "a2a-server" or
+      proc.cmdline contains "a2a_agent" or
+      proc.cmdline contains "google-adk" or
       proc.cmdline contains "langchain" or
       proc.cmdline contains "autogen" or
       proc.cmdline contains "llama_index"
@@ -62,6 +66,7 @@
     not proc.pname in (bash, sh, zsh) and
     (
       proc.cmdline contains "agent" or
+      proc.cmdline contains "a2a" or
       proc.cmdline contains "tool" or
       proc.cmdline contains "mcp"
     )
@@ -259,6 +264,8 @@
     (
       proc.cmdline contains "@modelcontextprotocol/server-" or
       proc.cmdline contains "modelcontextprotocol" or
+      proc.cmdline contains "a2a-server" or
+      proc.cmdline contains "agent-card" or
       proc.cmdline contains "mcp-server" or
       proc.cmdline contains "uvx " or
       proc.cmdline contains "npx "
@@ -351,6 +358,136 @@
     AI agent lateral movement (user=%user.name parent=%proc.pname proc=%proc.name pid=%proc.pid cmd=%proc.cmdline cip=%fd.cip sip=%fd.sip cport=%fd.cport sport=%fd.sport container=%container.id pod=%k8s.pod.id)
   priority: CRITICAL
   tags: [mcp, ai, lateral_movement]
+
+# ------------------------------
+# 19. A2A known framework execution
+# ------------------------------
+
+- rule: A2A Known Framework Execution
+  desc: Detect Google A2A / Agent2Agent framework and agent-card servers
+  condition: >
+    spawned_process and
+    not is_trusted_proc and
+    (
+      proc.cmdline contains "a2a-server" or
+      proc.cmdline contains "a2a_agent" or
+      proc.cmdline contains "agent2agent" or
+      proc.cmdline contains "agent-card" or
+      proc.cmdline contains "google-adk" or
+      proc.cmdline contains "adk web" or
+      proc.cmdline contains "adk api_server"
+    )
+  output: >
+    A2A framework detected (user=%user.name proc=%proc.name pid=%proc.pid parent=%proc.pname cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: WARNING
+  tags: [a2a, ai, framework]
+
+# ------------------------------
+# 20. A2A agent card access
+# ------------------------------
+
+- rule: A2A Agent Card File Access
+  desc: Detect AI runtime reading or serving A2A agent card files
+  condition: >
+    evt.type in (openat, openat2) and
+    evt.is_open_read=true and
+    is_ai_runtime and
+    (
+      fd.name contains "agent-card.json" or
+      fd.name contains ".well-known/agent-card" or
+      fd.name contains "agent_card.json"
+    )
+  output: >
+    A2A agent card file access (user=%user.name proc=%proc.name pid=%proc.pid file=%fd.name cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: NOTICE
+  tags: [a2a, ai, inventory]
+
+# ------------------------------
+# 21. A2A runtime network service
+# ------------------------------
+
+- rule: A2A Runtime Network Service
+  desc: Detect A2A-capable runtime binding or listening for agent protocol traffic
+  condition: >
+    evt.type in (bind, listen) and
+    fd.type=ipv4 and
+    is_ai_runtime and
+    not is_trusted_proc and
+    (
+      proc.cmdline contains "a2a" or
+      proc.cmdline contains "agent-card" or
+      proc.cmdline contains "google-adk" or
+      proc.cmdline contains "adk api_server"
+    )
+  output: >
+    A2A runtime network service (user=%user.name proc=%proc.name pid=%proc.pid cmd=%proc.cmdline addr=%fd.sip port=%fd.sport container=%container.id pod=%k8s.pod.id)
+  priority: WARNING
+  tags: [a2a, ai, network]
+
+# ------------------------------
+# 22. A2A task or message runner
+# ------------------------------
+
+- rule: A2A Task Message Execution
+  desc: Detect A2A task/message command patterns executed by AI runtimes
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    (
+      proc.cmdline contains "message:send" or
+      proc.cmdline contains "message:stream" or
+      proc.cmdline contains "tasks/get" or
+      proc.cmdline contains "tasks/cancel" or
+      proc.cmdline contains "taskId" or
+      proc.cmdline contains "contextId"
+    )
+  output: >
+    A2A task or message execution (user=%user.name proc=%proc.name pid=%proc.pid parent=%proc.pname cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: NOTICE
+  tags: [a2a, ai, task]
+
+# ------------------------------
+# 23. A2A push notification callback
+# ------------------------------
+
+- rule: A2A Push Notification Callback
+  desc: Detect A2A push notification or callback configuration activity
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    (
+      proc.cmdline contains "taskPushNotificationConfig" or
+      proc.cmdline contains "pushNotificationConfigs" or
+      proc.cmdline contains "pushUrl" or
+      proc.cmdline contains "webhook" or
+      proc.cmdline contains "callback"
+    )
+  output: >
+    A2A push notification callback activity (user=%user.name proc=%proc.name pid=%proc.pid parent=%proc.pname cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: WARNING
+  tags: [a2a, ai, callback]
+
+# ------------------------------
+# 24. A2A artifact exposure
+# ------------------------------
+
+- rule: A2A Artifact Exposure Pattern
+  desc: Detect A2A artifact exposure or tokenized artifact URL handling by AI runtimes
+  condition: >
+    spawned_process and
+    is_ai_runtime and
+    (
+      proc.cmdline contains "artifactId" or
+      proc.cmdline contains "artifacts" or
+      proc.cmdline contains "downloadUrl" or
+      proc.cmdline contains "externalUrl" or
+      proc.cmdline contains "X-Amz-Signature" or
+      proc.cmdline contains "signature="
+    )
+  output: >
+    A2A artifact exposure pattern (user=%user.name proc=%proc.name pid=%proc.pid parent=%proc.pname cmd=%proc.cmdline container=%container.id pod=%k8s.pod.id)
+  priority: ERROR
+  tags: [a2a, ai, data_exfiltration]
 
 
 - rule: Open sensitive file
