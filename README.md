@@ -33,12 +33,12 @@ flowchart TD
 ## Components
 | Component | Role | Direction |
 |-----------|------|-----------|
-| Falco (HIDS) | Host intrusion detection | → Altprobe (log/Redis) |
-| Suricata (NIDS) | Network intrusion detection | → Altprobe (log/Redis) |
-| AI/API Gateway | APISIX / Envoy / Kong fronting MCP, A2A, REST | → Altprobe (log/Redis) |
+| Falco (HIDS) | Host intrusion detection | Altprobe (log/Redis) |
+| Suricata (NIDS) | Network intrusion detection | Altprobe (log/Redis) |
+| AI/API Gateway | APISIX / Envoy / Kong fronting MCP, A2A, REST | Altprobe (log/Redis) |
 | Altprobe Core | Collects, correlates, classifies, normalizes to OCSF | core |
-| OpenSearch | Search, dashboards, alerting | ← Altprobe (OCSF) |
-| Alertflex | Inventory & SBOM context (optional) | ← Altprobe (A2A/MCP/REST) |
+| OpenSearch | Search, dashboards, alerting | Altprobe (OCSF) |
+| Alertflex | Inventory & SBOM context (optional) | Altprobe (A2A/MCP/REST) |
 
 ## Example Screenshots
 
