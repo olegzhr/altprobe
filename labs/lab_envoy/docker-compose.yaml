@@ -1,0 +1,213 @@
+# =============================================================================
+# Altprobe Lab — Envoy
+#
+# Self-contained quick-start demo of Altprobe behind Envoy.
+#
+# Unlike the APISIX/Kong labs, Envoy does not push to Redis: its file access
+# logger writes one JSON object per request to a shared volume
+# (/var/log/envoy/access.log), and Altprobe reads that file through its
+# standard proxy source (SOURCES_PROXY_LOG) — no altprobe code changes.
+#
+# Wire-up:
+#   curl -> envoy:9080 -> mock:8000 (MCP / test-api / AI Gateway)
+#   envoy file access log -> shared volume "envoy-logs" -> altprobe (proxy file source)
+#   altprobe -> OpenSearch (OCSF 4002/6003, correlator 600301)
+#   altprobe -> collector mock POST /traces/{asset}
+# =============================================================================
+
+services:
+
+  # Creates the shared access-log file before Envoy/Altprobe start, so
+  # Altprobe's Proxy::Open() finds it on the very first start (it opens the
+  # file once at startup and then tails it).
+  envoy-logs-init:
+    image: busybox:1.36
+    container_name: lab-envoy-logs-init
+    command: ["sh", "-c", "touch /logs/access.log && chmod 0666 /logs/access.log"]
+    volumes:
+      - envoy-logs:/logs
+    restart: "no"
+
+  mock:
+    build: ./mock
+    container_name: lab-envoy-mock
+    restart: unless-stopped
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"   # optional: direct access for debugging
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status==200 else 1)"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  envoy:
+    build: ./envoy
+    container_name: lab-envoy-gateway
+    depends_on:
+      envoy-logs-init:
+        condition: service_completed_successfully
+      mock:
+        condition: service_started
+    ports:
+      - "9080:9080"   # proxy entry point
+      - "9901:9901"   # admin API
+    volumes:
+      - envoy-logs:/var/log/envoy
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    container_name: lab-envoy-opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-envoy-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|\"status\":\"yellow\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    container_name: lab-envoy-opensearch-dashboards
+    restart: unless-stopped
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      opensearch-dashboards-recover:
+        condition: service_completed_successfully
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "5601:5601"
+    healthcheck:
+      # /api/status answers 503 until the saved-objects migration completes.
+      # Gating on this code (instead of service_started) stops OSD from racing
+      # OpenSearch's startup and leaving a half-migrated .kibana_1 behind.
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:5601/api/status | grep -q 200"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  opensearch-dashboards-recover:
+    # One-shot: if OpenSearch Dashboards ever started before OpenSearch was
+    # ready, it can leave an empty .kibana_1 index carrying a stale "another
+    # instance is migrating" marker, which makes /api/status return 503
+    # forever. This job deletes that empty index so OSD re-runs its migration
+    # cleanly. A populated index (real saved objects) is never touched.
+    image: curlimages/curl:8.10.1
+    container_name: lab-envoy-osd-recover
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./opensearch:/setup:ro
+    entrypoint: ["sh", "/setup/recover_stale_kibana.sh"]
+    environment:
+      - OS_URL=http://opensearch:9200
+    restart: "no"
+
+  opensearch-init:
+    # One-shot job: registers the OCSF index templates (opensearch/templates/)
+    # via setup_templates.sh (epoch_millis time, nested correlation timelines)
+    # and ensures an index exists for every class pattern so Dashboards do not
+    # warn about missing indices. Applied before altprobe writes.
+    image: curlimages/curl:8.10.1
+    container_name: lab-envoy-opensearch-init
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./opensearch:/setup:ro
+    entrypoint: ["sh", "/setup/setup_templates.sh"]
+    environment:
+      - OS_URL=http://opensearch:9200
+    restart: "no"
+
+  opensearch-dashboards-init:
+    image: curlimages/curl:8.10.1
+    container_name: lab-envoy-dashboards-init
+    depends_on:
+      opensearch-dashboards:
+        condition: service_healthy
+      opensearch-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./opensearch:/setup:ro
+    entrypoint: ["sh", "/setup/setup_dashboards.sh"]
+    environment:
+      - OSD_URL=http://opensearch-dashboards:5601
+    restart: "no"
+
+  altprobe:
+    build: ./altprobe
+    # Pinned to linux/amd64 — the project Makefile hardcodes "Architecture:
+    # amd64" in the .deb control file regardless of host architecture.
+    platform: linux/amd64
+    container_name: lab-envoy-altprobe
+    depends_on:
+      envoy-logs-init:
+        condition: service_completed_successfully
+      envoy:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+      opensearch-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    environment:
+      # Altprobe settings
+      - ALTPROBE_ASSET_NAME=altprobe-envoy-lab
+      - ALTPROBE_HOST_NAME=altprobe-envoy-lab
+      - ALTPROBE_LOG_DEBUG=true
+      - ALTPROBE_API_THRESHOLD=10
+      - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
+      # Correlator
+      - CORRELATOR_DETECTION_ENABLED=true
+      - CORRELATOR_ALIAS_TTL=30
+      - CORRELATOR_ALERT_COOLDOWN=30
+      - CORRELATOR_ENTITY_TTL=90
+      - CORRELATOR_CLEANUP_INTERVAL=100
+      # Traces (stage 3)
+      - TRACE_ENABLED=true
+      - TRACE_AGENT_WINDOW=300
+      # Response
+      - RESPONSE_ENABLED=false
+      # Sinks: collector mock by default
+      - SINKS_AF_URL=${ALERTFLEX_URL:-http://mock:8000}
+      - SINKS_AF_KEY=${ALERTFLEX_KEY:-test-key-not-validated-by-mock}
+      # OpenSearch sink
+      - SINKS_OS_URL=http://opensearch:9200
+      - SINKS_OS_USER=admin
+      - SINKS_OS_PWD=admin
+      - SINKS_LOKI_URL=
+      # Sources: Envoy writes the access log to a shared file; Altprobe reads
+      # it via the standard proxy file source. Redis is not used here.
+      - SOURCES_REDIS_HOST=
+      - SOURCES_REDIS_PORT=6379
+      - SOURCES_PROXY_LOG=/var/log/envoy/access.log
+      - SOURCES_PROXY_REDIS=
+      - SOURCES_FALCO_LOG=
+      - SOURCES_SURICATA_LOG=
+      - SOURCES_ECAPTURE_WS=
+    volumes:
+      - envoy-logs:/var/log/envoy:ro
+
+volumes:
+  opensearch-envoy-data:
+  envoy-logs:

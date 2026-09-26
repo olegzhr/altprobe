@@ -1,0 +1,181 @@
+{
+  "index_patterns": [
+    "ocsf-1.1.0-4007-tls_activity*"
+  ],
+  "priority": 10,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "activity_id": {
+          "type": "long"
+        },
+        "category_name": {
+          "type": "keyword"
+        },
+        "category_uid": {
+          "type": "long"
+        },
+        "class_name": {
+          "type": "keyword"
+        },
+        "class_uid": {
+          "type": "long"
+        },
+        "type_uid": {
+          "type": "long"
+        },
+        "severity": {
+          "type": "keyword"
+        },
+        "severity_id": {
+          "type": "long"
+        },
+        "time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "activity_name": {
+          "type": "keyword"
+        },
+        "tls": {
+          "properties": {
+            "sni": {
+              "type": "keyword"
+            },
+            "subject": {
+              "type": "keyword"
+            },
+            "issuer": {
+              "type": "keyword"
+            },
+            "version": {
+              "type": "keyword"
+            },
+            "ja3_hash": {
+              "type": "keyword"
+            },
+            "ja3s_hash": {
+              "type": "keyword"
+            },
+            "fingerprint": {
+              "type": "keyword"
+            },
+            "serial_number": {
+              "type": "keyword"
+            },
+            "not_before": {
+              "type": "keyword"
+            },
+            "not_after": {
+              "type": "keyword"
+            }
+          }
+        },
+        "src_endpoint": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "hostname": {
+              "type": "keyword"
+            },
+            "type_id": {
+              "type": "long"
+            },
+            "location": {
+              "properties": {
+                "city": {
+                  "type": "keyword"
+                },
+                "country": {
+                  "type": "keyword"
+                },
+                "desc": {
+                  "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
+                }
+              }
+            }
+          }
+        },
+        "dst_endpoint": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "hostname": {
+              "type": "keyword"
+            },
+            "type_id": {
+              "type": "long"
+            },
+            "location": {
+              "properties": {
+                "city": {
+                  "type": "keyword"
+                },
+                "country": {
+                  "type": "keyword"
+                },
+                "desc": {
+                  "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
+                }
+              }
+            }
+          }
+        },
+        "metadata": {
+          "properties": {
+            "uid": {
+              "type": "keyword"
+            },
+            "log_name": {
+              "type": "keyword"
+            },
+            "log_provider": {
+              "type": "keyword"
+            },
+            "logged_time": {
+              "type": "date",
+              "format": "epoch_millis"
+            },
+            "version": {
+              "type": "keyword"
+            },
+            "product": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "vendor_name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+deployment:
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+  etcd:
+    host:
+      - "http://etcd:2379"
+  admin:
+    admin_key:
+      - name: admin
+        key: edd1c9f034335f136f87ad84b625c8f1   # example admin key
+        role: admin
+
+apisix:
+  node_listen:
+    - 9080
+
+plugins:
+  - redis-logger
+  - ai-proxy
+
+plugin_attr:
+  redis-logger:
+    output_type: redis
+    redis_host: UPSTREAM_HOST
+    redis_port: 6379
+    redis_key: log_proxy
+    log_file_path: /usr/local/apisix/logs/proxy-json.log

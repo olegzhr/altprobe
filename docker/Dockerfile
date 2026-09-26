@@ -1,11 +1,11 @@
 FROM ubuntu:jammy
 
-# Altprobe version to install: package name and GitHub tag.
-# Override at build time: --build-arg ALTPROBE_VERSION=1.0.1 --build-arg ALTPROBE_TAG=v1.0.1
-ARG ALTPROBE_VERSION=1.0.1
-ARG ALTPROBE_TAG=v1.0.1
+# Altprobe version to install. Override at build time with:
+#   --build-arg ALTPROBE_VERSION=1.0.2
+ARG ALTPROBE_VERSION=1.0.2
+ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
-# Runtime dependencies for the current Altprobe XDR build.
+# Runtime dependencies for the current Altprobe build.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     wget ca-certificates \
@@ -16,9 +16,9 @@ RUN apt-get update \
     libssl3 libwebsockets16 \
  && rm -rf /var/lib/apt/lists/*
 
-RUN wget -q "https://github.com/olegzhr/altprobe/releases/download/${ALTPROBE_TAG}/altprobe_${ALTPROBE_VERSION}.deb" \
- && dpkg -i altprobe_${ALTPROBE_VERSION}.deb \
- && rm -f altprobe_${ALTPROBE_VERSION}.deb \
+RUN wget -q ${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb -O /tmp/altprobe.deb \
+ && dpkg -i /tmp/altprobe.deb \
+ && rm -f /tmp/altprobe.deb \
  && ldconfig
 
 COPY entrypoint.sh /usr/local/bin/

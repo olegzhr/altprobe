@@ -1,0 +1,79 @@
+_format_version: "3.0"
+_transform: true
+
+# Kong routes for the public Altprobe quick-start lab.
+services:
+  - name: mcp-service
+    url: http://mock:8000
+    routes:
+      - name: mcp-route
+        paths:
+          - /mcp
+        strip_path: false
+        protocols:
+          - http
+    plugins:
+      - name: custom-log-redis
+        config:
+          redis_host: redis
+          redis_port: 6379
+          redis_password: ""
+          redis_database: 0
+          redis_key: log_proxy
+          host_name: kong-lab
+
+  - name: test-api-service
+    url: http://mock:8000
+    routes:
+      - name: test-api-route
+        paths:
+          - /test-api
+        strip_path: false
+        protocols:
+          - http
+    plugins:
+      - name: custom-log-redis
+        config:
+          redis_host: redis
+          redis_port: 6379
+          redis_password: ""
+          redis_database: 0
+          redis_key: log_proxy
+          host_name: kong-lab
+
+  # AI Gateway route. Kong translates the request to the OpenAI wire format and
+  # forwards it to the local mock; no external model provider is contacted.
+  - name: ai-gateway-service
+    url: http://mock:8000
+    routes:
+      - name: ai-gateway-route
+        paths:
+          - /ai-gateway/v1/chat/completions
+        methods:
+          - POST
+        strip_path: false
+        protocols:
+          - http
+    plugins:
+      - name: ai-proxy
+        config:
+          route_type: llm/v1/chat
+          auth:
+            header_name: Authorization
+            header_value: "Bearer synthetic-ai-gateway-key"
+          model:
+            provider: openai
+            name: demo-model
+            options:
+              upstream_url: http://mock:8000/test-api/v1/chat/completions
+          logging:
+            log_statistics: true
+            log_payloads: false
+      - name: custom-log-redis
+        config:
+          redis_host: redis
+          redis_port: 6379
+          redis_password: ""
+          redis_database: 0
+          redis_key: log_proxy
+          host_name: kong-lab

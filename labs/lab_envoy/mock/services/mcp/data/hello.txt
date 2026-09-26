@@ -1,0 +1,2 @@
+Hello from MCP virtual filesystem!
+This file is accessible via resources/list and resources/read.
