@@ -1,17 +1,8 @@
 # Altprobe
 
-Altprobe gives security and platform teams visibility into AI agent, MCP,
-REST API, and gateway traffic without requiring every application to be
-rewritten. It collects events from gateways, proxy logs, runtime sensors, and
-network security tools, normalizes them into OCSF, and sends them to
-OpenSearch or compatible downstream systems.
+Altprobe gives security and platform teams visibility into AI agent, MCP, REST API, and gateway traffic. It collects events from gateways, proxy logs, runtime sensors, and network security tools, normalizes them into OCSF, and sends them to OpenSearch or compatible downstream systems.
 
-Altprobe is useful when you need to understand how AI agents and API services
-interact in real environments: which tools are called, which routes are used,
-which clients or sessions are involved, and which events should be reviewed by
-security monitoring. It can be deployed next to an API gateway to start
-collecting telemetry quickly, then extended with additional sources and sinks
-as your environment grows.
+Altprobe is useful when you need continuous control over API services, AI agents, MCP servers, and inter-service traffic without deploying a full SIEM. It reads existing gateway and sensor logs, discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE Attack/Atlas.
 
 ```mermaid
 flowchart TD
