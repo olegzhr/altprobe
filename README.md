@@ -6,12 +6,14 @@ Altprobe is useful when you need continuous control over API services, AI agents
 
 ```mermaid
 flowchart TD
-    HIDS[Falco HIDS] -->|Alerts via Log file/Redis| Altprobe
-    NIDS[Suricata NIDS] -->|Alerts/HTTP via Log file/Redis| Altprobe
+    NIDS["Suricata IDS/IPS"] -->|Alerts/HTTP via Log file/Redis| Altprobe
+    HIDS["Falco Security (HIDS)"] -->|Alerts via Log file/Redis| Altprobe
     Proxy["AI/API Gateway"] -->|HTTP via Log file/Redis| Altprobe
 
-    Altprobe["Altprobe: Collector/Correlator<br/>Embedded log-based WAF<br/>AI Patterns Classifier"] -->|A2A/MCP/REST/SBOM<br/> inventory info| Alertflex[Alertflex]
+    Altprobe["Altprobe: Collector/Correlator<br/>Embedded log-based WAF<br/>AI Security Patterns Classifier"] -->|A2A/MCP/REST/SBOM<br/> inventory info| Alertflex[Alertflex]
     Altprobe -->|Security findings/HTTP activities<br/>in OCSF format| OpenSearch[OpenSearch]
+
+    Altprobe -->|IP blocking via unix socket| NIDS
 
     style NIDS fill:#ffffff,stroke:#333,stroke-width:1px
     style HIDS fill:#ffffff,stroke:#333,stroke-width:1px
