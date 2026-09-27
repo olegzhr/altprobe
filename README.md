@@ -48,7 +48,7 @@ flowchart TD
 | Suricata (NIDS) | Network intrusion detection | Altprobe (log/Redis) |
 | Suricata (IPS) | IP blocking | Altprobe (unix socket) |
 | AI/API Gateway | APISIX / Envoy / Kong fronting MCP, A2A, REST | Altprobe (log/Redis) |
-| Altprobe | Collects, correlates, classifies, normalizes to OCSF | Сore |
+| Altprobe | Collects, correlates, classifies, normalizes to OCSF, WAF | Сore |
 | OpenSearch | Search, dashboards, alerting | Altprobe (OCSF) |
 | Alertflex | Inventory & SBOM context (optional) | Altprobe (A2A/MCP/REST) |
 
