@@ -4,6 +4,24 @@ Altprobe gives security and platform teams visibility into AI agent, MCP, REST A
 
 Altprobe is useful when you need continuous control over API services, AI agents, MCP servers, and inter-service traffic without deploying a full SIEM. It reads existing gateway and sensor logs, discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE Attack/Atlas.
 
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Components](#components)
+- [Example Screenshots](#example-screenshots)
+  - [Unified SIEM Overview](#unified-siem-overview)
+  - [Agent Correlations](#agent-correlations)
+  - [MITRE ATT&CK / ATLAS Timeline](#mitre-attck--atlas-timeline)
+- [Why Use Altprobe](#why-use-altprobe)
+- [Repository Contents](#repository-contents)
+- [Requirements](#requirements)
+- [Install From Package](#install-from-package)
+- [Run Altprobe](#run-altprobe)
+- [Quick-Start Labs](#quick-start-labs)
+  - [Quickest Path](#quickest-path)
+
+## Architecture
+
 ```mermaid
 flowchart TD
     NIDS["Suricata IDS/IPS"] -->|Alerts/HTTP via Log file/Redis| Altprobe
@@ -28,8 +46,9 @@ flowchart TD
 |-----------|------|-----------|
 | Falco (HIDS) | Host intrusion detection | Altprobe (log/Redis) |
 | Suricata (NIDS) | Network intrusion detection | Altprobe (log/Redis) |
+| Suricata (IPS) | IP blocking | Altprobe (unix socket) |
 | AI/API Gateway | APISIX / Envoy / Kong fronting MCP, A2A, REST | Altprobe (log/Redis) |
-| Altprobe Core | Collects, correlates, classifies, normalizes to OCSF | core |
+| Altprobe | Collects, correlates, classifies, normalizes to OCSF | Сore |
 | OpenSearch | Search, dashboards, alerting | Altprobe (OCSF) |
 | Alertflex | Inventory & SBOM context (optional) | Altprobe (A2A/MCP/REST) |
 
