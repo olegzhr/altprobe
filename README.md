@@ -81,7 +81,7 @@ normalized OCSF events, agent correlations, and security timelines.
 ## Repository Contents
 
 - `docker/` - base Docker assets for Altprobe.
-- `ids-rules/` - example IDS rule files.
+- `ids-rules/` - MCP / Shadow API / AI Detection rule files for Falco, Suricata.
 - `labs/` - public quick-start labs for APISIX, Envoy, and Kong.
 
 ## Requirements
