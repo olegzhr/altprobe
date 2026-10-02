@@ -193,6 +193,9 @@ services:
       - ALTPROBE_LOG_DEBUG=true
       - ALTPROBE_API_THRESHOLD=10
       - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
+      # Test-only GeoLite2-compatible DB (private lab IPs) and SBOM fixture
+      - ALTPROBE_GEOIP_DB=/etc/altprobe/GeoLite2-City-test.mmdb
+      - ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom-test.yaml
       # Correlator (stock config keys)
       - CORRELATOR_DETECTION_ENABLED=true
       - CORRELATOR_ALIAS_TTL=30
@@ -219,6 +222,7 @@ services:
       - SOURCES_REDIS_HOST=redis
       - SOURCES_REDIS_PORT=6379
       - SOURCES_PROXY_REDIS=log_proxy
+      - SOURCES_SURICATA_REDIS=log_suricata
       - SOURCES_FALCO_LOG=
       - SOURCES_PROXY_LOG=
       - SOURCES_SURICATA_LOG=

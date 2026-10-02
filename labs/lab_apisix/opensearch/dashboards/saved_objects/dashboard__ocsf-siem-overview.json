@@ -1,1 +1,58 @@
-{"attributes": {"title": "OCSF SIEM Overview (all sources)", "hits": 0, "description": "", "panelsJSON": "[{\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"fbaaef61-b5e7-4ae4-9d23-7b0ed15e67e2\"}, \"panelIndex\": \"fbaaef61-b5e7-4ae4-9d23-7b0ed15e67e2\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_0\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 12, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"6bcef5b5-1a5b-4a2d-8a9f-5aa4bf06ea19\"}, \"panelIndex\": \"6bcef5b5-1a5b-4a2d-8a9f-5aa4bf06ea19\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_1\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"f385c6d9-a330-449d-b44e-63a1264f6d69\"}, \"panelIndex\": \"f385c6d9-a330-449d-b44e-63a1264f6d69\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_2\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 36, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"4d3330ad-bc1e-4d69-99ce-cab9558a7975\"}, \"panelIndex\": \"4d3330ad-bc1e-4d69-99ce-cab9558a7975\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_3\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 4, \"w\": 24, \"h\": 12, \"i\": \"ac637132-008c-421e-a574-9055c88aa6a4\"}, \"panelIndex\": \"ac637132-008c-421e-a574-9055c88aa6a4\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_4\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 4, \"w\": 24, \"h\": 12, \"i\": \"13fcd540-715f-4d96-8678-5df9caefa950\"}, \"panelIndex\": \"13fcd540-715f-4d96-8678-5df9caefa950\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_5\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 16, \"w\": 24, \"h\": 12, \"i\": \"0b4abf97-fab3-49b7-991b-d17471c1e960\"}, \"panelIndex\": \"0b4abf97-fab3-49b7-991b-d17471c1e960\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_6\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 28, \"w\": 48, \"h\": 12, \"i\": \"d7e025d8-7840-47f4-a990-49f91191aeab\"}, \"panelIndex\": \"d7e025d8-7840-47f4-a990-49f91191aeab\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_7\"}]", "optionsJSON": "{\"useMargins\": true, \"hidePanelTitles\": false}", "version": 3, "timeRestore": true, "timeFrom": "now-7d", "timeTo": "now", "kibanaSavedObjectMeta": {"searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"}}, "references": [{"name": "panel_0", "type": "visualization", "id": "ocsf-siem-overview-total-ocsf-events"}, {"name": "panel_1", "type": "visualization", "id": "ocsf-siem-overview-medium-severity-alerts"}, {"name": "panel_2", "type": "visualization", "id": "ocsf-siem-overview-distinct-sensors"}, {"name": "panel_3", "type": "visualization", "id": "ocsf-siem-overview-distinct-source-ips"}, {"name": "panel_4", "type": "visualization", "id": "ocsf-siem-overview-top-event-sources-sensors"}, {"name": "panel_5", "type": "visualization", "id": "ocsf-siem-overview-events-by-ocsf-class"}, {"name": "panel_6", "type": "visualization", "id": "ocsf-siem-overview-severity-distribution"}, {"name": "panel_7", "type": "visualization", "id": "ocsf-siem-overview-event-volume-last-24h"}]}
+{
+  "attributes": {
+    "title": "OCSF All Sources Overview",
+    "hits": 0,
+    "description": "",
+    "panelsJSON": "[{\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"fbaaef61-b5e7-4ae4-9d23-7b0ed15e67e2\"}, \"panelIndex\": \"fbaaef61-b5e7-4ae4-9d23-7b0ed15e67e2\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_0\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 12, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"6bcef5b5-1a5b-4a2d-8a9f-5aa4bf06ea19\"}, \"panelIndex\": \"6bcef5b5-1a5b-4a2d-8a9f-5aa4bf06ea19\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_1\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"f385c6d9-a330-449d-b44e-63a1264f6d69\"}, \"panelIndex\": \"f385c6d9-a330-449d-b44e-63a1264f6d69\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_2\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 36, \"y\": 0, \"w\": 12, \"h\": 4, \"i\": \"4d3330ad-bc1e-4d69-99ce-cab9558a7975\"}, \"panelIndex\": \"4d3330ad-bc1e-4d69-99ce-cab9558a7975\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_3\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 4, \"w\": 24, \"h\": 12, \"i\": \"ac637132-008c-421e-a574-9055c88aa6a4\"}, \"panelIndex\": \"ac637132-008c-421e-a574-9055c88aa6a4\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_4\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 4, \"w\": 24, \"h\": 12, \"i\": \"13fcd540-715f-4d96-8678-5df9caefa950\"}, \"panelIndex\": \"13fcd540-715f-4d96-8678-5df9caefa950\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_5\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 16, \"w\": 24, \"h\": 12, \"i\": \"0b4abf97-fab3-49b7-991b-d17471c1e960\"}, \"panelIndex\": \"0b4abf97-fab3-49b7-991b-d17471c1e960\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_6\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 28, \"w\": 48, \"h\": 12, \"i\": \"d7e025d8-7840-47f4-a990-49f91191aeab\"}, \"panelIndex\": \"d7e025d8-7840-47f4-a990-49f91191aeab\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_7\"}]",
+    "optionsJSON": "{\"useMargins\": true, \"hidePanelTitles\": false}",
+    "version": 3,
+    "timeRestore": true,
+    "timeFrom": "now-7d",
+    "timeTo": "now",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": [
+    {
+      "name": "panel_0",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-total-ocsf-events"
+    },
+    {
+      "name": "panel_1",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-medium-severity-alerts"
+    },
+    {
+      "name": "panel_2",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-distinct-sensors"
+    },
+    {
+      "name": "panel_3",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-distinct-source-ips"
+    },
+    {
+      "name": "panel_4",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-top-event-sources-sensors"
+    },
+    {
+      "name": "panel_5",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-events-by-ocsf-class"
+    },
+    {
+      "name": "panel_6",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-severity-distribution"
+    },
+    {
+      "name": "panel_7",
+      "type": "visualization",
+      "id": "ocsf-siem-overview-event-volume-last-24h"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ USER root
 # tag bump does not require editing a hardcoded path).
 COPY --from=aigw /home/nonroot/.local/share/aigw/envoy-versions/*/bin/envoy /usr/local/bin/envoy
 COPY --chown=nonroot:nonroot envoy.yaml /etc/envoy/envoy.yaml
+COPY --chown=nonroot:nonroot logs/access.log /var/log/envoy/access.log
 
 USER nonroot
 

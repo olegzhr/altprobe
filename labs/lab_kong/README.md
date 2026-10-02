@@ -82,16 +82,24 @@ curl -s "http://localhost:9200/ocsf-1.1.0-6003-api_activity*/_count"
 
 ## Tests
 
-Run the public smoke checks:
+Run the public Python test suites (smoke, function, security, e2e, geo, sbom):
 
 ```bash
 cd tests
-LAB_BASE=http://localhost:8010 bash 01_smoke.sh
-LAB_BASE=http://localhost:8010 bash 02_opensearch_smoke.sh
+python3 -m pip install -r requirements.txt   # once: installs pytest
+LAB_BASE=http://localhost:8010 python3 run_tests.py
 ```
 
-The tests only use health, MCP ping/tool calls, REST demo endpoints, and the
-local AI Gateway mock.
+Run a single suite:
+
+```bash
+LAB_BASE=http://localhost:8010 python3 run_tests.py sbom
+```
+
+The tests only use harmless demo traffic: MCP methods, REST demo endpoints, the
+local AI Gateway mock, emulated Suricata events in Redis, and a bundled
+CycloneDX SBOM fixture. Requires Python 3.8+. Artifacts (JUnit XML report and
+the Altprobe debug log) are written to `tests/logs/`.
 
 ## Ports
 

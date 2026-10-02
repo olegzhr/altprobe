@@ -63,7 +63,8 @@ done
 # does not log "No matching indices found" for classes this lab does not emit
 # (e.g. DNS/network/TLS). Empty indices are harmless: the class template gives
 # them the right mapping and altprobe still writes its own daily indices.
-for idx in ocsf-1.1.0-2004-detection_finding-000001 \
+for idx in ocsf-1.1.0-2002-vulnerability_finding-000001 \
+           ocsf-1.1.0-2004-detection_finding-000001 \
            ocsf-1.1.0-4001-dns_activity-000001 \
            ocsf-1.1.0-4002-http_activity-000001 \
            ocsf-1.1.0-4005-network_activity-000001 \

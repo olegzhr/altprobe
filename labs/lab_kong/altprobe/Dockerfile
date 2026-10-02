@@ -53,6 +53,20 @@ EOF
 # path stable for users who compare this lab with internal examples.
 COPY rules/secret_access.conf /etc/altprobe/coreruleset/rules/secret_access.conf
 
+# Trivy is installed so the SBOM test can run the real tool when a
+# vulnerability DB is available; the lab falls back to a bundled CycloneDX
+# fixture otherwise (see sbom-test.yaml).
+ARG TRIVY_VERSION=0.75.0
+RUN wget -q https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.deb -O /tmp/trivy.deb \
+ && dpkg -i /tmp/trivy.deb \
+ && rm -f /tmp/trivy.deb
+
+# Test-only, free MaxMind-compatible GeoLite2 database generated for private
+# lab addresses, plus the SBOM pipeline fixture.
+COPY GeoLite2-City-test.mmdb /etc/altprobe/GeoLite2-City-test.mmdb
+COPY sbom-fixture.cdx.json /etc/altprobe/sbom-fixture.cdx.json
+COPY sbom-test.yaml /etc/altprobe/sbom-test.yaml
+
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
