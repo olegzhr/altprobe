@@ -1,0 +1,14 @@
+* text=auto
+
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.lua       text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.json      text eol=lf
+Dockerfile  text eol=lf
+*.conf      text eol=lf
+*.md        text eol=lf
+
+*.mmdb      binary
+*.png       binary
