@@ -1,0 +1,6 @@
+# Local lab logs, caches and virtualenvs excluded from Docker build contexts.
+**/__pycache__/
+**/.pytest_cache/
+**/tests/logs/
+*.log
+**/.venv/

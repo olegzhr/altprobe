@@ -1,0 +1,17 @@
+# Local lab logs, caches and virtualenvs
+**/__pycache__/
+*.py[cod]
+**/.pytest_cache/
+**/tests/logs/
+*.log
+# Keep the placeholder access log the Envoy lab image copies in at build time.
+!labs/lab_envoy/envoy/logs/access.log
+**/.venv/
+.venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

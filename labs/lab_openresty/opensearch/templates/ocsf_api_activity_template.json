@@ -1,0 +1,622 @@
+{
+  "index_patterns": [
+    "ocsf-1.1.0-6003-api_activity*"
+  ],
+  "priority": 10,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "activity_id": {
+          "type": "long"
+        },
+        "category_name": {
+          "type": "keyword"
+        },
+        "category_uid": {
+          "type": "long"
+        },
+        "class_name": {
+          "type": "keyword"
+        },
+        "class_uid": {
+          "type": "long"
+        },
+        "type_uid": {
+          "type": "long"
+        },
+        "severity": {
+          "type": "keyword"
+        },
+        "severity_id": {
+          "type": "long"
+        },
+        "time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "activity_name": {
+          "type": "keyword"
+        },
+        "status_id": {
+          "type": "long"
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "message": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "start_time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "end_time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "metadata": {
+          "properties": {
+            "uid": {
+              "type": "keyword"
+            },
+            "log_name": {
+              "type": "keyword"
+            },
+            "log_provider": {
+              "type": "keyword"
+            },
+            "logged_time": {
+              "type": "date",
+              "format": "epoch_millis"
+            },
+            "version": {
+              "type": "keyword"
+            },
+            "correlation_uid": {
+              "type": "keyword"
+            },
+            "product": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "vendor_name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "actor": {
+          "properties": {
+            "user": {
+              "properties": {
+                "uid": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                },
+                "type": {
+                  "type": "keyword"
+                },
+                "type_id": {
+                  "type": "long"
+                }
+              }
+            },
+            "session": {
+              "properties": {
+                "uid": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "api": {
+          "properties": {
+            "operation": {
+              "type": "keyword"
+            },
+            "service": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "version": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "response": {
+              "properties": {
+                "code": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "src_endpoint": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "hostname": {
+              "type": "keyword"
+            },
+            "type_id": {
+              "type": "long"
+            },
+            "location": {
+              "properties": {
+                "city": {
+                  "type": "keyword"
+                },
+                "country": {
+                  "type": "keyword"
+                },
+                "desc": {
+                  "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
+                }
+              }
+            }
+          }
+        },
+        "dst_endpoint": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "hostname": {
+              "type": "keyword"
+            },
+            "type_id": {
+              "type": "long"
+            },
+            "location": {
+              "properties": {
+                "city": {
+                  "type": "keyword"
+                },
+                "country": {
+                  "type": "keyword"
+                },
+                "desc": {
+                  "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
+                }
+              }
+            }
+          }
+        },
+        "process": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "pid": {
+              "type": "long"
+            }
+          }
+        },
+        "container": {
+          "properties": {
+            "id": {
+              "type": "keyword"
+            }
+          }
+        },
+        "http_request": {
+          "properties": {
+            "method": {
+              "type": "keyword"
+            },
+            "url": {
+              "type": "keyword"
+            },
+            "user_agent": {
+              "type": "keyword"
+            }
+          }
+        },
+        "osint": {
+          "type": "object",
+          "enabled": true
+        },
+        "trace": {
+          "properties": {
+            "uid": {
+              "type": "keyword"
+            },
+            "span": {
+              "properties": {
+                "uid": {
+                  "type": "keyword"
+                },
+                "start_time": {
+                  "type": "date",
+                  "format": "epoch_millis"
+                },
+                "end_time": {
+                  "type": "date",
+                  "format": "epoch_millis"
+                }
+              }
+            }
+          }
+        },
+        "unmapped": {
+          "properties": {
+            "aos": {
+              "properties": {
+                "finding": {
+                  "properties": {
+                    "title": {
+                      "type": "keyword"
+                    },
+                    "uid": {
+                      "type": "keyword"
+                    },
+                    "confidence": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "context": {
+                  "properties": {
+                    "agent": {
+                      "properties": {
+                        "id": {
+                          "type": "keyword"
+                        },
+                        "name": {
+                          "type": "keyword"
+                        },
+                        "provider": {
+                          "properties": {
+                            "name": {
+                              "type": "keyword"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "session": {
+                      "properties": {
+                        "id": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                },
+                "step": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "type": {
+                      "type": "keyword"
+                    },
+                    "operation": {
+                      "properties": {
+                        "type": {
+                          "type": "keyword"
+                        },
+                        "name": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source_event": {
+                  "properties": {
+                    "provider": {
+                      "type": "keyword"
+                    },
+                    "rule": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "correlation": {
+                  "properties": {
+                    "score": {
+                      "type": "double"
+                    },
+                    "attack_chain": {
+                      "properties": {
+                        "summary": {
+                          "type": "text"
+                        },
+                        "timeline": {
+                          "type": "nested",
+                          "properties": {
+                            "id": {
+                              "type": "long"
+                            },
+                            "time": {
+                              "type": "date",
+                              "format": "epoch_millis"
+                            },
+                            "source": {
+                              "type": "keyword"
+                            },
+                            "stage": {
+                              "type": "keyword"
+                            },
+                            "signal": {
+                              "type": "keyword"
+                            },
+                            "mitre_framework": {
+                              "type": "keyword"
+                            },
+                            "mitre_tactic": {
+                              "type": "keyword"
+                            },
+                            "mitre_technique_id": {
+                              "type": "keyword"
+                            },
+                            "mitre_technique": {
+                              "type": "keyword"
+                            },
+                            "summary": {
+                              "type": "text"
+                            },
+                            "process": {
+                              "type": "keyword"
+                            },
+                            "src_ip": {
+                              "type": "ip"
+                            },
+                            "dst_ip": {
+                              "type": "ip"
+                            },
+                            "url": {
+                              "type": "keyword"
+                            },
+                            "sni": {
+                              "type": "keyword"
+                            },
+                            "session_id": {
+                              "type": "keyword"
+                            },
+                            "mcp_method": {
+                              "type": "keyword"
+                            },
+                            "mcp_object_type": {
+                              "type": "keyword"
+                            },
+                            "mcp_object_name": {
+                              "type": "keyword"
+                            },
+                            "mcp_inventory_status": {
+                              "type": "keyword"
+                            },
+                            "mcp_inventory_version": {
+                              "type": "long"
+                            },
+                            "a2a_operation": {
+                              "type": "keyword"
+                            },
+                            "a2a_agent_name": {
+                              "type": "keyword"
+                            },
+                            "a2a_skill_id": {
+                              "type": "keyword"
+                            },
+                            "a2a_task_id": {
+                              "type": "keyword"
+                            },
+                            "a2a_task_state": {
+                              "type": "keyword"
+                            },
+                            "linked_to": {
+                              "type": "long"
+                            },
+                            "link_type": {
+                              "type": "keyword"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "features": {
+                      "type": "object",
+                      "dynamic": true,
+                      "properties": {
+                        "ipc_count": {
+                          "type": "long"
+                        },
+                        "ai_process": {
+                          "type": "long"
+                        },
+                        "net_connections": {
+                          "type": "long"
+                        },
+                        "tls_burst": {
+                          "type": "long"
+                        },
+                        "small_requests": {
+                          "type": "long"
+                        },
+                        "ja3_hits": {
+                          "type": "long"
+                        },
+                        "proc_behavior": {
+                          "type": "long"
+                        },
+                        "llm_sni_hits": {
+                          "type": "long"
+                        },
+                        "llm_dns_hits": {
+                          "type": "long"
+                        },
+                        "llm_cert_hits": {
+                          "type": "long"
+                        },
+                        "llm_asn_hits": {
+                          "type": "long"
+                        },
+                        "long_tls_sessions": {
+                          "type": "long"
+                        },
+                        "repetitive_tls_patterns": {
+                          "type": "long"
+                        },
+                        "anomaly_count": {
+                          "type": "long"
+                        },
+                        "mcp_http": {
+                          "type": "long"
+                        },
+                        "tool_list": {
+                          "type": "long"
+                        },
+                        "tool_call": {
+                          "type": "long"
+                        },
+                        "resource_access": {
+                          "type": "long"
+                        },
+                        "prompt_injection": {
+                          "type": "long"
+                        },
+                        "tool_abuse": {
+                          "type": "long"
+                        },
+                        "lateral_movement": {
+                          "type": "long"
+                        },
+                        "secret_access": {
+                          "type": "long"
+                        },
+                        "provider_usage": {
+                          "type": "long"
+                        },
+                        "inventory_discovery": {
+                          "type": "long"
+                        },
+                        "inventory_change": {
+                          "type": "long"
+                        },
+                        "unknown_tool": {
+                          "type": "long"
+                        },
+                        "unknown_resource": {
+                          "type": "long"
+                        },
+                        "unknown_prompt": {
+                          "type": "long"
+                        },
+                        "endpoint_drift": {
+                          "type": "long"
+                        },
+                        "prompt_access": {
+                          "type": "long"
+                        },
+                        "sampling_request": {
+                          "type": "long"
+                        },
+                        "elicitation_request": {
+                          "type": "long"
+                        },
+                        "a2a_http": {
+                          "type": "long"
+                        },
+                        "a2a_agent_card": {
+                          "type": "long"
+                        },
+                        "a2a_agent_card_change": {
+                          "type": "long"
+                        },
+                        "a2a_message_send": {
+                          "type": "long"
+                        },
+                        "a2a_task_access": {
+                          "type": "long"
+                        },
+                        "a2a_task_cancel": {
+                          "type": "long"
+                        },
+                        "a2a_push_notification": {
+                          "type": "long"
+                        },
+                        "a2a_artifact_exfil": {
+                          "type": "long"
+                        },
+                        "a2a_auth_required": {
+                          "type": "long"
+                        },
+                        "a2a_unknown_agent": {
+                          "type": "long"
+                        },
+                        "rest_api_calls": {
+                          "type": "long"
+                        },
+                        "rest_auth_failures": {
+                          "type": "long"
+                        },
+                        "rest_data_exfil": {
+                          "type": "long"
+                        },
+                        "rest_rate_limit_hits": {
+                          "type": "long"
+                        },
+                        "rest_endpoint_probes": {
+                          "type": "long"
+                        },
+                        "rest_ssrf": {
+                          "type": "long"
+                        },
+                        "rest_jwt_abuse": {
+                          "type": "long"
+                        },
+                        "stage_mask": {
+                          "type": "long"
+                        },
+                        "source_mask": {
+                          "type": "long"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

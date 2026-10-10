@@ -92,7 +92,7 @@ Backend support:
 
 - `docker/` - base Docker assets for Altprobe.
 - `ids-rules/` - MCP / Shadow API / AI Detection rule files for Falco, Suricata.
-- `labs/` - public quick-start labs for APISIX, Envoy, and Kong.
+- `labs/` - public quick-start labs for OpenResty, APISIX, and Envoy.
 
 ## Requirements
 

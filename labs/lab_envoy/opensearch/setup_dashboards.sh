@@ -116,12 +116,17 @@ for f in /setup/dashboards/index_patterns/*.json; do
   put_object "index-pattern/$pid" "$f"
 done
 
-echo "[dashboards-init] importing saved searches, visualizations and dashboards ..."
-for f in /setup/dashboards/saved_objects/*.json; do
-  base=$(basename "$f" .json)
-  otype=${base%%__*}
-  oid=${base#*__}
-  put_object "$otype/$oid" "$f"
+echo "[dashboards-init] importing saved searches, then visualizations, then dashboards ..."
+# Import in dependency order: the panels a dashboard references (searches and
+# visualizations) are created before the dashboards themselves, so a dashboard
+# opened mid-import never reports an unresolved panel reference.
+for otype in search visualization dashboard; do
+  for f in /setup/dashboards/saved_objects/${otype}__*.json; do
+    [ -e "$f" ] || continue
+    base=$(basename "$f" .json)
+    oid=${base#*__}
+    put_object "$otype/$oid" "$f"
+  done
 done
 
 echo "[dashboards-init] done. Open http://localhost:5601/app/dashboards (search for \"OCSF\" / \"Altprobe\")."

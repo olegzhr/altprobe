@@ -1,0 +1,225 @@
+# =============================================================================
+# Altprobe Lab — OpenResty
+#
+# Self-contained quick-start demo of Altprobe behind OpenResty (nginx + Lua).
+#
+# Wire-up:
+#   curl -> openresty:9080 -> mock:8000 (MCP / test-api / AI Gateway)
+#   openresty log_by_lua (lua/log.lua) -> redis, key "log_proxy"
+#   altprobe reads "log_proxy" from redis, normalizes gateway HTTP traffic into
+#   OCSF 4002/6003 and forwards demo traces to the collector mock
+#   altprobe -> OpenSearch (native sinks.cpp OS sink); the correlator emits
+#   OCSF 600301 "Agent Correlation" findings browsable in Dashboards.
+#
+# No policy/OPA decision and no Alertflex incident delivery is configured here:
+# this lab only demonstrates HTTP telemetry over Redis plus the OpenSearch sink.
+# =============================================================================
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    container_name: lab-openresty-redis
+    restart: unless-stopped
+    ports:
+      # 6379 is commonly taken by a host redis-server; publish on 16379.
+      - "16379:6379"
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mock:
+    build: ./mock
+    container_name: lab-openresty-mock
+    restart: unless-stopped
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"   # optional: direct access for debugging
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status==200 else 1)"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  openresty:
+    build: ./openresty
+    container_name: lab-openresty-gateway
+    depends_on:
+      redis:
+        condition: service_healthy
+      mock:
+        condition: service_started
+    ports:
+      - "9080:9080"   # proxy entry point
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    container_name: lab-openresty-opensearch
+    restart: unless-stopped
+    environment:
+      # Single-node, security plugin disabled: throwaway lab cluster with no
+      # external exposure beyond localhost. altprobe's sinks.cpp still sends
+      # HTTP Basic auth on every write (SINKS_OS_USER/PWD below) because
+      # cobject.cpp requires non-empty user/pwd to enable the sink at all —
+      # OpenSearch just ignores those credentials with security disabled.
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-openresty-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|\"status\":\"yellow\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    container_name: lab-openresty-opensearch-dashboards
+    restart: unless-stopped
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      opensearch-dashboards-recover:
+        condition: service_completed_successfully
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "5601:5601"   # Web UI — http://localhost:5601
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:5601/api/status | grep -q 200"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  opensearch-dashboards-recover:
+    # One-shot: clears an empty .kibana_1 left by an OSD start that raced
+    # OpenSearch, so /api/status does not stay 503 forever.
+    image: curlimages/curl:8.10.1
+    container_name: lab-openresty-osd-recover
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./opensearch:/setup:ro
+    entrypoint: ["sh", "/setup/recover_stale_kibana.sh"]
+    environment:
+      - OS_URL=http://opensearch:9200
+    restart: "no"
+
+  opensearch-init:
+    # One-shot job: registers the merged OCSF index templates (opensearch/
+    # templates/) before altprobe starts writing. Idempotent — safe to rerun.
+    image: curlimages/curl:8.10.1
+    container_name: lab-openresty-opensearch-init
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./opensearch:/setup:ro
+    entrypoint: ["sh", "/setup/setup_templates.sh"]
+    environment:
+      - OS_URL=http://opensearch:9200
+    restart: "no"
+
+  opensearch-dashboards-init:
+    # One-shot job: provisions index patterns, searches, visualizations and
+    # dashboards from opensearch/dashboards/. Idempotent — safe to rerun.
+    image: curlimages/curl:8.10.1
+    container_name: lab-openresty-dashboards-init
+    depends_on:
+      opensearch-dashboards:
+        condition: service_healthy
+      opensearch-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./opensearch:/setup:ro
+    entrypoint: ["sh", "/setup/setup_dashboards.sh"]
+    environment:
+      - OSD_URL=http://opensearch-dashboards:5601
+    restart: "no"
+
+  altprobe:
+    build:
+      context: ../..
+      dockerfile: labs/lab_openresty/altprobe/Dockerfile
+      args:
+        BUILD_IMAGE: ${ALTPROBE_BUILD_IMAGE:-ubuntu:jammy}
+        ALTPROBE_VERSION: ${ALTPROBE_VERSION:-1.0.2}
+        ALTPROBE_RELEASE_BASE_URL: ${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}
+        INSTALL_TRIVY: ${LAB_INSTALL_TRIVY:-false}
+    # Pinned to linux/amd64 — the project Makefile hardcodes "Architecture:
+    # amd64" in the .deb control file regardless of the host architecture.
+    platform: linux/amd64
+    container_name: lab-openresty-altprobe
+    depends_on:
+      openresty:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      opensearch-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    environment:
+      # Altprobe settings
+      - ALTPROBE_ASSET_NAME=altprobe-openresty-lab
+      - ALTPROBE_HOST_NAME=altprobe-openresty-lab
+      - ALTPROBE_PROJECT_ID=demo-project
+      - ALTPROBE_LOG_DEBUG=true
+      - ALTPROBE_API_THRESHOLD=10
+      - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
+      - ALTPROBE_API_GUARD=/etc/altprobe/api_guard.yaml
+      # Test-only GeoLite2-compatible DB (private lab IPs) and SBOM fixture
+      - ALTPROBE_GEOIP_DB=/etc/altprobe/GeoLite2-City-test.mmdb
+      - ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom-test.yaml
+      # Correlator (stock config keys)
+      - CORRELATOR_DETECTION_ENABLED=true
+      - CORRELATOR_ALIAS_TTL=30
+      - CORRELATOR_ALERT_COOLDOWN=30
+      - CORRELATOR_ENTITY_TTL=90
+      - CORRELATOR_CLEANUP_INTERVAL=100
+      # Traces: collect per-agent chains and emit matches to Alertflex.
+      - TRACE_ENABLED=true
+      - TRACE_AGENT_WINDOW=300
+      # Response
+      - RESPONSE_ENABLED=false
+      # Sinks: defaults point at the lab's own mock, which serves
+      # /inventory/{asset} and /traces/{asset}. Override with a real collector.
+      - SINKS_AF_TLS_VERIFY=${SINKS_AF_TLS_VERIFY:-false}
+      - SINKS_AF_TLS_CA_FILE=${SINKS_AF_TLS_CA_FILE:-}
+      - SINKS_OS_TLS_VERIFY=${SINKS_OS_TLS_VERIFY:-false}
+      - SINKS_OS_TLS_CA_FILE=${SINKS_OS_TLS_CA_FILE:-}
+      - SINKS_AF_URL=${ALERTFLEX_URL:-http://mock:8000}
+      - SINKS_AF_KEY=${ALERTFLEX_KEY:-test-key-not-validated-by-mock}
+      # OpenSearch sink (altprobe's native sinks.cpp writer).
+      - SINKS_OS_URL=http://opensearch:9200
+      - SINKS_OS_USER=admin
+      - SINKS_OS_PWD=admin
+      - SINKS_LOKI_URL=
+      # Sources: read proxy traffic logged by OpenResty from redis
+      - SOURCES_REDIS_HOST=redis
+      - SOURCES_REDIS_PORT=6379
+      - SOURCES_PROXY_REDIS=log_proxy
+      - SOURCES_SURICATA_REDIS=log_suricata
+      - SOURCES_FALCO_LOG=
+      - SOURCES_PROXY_LOG=
+      - SOURCES_SURICATA_LOG=
+
+volumes:
+  opensearch-openresty-data:

@@ -171,7 +171,14 @@ services:
     restart: "no"
 
   altprobe:
-    build: ./altprobe
+    build:
+      context: ../..
+      dockerfile: labs/lab_envoy/altprobe/Dockerfile
+      args:
+        BUILD_IMAGE: ${ALTPROBE_BUILD_IMAGE:-ubuntu:jammy}
+        ALTPROBE_VERSION: ${ALTPROBE_VERSION:-1.0.2}
+        ALTPROBE_RELEASE_BASE_URL: ${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}
+        INSTALL_TRIVY: ${LAB_INSTALL_TRIVY:-false}
     # Pinned to linux/amd64 — the project Makefile hardcodes "Architecture:
     # amd64" in the .deb control file regardless of host architecture.
     platform: linux/amd64
@@ -192,9 +199,11 @@ services:
       # Altprobe settings
       - ALTPROBE_ASSET_NAME=altprobe-envoy-lab
       - ALTPROBE_HOST_NAME=altprobe-envoy-lab
+      - ALTPROBE_PROJECT_ID=demo-project
       - ALTPROBE_LOG_DEBUG=true
       - ALTPROBE_API_THRESHOLD=10
       - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
+      - ALTPROBE_API_GUARD=/etc/altprobe/api_guard.yaml
       # Test-only GeoLite2-compatible DB (private lab IPs) and SBOM fixture
       - ALTPROBE_GEOIP_DB=/etc/altprobe/GeoLite2-City-test.mmdb
       - ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom-test.yaml
@@ -210,6 +219,10 @@ services:
       # Response
       - RESPONSE_ENABLED=false
       # Sinks: collector mock by default
+      - SINKS_AF_TLS_VERIFY=${SINKS_AF_TLS_VERIFY:-false}
+      - SINKS_AF_TLS_CA_FILE=${SINKS_AF_TLS_CA_FILE:-}
+      - SINKS_OS_TLS_VERIFY=${SINKS_OS_TLS_VERIFY:-false}
+      - SINKS_OS_TLS_CA_FILE=${SINKS_OS_TLS_CA_FILE:-}
       - SINKS_AF_URL=${ALERTFLEX_URL:-http://mock:8000}
       - SINKS_AF_KEY=${ALERTFLEX_KEY:-test-key-not-validated-by-mock}
       # OpenSearch sink
@@ -227,7 +240,6 @@ services:
       - SOURCES_SURICATA_REDIS=log_suricata
       - SOURCES_FALCO_LOG=
       - SOURCES_SURICATA_LOG=
-      - SOURCES_ECAPTURE_WS=
     volumes:
       - envoy-logs:/var/log/envoy:ro
 

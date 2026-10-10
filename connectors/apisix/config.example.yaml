@@ -1,0 +1,16 @@
+# APISIX: enable the redis-logger plugin and point it at the Redis list that
+# Altprobe reads through its proxy (Redis) source (SOURCES_PROXY_REDIS).
+#
+# Merge these keys into your APISIX conf/config.yaml. In APISIX 3.9+ the plugin
+# list must be at the top YAML level (not inside `apisix:`), and the plugin file
+# must be present under apisix/plugins/ (see README.md).
+plugins:
+  - redis-logger
+
+plugin_attr:
+  redis-logger:
+    output_type: redis                                  # redis | file
+    redis_host: 127.0.0.1                               # Redis Altprobe reads from
+    redis_port: 6379
+    redis_key: log_proxy                                # altprobe SOURCES_PROXY_REDIS
+    log_file_path: /usr/local/apisix/logs/proxy-json.log

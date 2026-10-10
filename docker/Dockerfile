@@ -13,7 +13,7 @@ RUN apt-get update \
     libboost-system1.74.0 libboost-filesystem1.74.0 libboost-regex1.74.0 \
     libboost-iostreams1.74.0 libboost-thread1.74.0 \
     libyaml-cpp0.7 libhiredis0.14 libmodsecurity3 libmaxminddb0 \
-    libssl3 libwebsockets16 libnghttp2-dev \
+    libssl3 libgrpc++1 libprotobuf23 \
  && rm -rf /var/lib/apt/lists/*
 
 RUN wget -q ${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb -O /tmp/altprobe.deb \
