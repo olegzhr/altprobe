@@ -42,7 +42,6 @@ flowchart TD
     style Altprobe fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     style Alertflex fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     style OpenSearch fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style Fail2ban fill:#ffffff,stroke:#333,stroke-width:1px
 ```
 
 ## Components
@@ -51,8 +50,7 @@ flowchart TD
 | Falco (HIDS) | Host intrusion detection | Altprobe (log/Redis) |
 | Suricata (NIDS) | Network intrusion detection | Altprobe (log/Redis) |
 | Suricata (IPS) | IP blocking | Altprobe (unix socket) |
-| Fail2ban | Alternative IP blocking | Altprobe (fail2ban-client) |
-| AI/API Gateway | APISIX / Envoy / Kong fronting MCP, A2A, REST | Altprobe (log/Redis) |
+| AI/API Gateway | APISIX / Envoy / OpenResty fronting MCP, A2A, REST | Altprobe (log/Redis) |
 | Altprobe | Collects, correlates, classifies, normalizes to OCSF, WAF | Core |
 | OpenSearch | Search, dashboards, alerting | Altprobe (OCSF) |
 | Alertflex | Inventory & SBOM context (optional) | Altprobe (A2A/MCP/REST) |
