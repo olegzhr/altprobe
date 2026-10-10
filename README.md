@@ -34,8 +34,7 @@ flowchart TD
     Altprobe -->|Security findings/HTTP activities<br/>in OCSF format| OpenSearch[OpenSearch]
 
     Altprobe -->|IP blocking via unix socket| NIDS
-    Altprobe -->|IP blocking via fail2ban| Fail2ban["fail2ban"]
-
+    
     style NIDS fill:#ffffff,stroke:#333,stroke-width:1px
     style HIDS fill:#ffffff,stroke:#333,stroke-width:1px
     style Proxy fill:#ffffff,stroke:#333,stroke-width:1px
