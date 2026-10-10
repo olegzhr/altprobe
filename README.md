@@ -1,8 +1,8 @@
 # Altprobe
 
-Altprobe gives security and platform teams visibility into AI agent, MCP, REST API, and gateway traffic, adding guardrails for AI and API interactions. It collects events from gateways, proxy logs, runtime sensors, and network security tools, normalizes them into OCSF, and sends them to OpenSearch or compatible downstream systems.
+Altprobe gives security and platform teams visibility into AI agent, MCP, REST API, and gateway traffic, adding detection guardrails for AI and API interactions. It collects events from gateways, proxy logs, runtime sensors, and network security tools, normalizes them into OCSF, and sends them to OpenSearch or compatible downstream systems.
 
-If your SIEM or a similar system does not cover A2A, MCP, or AI-agent traffic, Altprobe can be used alongside it. It discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE ATT&CK / ATLAS - providing guardrails on top of your existing stack, without requiring a full SIEM or SOAR deployment.
+If your SIEM or a similar system does not cover A2A, MCP, or AI-agent traffic, Altprobe can be used alongside it. It discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE ATT&CK / ATLAS - providing guardrails on top of your existing stack, without requiring a full SIEM.
 
 ## Table of Contents
 
