@@ -2,7 +2,7 @@
 
 Altprobe gives security and platform teams visibility into AI agent, MCP, REST API, and gateway traffic, adding detection guardrails for AI and API interactions. It collects events from gateways, proxy logs, runtime sensors, and network security tools, normalizes them into OCSF, and sends them to OpenSearch or compatible downstream systems.
 
-If your SIEM or a similar system does not cover A2A, MCP, or AI-agent traffic, Altprobe can be used alongside it. It discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE ATT&CK / ATLAS - providing guardrails on top of your existing stack, without requiring a full SIEM.
+It discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE ATT&CK / ATLAS - providing observability and detection on top of your existing stack, without requiring you to build or expand a full SIEM.
 
 ## Table of Contents
 
@@ -84,17 +84,9 @@ normalized OCSF events, agent correlations, and security timelines.
 
 Altprobe can automatically block source IPs after HIGH or CRITICAL correlated
 findings, independently of whether OpenSearch or Alertflex delivery is enabled.
-Two backends are supported:
+Backend support:
 
 - **Suricata** — Altprobe adds a hostbit over the Suricata Unix socket.
-- **fail2ban** — Altprobe bans the IP through `fail2ban-client` in a dedicated
-  jail. It sets the jail ban time from the configured timeout and then bans the
-  IP; fail2ban removes the block automatically when the timeout expires.
-
-For the fail2ban backend, fail2ban must be installed on the host with a jail
-reserved for Altprobe, and `fail2ban-client` must be available. Blocking is
-guarded by an IP allowlist (your own and infrastructure addresses) and a
-per-minute ban limit.
 
 ## Repository Contents
 
@@ -118,7 +110,7 @@ sudo apt-get install -y \
     libboost-system1.74.0 libboost-filesystem1.74.0 libboost-regex1.74.0 \
     libboost-iostreams1.74.0 libboost-thread1.74.0 \
     libyaml-cpp0.7 libhiredis0.14 libmodsecurity3 libmaxminddb0 \
-    libssl3 libwebsockets16
+    libssl3 libgrpc++1 libprotobuf23
 
 ALTPROBE_VERSION=1.0.2
 ALTPROBE_RELEASE_BASE_URL="https://github.com/olegzhr/altprobe/releases/download"
@@ -174,7 +166,7 @@ LAB_BASE=<gateway-url> python3 run_tests.py smoke
 |---------|---------------|-------------|---------|
 | APISIX | `labs/lab_apisix` | `http://localhost:9080` | `labs/lab_apisix/README.md` |
 | Envoy | `labs/lab_envoy` | `http://localhost:9080` | `labs/lab_envoy/README.md` |
-| Kong | `labs/lab_kong` | `http://localhost:8010` | `labs/lab_kong/README.md` |
+| OpenResty | `labs/lab_openresty` | `http://localhost:9080` | `labs/lab_openresty/README.md` |
 
 All labs expose OpenSearch at `http://localhost:9200` and OpenSearch Dashboards
 at `http://localhost:5601`.
