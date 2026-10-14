@@ -69,4 +69,3 @@ alert tls any any -> any any (msg:"SIG_LLM_TLS_CERT_GOOGLE"; tls.cert_subject; c
 alert tls any any -> any any (msg:"SIG_LLM_TLS_CERT_COHERE"; tls.cert_subject; content:"cohere"; nocase; classtype:trojan-activity; sid:1001104; rev:1;)
 alert tls any any -> any any (msg:"SIG_LLM_TLS_CERT_MISTRAL"; tls.cert_subject; content:"mistral"; nocase; classtype:trojan-activity; sid:1001105; rev:1;)
 alert http any any -> $HOME_NET any (msg:"SIG_ALERTFLEX_HTTP"; flow:to_client; http.response_line; content:"HTTP/"; sid:1001201; rev:1;)
-drop ip any any -> any any (msg:"SIG_ALERTFLEX_HOSTBITS"; hostbits:isset,dropip,src; sid:1001202; rev:1;)
