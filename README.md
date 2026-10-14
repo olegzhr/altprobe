@@ -45,7 +45,7 @@ flowchart TD
 |-----------|------|-----------|
 | Falco (HIDS) | Host intrusion detection | Altprobe (log/Redis) |
 | Suricata (NIDS) | Network intrusion detection | Altprobe (log/Redis) |
-| AI/API Gateway | APISIX / Envoy / OpenResty fronting MCP, A2A, REST | Altprobe (log/Redis) |
+| AI/API Gateway | APISIX / Envoy / Nginx (OpenResty) fronting MCP, A2A, REST | Altprobe (log/Redis) |
 | Altprobe | Collects, correlates, classifies, normalizes to OCSF, WAF | Core |
 | Altprobe (OCSF) | Search, dashboards, alerting | OpenSearch |
 | Altprobe (A2A/MCP/REST) | Inventory & SBOM context (optional) | Alertflex |
@@ -154,7 +154,7 @@ LAB_BASE=<gateway-url> python3 run_tests.py smoke
 |---------|---------------|-------------|---------|
 | APISIX | `labs/lab_apisix` | `http://localhost:9080` | `labs/lab_apisix/README.md` |
 | Envoy | `labs/lab_envoy` | `http://localhost:9080` | `labs/lab_envoy/README.md` |
-| OpenResty | `labs/lab_openresty` | `http://localhost:9080` | `labs/lab_openresty/README.md` |
+| Nginx (OpenResty) | `labs/lab_openresty` | `http://localhost:9080` | `labs/lab_openresty/README.md` |
 
 All labs expose OpenSearch at `http://localhost:9200` and OpenSearch Dashboards
 at `http://localhost:5601`.
