@@ -13,7 +13,6 @@ It discovers AI agents, MCP servers, and APIs (including undocumented ones), ide
   - [Agent Correlations](#agent-correlations)
   - [MITRE ATT&CK / ATLAS Timeline](#mitre-attck--atlas-timeline)
 - [Why Use Altprobe](#why-use-altprobe)
-- [Automated IP Blocking](#automated-ip-blocking)
 - [Repository Contents](#repository-contents)
 - [Requirements](#requirements)
 - [Install From Package](#install-from-package)
@@ -33,8 +32,6 @@ flowchart TD
     Altprobe["Altprobe: Collector/Correlator<br/>Embedded log-based WAF<br/>AI Security Patterns Classifier"] -->|A2A/MCP/REST/SBOM<br/> inventory info| Alertflex[Alertflex]
     Altprobe -->|Security findings/HTTP activities<br/>in OCSF format| OpenSearch[OpenSearch]
 
-    Altprobe -->|IP blocking via unix socket| NIDS
-    
     style NIDS fill:#ffffff,stroke:#333,stroke-width:1px
     style HIDS fill:#ffffff,stroke:#333,stroke-width:1px
     style Proxy fill:#ffffff,stroke:#333,stroke-width:1px
@@ -48,7 +45,6 @@ flowchart TD
 |-----------|------|-----------|
 | Falco (HIDS) | Host intrusion detection | Altprobe (log/Redis) |
 | Suricata (NIDS) | Network intrusion detection | Altprobe (log/Redis) |
-| Suricata (IPS) | IP blocking | Altprobe (unix socket) |
 | AI/API Gateway | APISIX / Envoy / OpenResty fronting MCP, A2A, REST | Altprobe (log/Redis) |
 | Altprobe | Collects, correlates, classifies, normalizes to OCSF, WAF | Core |
 | OpenSearch | Search, dashboards, alerting | Altprobe (OCSF) |
@@ -79,14 +75,6 @@ normalized OCSF events, agent correlations, and security timelines.
 - Correlate API and agent activity by host, session, route, and request data.
 - Start with a local lab, then adapt the same source and sink pattern for a
   production gateway.
-
-## Automated IP Blocking
-
-Altprobe can automatically block source IPs after HIGH or CRITICAL correlated
-findings, independently of whether OpenSearch or Alertflex delivery is enabled.
-Backend support:
-
-- **Suricata** — Altprobe adds a hostbit over the Suricata Unix socket.
 
 ## Repository Contents
 
