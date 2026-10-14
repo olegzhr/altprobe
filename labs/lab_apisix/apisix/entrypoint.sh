@@ -1,4 +1,9 @@
 #!/bin/bash
+set -eu
+API="http://127.0.0.1:9180/apisix/admin"
+ADMIN_KEY="${ADMIN_KEY:-edd1c9f034335f136f87ad84b625c8f1}"
+ADMIN_AUTH=(-H "X-API-KEY: ${ADMIN_KEY}")
+
 
 echo "Waiting for etcd..." >&2
 while true; do
@@ -27,9 +32,6 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-API="http://127.0.0.1:9180/apisix/admin"
-ADMIN_KEY="${ADMIN_KEY:-edd1c9f034335f136f87ad84b625c8f1}"
-ADMIN_AUTH=(-H "X-API-KEY: ${ADMIN_KEY}")
 
 # Upstream and Redis are resolved from the environment so the same image can be
 # reused in the alertflex-lab demo. Defaults keep the standalone plugin working.
@@ -42,7 +44,7 @@ PLUGINS='{"redis-logger":{"output_type":"redis","redis_host":"'$REDIS_HOST'","re
 
 create_route() {
   local id=$1 uri=$2 upstream=$3
-  code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$API/routes/$id" \
+  code=$(curl -fsS -o /dev/null -w "%{http_code}" -X PUT "$API/routes/$id" \
     -H "Content-Type: application/json" \
     "${ADMIN_AUTH[@]}" \
     -d "{\"uri\":\"$uri\",\"upstream\":$upstream,\"plugins\":$PLUGINS}")
@@ -51,7 +53,7 @@ create_route() {
 
 add_plugin_to_route() {
   local id=$1 uri=$2 upstream=$3
-  code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$API/routes/$id" \
+  code=$(curl -fsS -o /dev/null -w "%{http_code}" -X PUT "$API/routes/$id" \
     -H "Content-Type: application/json" \
     "${ADMIN_AUTH[@]}" \
     -d "{\"uri\":\"$uri\",\"upstream\":$upstream,\"plugins\":$PLUGINS}")
@@ -74,11 +76,20 @@ AI_GATEWAY_PLUGINS='{
   "redis-logger": {"output_type":"redis","redis_host":"'$REDIS_HOST'","redis_port":'$REDIS_PORT',"redis_key":"'$REDIS_KEY'","log_file_path":"/usr/local/apisix/logs/proxy-json.log"}
 }'
 
-code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$API/routes/6" \
+code=$(curl -fsS -o /dev/null -w "%{http_code}" -X PUT "$API/routes/6" \
   -H "Content-Type: application/json" \
   "${ADMIN_AUTH[@]}" \
   -d "{\"uri\":\"/ai-gateway/v1/chat/completions\",\"methods\":[\"POST\"],\"upstream\":$UPSTREAM_MCP,\"plugins\":$AI_GATEWAY_PLUGINS}")
 echo "Route 6 (/ai-gateway/v1/chat/completions, AI Gateway): HTTP $code" >&2
+
+# Built-in authentication supplies the trusted consumer to the built-in OPA plugin.
+for name in policy-active policy-blocked policy-unknown; do
+  curl -fsS -X PUT "$API/consumers" "${ADMIN_AUTH[@]}" -H "Content-Type: application/json" \
+    -d "{\"username\":\"$name\",\"plugins\":{\"key-auth\":{\"key\":\"lab-$name-key\"}}}" >/dev/null
+done
+POLICY_PLUGINS='{"key-auth":{},"opa":{"host":"http://127.0.0.1:8181","policy":"altprobe/allow","with_consumer":true,"timeout":2000},"redis-logger":{"output_type":"redis","redis_host":"'$REDIS_HOST'","redis_port":'$REDIS_PORT',"redis_key":"'$REDIS_KEY'","log_file_path":"/usr/local/apisix/logs/proxy-json.log"}}'
+curl -fsS -X PUT "$API/routes/7" "${ADMIN_AUTH[@]}" -H "Content-Type: application/json" \
+  -d "{\"uri\":\"/policy-check\",\"methods\":[\"GET\"],\"upstream\":$UPSTREAM_MCP,\"plugins\":$POLICY_PLUGINS}" >/dev/null
 
 echo "Done" >&2
 

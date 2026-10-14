@@ -11,6 +11,11 @@ traffic it collects. It uses only local demo services:
 
 No external model provider or collector is contacted by default.
 
+Altprobe is downloaded from GitHub Releases (ALTPROBE_VERSION); use a published
+package containing the current Policy/Incident changes. CRS is pinned to the version used by `src/Makefile`. SBOM tests use
+the bundled fixture; set `LAB_INSTALL_TRIVY=true` for optional Trivy installation.
+The shared [session pytest suite](../tests/README.md) covers all five labs.
+
 ## Start
 
 ```bash
@@ -82,10 +87,11 @@ curl -s "http://localhost:9200/ocsf-1.1.0-6003-api_activity*/_count"
 
 ## Tests
 
-Run the public Python test suites (smoke, function, security, e2e, geo, sbom):
+Run the unified Python test suites (smoke, function, security, e2e, geo, sbom)
+from the shared test directory:
 
 ```bash
-cd tests
+cd ../tests
 python3 -m pip install -r requirements.txt   # once: installs pytest
 LAB_BASE=http://localhost:9080 python3 run_tests.py
 ```
@@ -99,7 +105,7 @@ LAB_BASE=http://localhost:9080 python3 run_tests.py sbom
 The tests only use harmless demo traffic: MCP methods, REST demo endpoints, the
 local AI Gateway mock, emulated Suricata events in Redis, and a bundled
 CycloneDX SBOM fixture. Requires Python 3.8+. Artifacts (JUnit XML report and
-the Altprobe debug log) are written to `tests/logs/`.
+the Altprobe debug log) are written to `labs/tests/logs/`.
 
 ## Ports
 
@@ -122,3 +128,35 @@ docker compose down -v
 ```
 
 `docker compose down -v` also removes indexed lab data.
+
+## Policy and Incident update
+
+Runtime Docker builds download the Altprobe .deb from GitHub Releases. Set
+ALTPROBE_VERSION to a published release containing these changes. See the
+[shared test guide](../tests/README.md) for all ports and the lab test suite.
+
+GET /policy-check uses the standard key-auth and opa plugins, with authenticated
+consumer identity passed to the loopback Altprobe HTTP listener. For example:
+
+    curl -i http://localhost:9080/policy-check -H 'apikey: lab-policy-active-key'
+    curl -i http://localhost:9080/policy-check -H 'apikey: lab-policy-blocked-key'
+    curl -X PATCH http://localhost:8000/lab/policy/agents/policy-active -H 'Content-Type: application/json' -d '{"blockStatus":"blocked"}'
+    curl -X PATCH http://localhost:8000/lab/policy/agents/policy-active -H 'Content-Type: application/json' -d '{"blockStatus":"active"}'
+
+The last command models console unblock. Allow up to the next 60-second inventory
+poll before expecting enforcement to change. Existing /mcp and /test-api routes
+remain detector demos and do not require Policy credentials.
+[APISIX OPA protocol](https://apisix.apache.org/docs/apisix/plugins/opa/).
+
+Incident delivery uses POLICY_INCIDENT_ENABLED / POLICY_* settings. Suricata
+remains a telemetry source; gateway Policy enforces access decisions. Local
+Suricata Response has been removed; see the shared guide.
+
+## TLS verification
+
+SINKS_AF_TLS_VERIFY and SINKS_OS_TLS_VERIFY default to false in this lab. Set
+them to true to verify HTTPS certificates. Optional SINKS_AF_TLS_CA_FILE and
+SINKS_OS_TLS_CA_FILE refer to PEM CA files inside Altprobe; mount the files read-only.
+Alertflex verification also applies to inventory, logs, traces and incidents.
+See [TLS configuration](../../src/doc/tls_clients.md). The default HTTP lab
+services do not perform a TLS handshake.

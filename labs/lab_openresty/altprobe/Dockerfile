@@ -5,8 +5,6 @@ ARG ALTPROBE_VERSION=1.0.2
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
 # Runtime package comes from GitHub Releases; no local src build is used.
-# Built from the repository root context (see docker-compose.yaml) so the lab
-# rules/fixtures below are addressed by their labs/<lab>/... paths.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget ca-certificates python3 libdaemon0 \
     libboost-system1.74.0 libboost-filesystem1.74.0 libboost-regex1.74.0 \
@@ -18,12 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb" -O /tmp/altprobe.deb \
  && dpkg -i /tmp/altprobe.deb && rm /tmp/altprobe.deb && ldconfig
 
-# Refuse an old package that would silently ignore the new response/TLS
-# settings used by this lab, and that lacks OpenResty gateway support.
-RUN grep -q '^response:' /etc/altprobe/altprobe.yaml \
- && grep -q 'af_tls_verify:' /etc/altprobe/altprobe.yaml \
- && grep -q 'os_tls_verify:' /etc/altprobe/altprobe.yaml \
- && grep -q 'openresty' /etc/altprobe/altprobe.yaml
+# Refuse an old package that lacks the TLS client settings this lab uses.
+RUN grep -q 'af_tls_verify:' /etc/altprobe/altprobe.yaml \
+ && grep -q 'os_tls_verify:' /etc/altprobe/altprobe.yaml
 
 # Use the same pinned CRS release as src/Makefile's package target.
 ARG CRS_VERSION=4.29.0

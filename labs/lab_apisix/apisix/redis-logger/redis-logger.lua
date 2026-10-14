@@ -152,7 +152,8 @@ function _M.log(conf, ctx)
     -- carries e.g. Session-Id is still traceable as a distinct agent.
     local http_x_claude_code_agent_id = ngx.var.http_x_claude_code_agent_id or "-"
     local http_x_claude_code_session_id = ngx.var.http_x_claude_code_session_id or "-"
-    local http_session_id = ngx.var.http_session_id or "-"
+    local http_session_id = ngx.var.http_session_id
+    if not http_session_id or http_session_id == "" then http_session_id = ngx.var.http_x_session_id or "-" end
     local http_x_agent_id = ngx.var.http_x_agent_id or "-"
 
     local log_data = {
@@ -163,6 +164,7 @@ function _M.log(conf, ctx)
         http_x_claude_code_session_id = http_x_claude_code_session_id,
         http_session_id = http_session_id,
         http_x_agent_id = http_x_agent_id,
+        consumer_name = ctx.consumer and ctx.consumer.username or "-",
         request_uri = ngx.var.request_uri or "-",
         request_id = ngx.var.request_id or "-",
         request_method = ngx.req.get_method() or "-",

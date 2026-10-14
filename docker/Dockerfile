@@ -21,6 +21,31 @@ RUN wget -q ${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROB
  && rm -f /tmp/altprobe.deb \
  && ldconfig
 
+# Activate the bundled OWASP CRS so ModSecurity starts: the package ships only
+# crs-setup.conf.example, and REQUEST-922-MULTIPART-ATTACK.conf is incompatible
+# with ModSecurity 3.0.6. Allowed content types and anomaly thresholds mirror
+# the lab images.
+RUN cp /etc/altprobe/coreruleset/crs-setup.conf.example /etc/altprobe/coreruleset/crs-setup.conf \
+ && rm -f /etc/altprobe/coreruleset/rules/REQUEST-922-MULTIPART-ATTACK.conf \
+ && cat >> /etc/altprobe/coreruleset/crs-setup.conf <<'EOF'
+
+# ---- Activated defaults ----
+SecAction \
+    "id:900998,\
+    phase:1,\
+    nolog,\
+    pass,\
+    t:none,\
+    setvar:tx.allowed_request_content_type=|application/x-www-form-urlencoded| |multipart/form-data| |text/xml| |application/xml| |application/soap+xml| |application/json|,\
+    setvar:tx.critical_anomaly_score=5,\
+    setvar:tx.error_anomaly_score=4,\
+    setvar:tx.warning_anomaly_score=3,\
+    setvar:tx.notice_anomaly_score=2,\
+    setvar:tx.inbound_anomaly_score_threshold=5,\
+    setvar:tx.outbound_anomaly_score_threshold=4,\
+    setvar:tx.paranoia_level=1"
+EOF
+
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

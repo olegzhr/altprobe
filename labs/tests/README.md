@@ -1,8 +1,11 @@
-# Altprobe Lab Tests
+# Altprobe lab tests
 
-Python test suites for a running lab. They use harmless mock traffic only:
-MCP methods, REST demo endpoints, the local AI Gateway mock, emulated Suricata
-events pushed to Redis, and a bundled CycloneDX SBOM fixture.
+Unified pytest suite for the Altprobe proxy plugin and its OpenSearch (OCSF)
+output. The same, environment-driven suite runs against any lab gateway
+(APISIX, OpenResty or Envoy); select the target with `LAB_BASE`. Only harmless
+demo traffic is used: MCP methods, REST demo endpoints, the local AI Gateway
+mock, emulated Suricata events pushed to Redis, and a bundled CycloneDX SBOM
+fixture.
 
 ## Layout
 
@@ -11,7 +14,7 @@ events pushed to Redis, and a bundled CycloneDX SBOM fixture.
 | `run_tests.py` | Runner (`smoke`, `function`, `security`, `e2e`, `geo`, `sbom`) |
 | `pytest.ini`, `requirements.txt` | pytest configuration and dependency |
 | `logs/` | Test artifacts: JUnit XML report and the Altprobe container log |
-| `altprobe_lab/common.py` | HTTP, OpenSearch and Redis helpers |
+| `altprobe_lab/common.py` | `requests`-based HTTP, OpenSearch and Redis helpers |
 | `altprobe_lab/suricata_events.py` | Suricata eve.json emulation (private IPs from the test GeoIP DB) |
 | `altprobe_lab/test_smoke.py` | Gateway/mock smoke, OpenSearch ingestion, Suricata OCSF classes |
 | `altprobe_lab/test_function.py` | MCP, REST and AI Gateway behavior |
@@ -22,11 +25,19 @@ events pushed to Redis, and a bundled CycloneDX SBOM fixture.
 
 ## Run
 
+From this directory, with the target lab running:
+
 ```bash
-cd tests
-python3 -m pip install -r requirements.txt   # once: installs pytest
-python3 run_tests.py            # all suites
-python3 run_tests.py sbom       # one suite
+python -m pip install -r requirements.txt   # once: installs pytest and requests
+python run_tests.py                          # all categories
+python run_tests.py smoke                    # one category
+python run_tests.py smoke -k mcp             # extra args are passed to pytest
+```
+
+Or invoke pytest directly:
+
+```bash
+python -m pytest -q altprobe_lab
 ```
 
 Requires Python 3.8+ and pytest. The runner writes both artifacts to `logs/`:
@@ -35,14 +46,16 @@ Requires Python 3.8+ and pytest. The runner writes both artifacts to `logs/`:
 - `logs/altprobe.log` — full Altprobe container log (debug output). Container
   auto-detection uses `docker ps`; set `LAB_ALTPROBE_CONTAINER` to override.
 
-Environment variables:
+## Environment variables
 
-- `LAB_BASE` — gateway URL (default `http://localhost:9080`; use
-  `http://localhost:8010` for Kong).
+- `LAB_BASE` — gateway URL (default `http://localhost:9080`).
 - `LAB_OS_BASE` — OpenSearch URL (default `http://localhost:9200`).
 - `LAB_INDEX_WAIT` — seconds to wait for indexing (default 10).
 - `LAB_REDIS_HOST` / `LAB_REDIS_PORT` / `LAB_REDIS_KEY` — Redis used for the
   Suricata emulation (defaults `localhost`, `16379`, `log_suricata`).
+
+All labs expose the gateway on `9080`, the mock on `8000`, OpenSearch on `9200`,
+Dashboards on `5601` and Redis on `16379`.
 
 ## Geo and SBOM fixtures
 

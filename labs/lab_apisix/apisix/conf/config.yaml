@@ -16,6 +16,8 @@ apisix:
     - 9080
 
 plugins:
+  - key-auth
+  - opa
   - redis-logger
   - ai-proxy
 

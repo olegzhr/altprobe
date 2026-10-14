@@ -1,13 +1,20 @@
 services:
   altprobe:
+    build: .
     image: altprobe/altprobe:latest
     container_name: altprobe
     environment:
-      # Altprobe settings
+      # Collector / Altprobe settings (see src/cobject.cpp, Docker mode)
       - ALTPROBE_ASSET_NAME=my-server
       - ALTPROBE_HOST_NAME=my-server
+      - ALTPROBE_PROJECT_ID=demo-project
       - ALTPROBE_LOG_DEBUG=true
       - ALTPROBE_API_THRESHOLD=10
+      - ALTPROBE_API_GUARD=/etc/altprobe/api_guard.yaml
+      - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
+      - ALTPROBE_SCORING_WEIGHTS=/etc/altprobe/scoring_weights.yaml
+      - ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom.yaml
+      - ALTPROBE_GEOIP_DB=            # example: "/etc/altprobe/GeoLite2-City.mmdb"
 
       # Correlator
       - CORRELATOR_DETECTION_ENABLED=true
@@ -16,24 +23,24 @@ services:
       - CORRELATOR_ENTITY_TTL=90
       - CORRELATOR_CLEANUP_INTERVAL=100
 
-      # Response (Suricata or stdio_proxy)
-      - RESPONSE_ENABLED=false
-      - RESPONSE_BACKEND=suricata
-      - RESPONSE_SURICATA_SOCKET=
-      - RESPONSE_HOSTBIT_RULE=
-      - RESPONSE_IPBLOCK_TIMEOUT=3600
-      - RESPONSE_STDIO_PROXY_SOCKET=
+      # Trace: per-agent event chains
+      - TRACE_ENABLED=true
+      - TRACE_AGENT_WINDOW=300
 
-      # Sinks (leave af/os/loki empty to disable)
+      # Sinks (leave af/os empty to disable)
       - SINKS_OUTPUT_MODE=all
       - SINKS_AF_URL=
       - SINKS_AF_KEY=
-      - SINKS_OS_URL="https://192.168.1.30:9200"
-      - SINKS_OS_USER=admin
-      - SINKS_OS_PWD=Password-12345
-      - SINKS_LOKI_URL=
+      - SINKS_AF_TLS_VERIFY=false
+      - SINKS_AF_TLS_CA_FILE=
+      - SINKS_OS_URL=                 # example: "https://opensearch:9200"
+      - SINKS_OS_USER=
+      - SINKS_OS_PWD=
+      - SINKS_OS_TLS_VERIFY=false
+      - SINKS_OS_TLS_CA_FILE=
+      - SINKS_LOGS_REJECTED_DIR=/var/lib/altprobe/logs-rejected
 
-      # Sources (Redis ingestion from the redis service)
+      # Sources: Redis ingestion from the redis service
       - SOURCES_REDIS_HOST=redis
       - SOURCES_REDIS_PORT=6379
       - SOURCES_FALCO_REDIS=log_falco
@@ -43,7 +50,35 @@ services:
       - SOURCES_FALCO_LOG=
       - SOURCES_PROXY_LOG=
       - SOURCES_SURICATA_LOG=
-      - SOURCES_ECAPTURE_WS=
+
+      # Policy controller (disabled by default; see src/doc/policy_controller.md)
+      - POLICY_ENABLED=false
+      - POLICY_TYPE_AGENT=apisix
+      - POLICY_IDENTITY_MODE=authenticated
+      - POLICY_UNKNOWN_AGENT=deny
+      - POLICY_UNKNOWN_ENDPOINT=allow
+      - POLICY_INVENTORY_MAX_AGE_SEC=180
+      - POLICY_INCIDENT_ENABLED=false
+      - POLICY_INCIDENT_URL=
+      - POLICY_SPOOL_DIR=/var/lib/altprobe/incidents
+      - POLICY_TIMEOUT_MS=5000
+      - POLICY_MAX_PENDING=512
+      - POLICY_ALLOW_HTTP=false
+
+      # guard_llm (disabled by default; see src/doc/guard_llm.md)
+      - GUARD_LLM_ENABLED=false
+      - GUARD_LLM_URL=http://host.docker.internal:11434
+      - GUARD_LLM_MODEL=
+      - GUARD_LLM_FORMAT=qwen3guard
+      - GUARD_LLM_INSPECT_REQUEST=true
+      - GUARD_LLM_INSPECT_RESPONSE=true
+      - GUARD_LLM_TLS_VERIFY=true
+      - GUARD_LLM_TLS_CA_FILE=
+      - GUARD_LLM_TIMEOUT_MS=10000
+      - GUARD_LLM_MAX_BODY_BYTES=16384
+      - GUARD_LLM_QUEUE_SIZE=128
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     depends_on:
       - redis

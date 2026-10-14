@@ -1,5 +1,8 @@
 """Shared helpers for the Altprobe lab tests.
 
+HTTP, OpenSearch and Redis access for the environment-driven lab suite. HTTP
+uses the standard ``requests`` library.
+
 Configuration comes from the environment so the same suite runs against any lab:
 
     LAB_BASE         gateway URL (default http://localhost:9080)
@@ -14,9 +17,8 @@ import json
 import os
 import socket
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
+
+import requests
 
 LAB_BASE = os.environ.get("LAB_BASE", "http://localhost:" + os.environ.get("LAB_PORT", "9080"))
 LAB_OS_BASE = os.environ.get("LAB_OS_BASE", "http://localhost:9200")
@@ -35,14 +37,13 @@ OSCF = {
     "api": "ocsf-1.1.0-6003-api_activity*",
 }
 
+SESSION = requests.Session()
+
 
 def http(method, url, data=None, headers=None, timeout=20):
-    request = urllib.request.Request(url, data=data, method=method, headers=headers or {})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return response.status, response.read()
-    except urllib.error.HTTPError as exc:
-        return exc.code, exc.read()
+    """Return ``(status_code, body_bytes)`` for any HTTP status."""
+    response = SESSION.request(method, url, data=data, headers=headers or {}, timeout=timeout)
+    return response.status_code, response.content
 
 
 def get(url, headers=None):
@@ -64,7 +65,7 @@ def post_form(url, fields, headers=None):
     merged = {"Content-Type": "application/x-www-form-urlencoded"}
     if headers:
         merged.update(headers)
-    return http("POST", url, data=urllib.parse.urlencode(fields).encode(), headers=merged)
+    return http("POST", url, data=fields, headers=merged)
 
 
 def body_json(response):
@@ -76,29 +77,21 @@ def body_json(response):
 
 def os_count(pattern, query=None):
     if query is None:
-        code, raw = http("GET", "{}/{}/_count".format(LAB_OS_BASE, pattern))
+        response = SESSION.get("{}/{}/_count".format(LAB_OS_BASE, pattern), timeout=20)
     else:
-        code, raw = http(
-            "POST",
-            "{}/{}/_count".format(LAB_OS_BASE, pattern),
-            data=json.dumps({"query": query}).encode(),
-            headers={"Content-Type": "application/json"},
-        )
+        response = SESSION.post("{}/{}/_count".format(LAB_OS_BASE, pattern),
+                                json={"query": query}, timeout=20)
     try:
-        return json.loads(raw.decode()).get("count", 0)
+        return response.json().get("count", 0)
     except Exception:
         return 0
 
 
 def os_search(pattern, body):
-    code, raw = http(
-        "POST",
-        "{}/{}/_search".format(LAB_OS_BASE, pattern),
-        data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"},
-    )
+    response = SESSION.post("{}/{}/_search".format(LAB_OS_BASE, pattern),
+                            json=body, timeout=20)
     try:
-        return json.loads(raw.decode() or "{}")
+        return response.json()
     except Exception:
         return {}
 

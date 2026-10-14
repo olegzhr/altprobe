@@ -70,6 +70,7 @@ static_resources:
                             local h_claude_session = headers:get("x-claude-code-session-id")
                             if h_claude_session == nil or h_claude_session == "" then h_claude_session = "-" end
                             local h_session_id = headers:get("session-id")
+                            if h_session_id == nil or h_session_id == "" then h_session_id = headers:get("x-session-id") end
                             if h_session_id == nil or h_session_id == "" then h_session_id = "-" end
                             local h_agent_id = headers:get("x-agent-id")
                             if h_agent_id == nil or h_agent_id == "" then h_agent_id = "-" end
@@ -166,7 +167,76 @@ static_resources:
                           http_session_id: "%DYNAMIC_METADATA(envoy.lua:http_session_id)%"
                           http_x_agent_id: "%DYNAMIC_METADATA(envoy.lua:http_x_agent_id)%"
 
+    - name: policy_listener
+      address:
+        socket_address: {address: 0.0.0.0, port_value: 9443}
+      filter_chains:
+        - transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              require_client_certificate: true
+              common_tls_context:
+                tls_certificates:
+                  - certificate_chain: {filename: /certs/server.crt}
+                    private_key: {filename: /certs/server.key}
+                validation_context:
+                  trusted_ca: {filename: /certs/ca.crt}
+          filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: policy_http
+                route_config:
+                  name: policy_route
+                  virtual_hosts:
+                    - name: policy_backend
+                      domains: ["*"]
+                      routes:
+                        - match: {path: /policy-check}
+                          route: {cluster: mock}
+                http_filters:
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      failure_mode_allow: false
+                      include_peer_certificate: true
+                      grpc_service:
+                        envoy_grpc: {cluster_name: altprobe_policy}
+                        timeout: 2s
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                access_log:
+                  - name: envoy.access_loggers.file
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+                      path: /var/log/envoy/access.log
+                      log_format:
+                        json_format:
+                          authenticated_principal: "%DOWNSTREAM_PEER_URI_SAN%"
+                          request_uri: "%REQ(:PATH)%"
+                          request_method: "%REQ(:METHOD)%"
+                          remote_addr: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
+                          server_port: "%DOWNSTREAM_LOCAL_PORT%"
+                          status: "%RESPONSE_CODE%"
+                          http_host: "%REQ(:AUTHORITY)%"
+                          request_body: ""
+                          response_body: ""
+
   clusters:
+    - name: altprobe_policy
+      type: STATIC
+      connect_timeout: 1s
+      http2_protocol_options: {}
+      load_assignment:
+        cluster_name: altprobe_policy
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: {address: 127.0.0.1, port_value: 9191}
     - name: mock
       connect_timeout: 0.25s
       type: STRICT_DNS

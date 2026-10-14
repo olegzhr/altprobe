@@ -8,8 +8,10 @@ geo map can be exercised without a MaxMind license or real public IPs.
 import base64
 import json
 import time
+from datetime import datetime, timezone
 
-TIMESTAMP = "2026-10-02T07:00:00.000000+0000"
+def timestamp():
+    return datetime.now(timezone.utc).isoformat()
 
 # Private addresses from the test GeoIP database.
 SRC_US = "10.10.0.5"      # New York, United States
@@ -24,7 +26,7 @@ DST_IN = "192.168.30.5"   # Mumbai, India
 
 def tls_event(src=SRC_US, dst=DST_NL):
     return {
-        "timestamp": TIMESTAMP,
+        "timestamp": timestamp(),
         "event_type": "tls",
         "host_name": "altprobe-suricata-lab",
         "in_iface": "eth0",
@@ -55,7 +57,7 @@ def dns_event(src=SRC_US, dst=DST_JP):
     # an empty key that OpenSearch rejects. The tree contains the fix; this
     # event keeps the lab demo deterministic until the next release.
     return {
-        "timestamp": TIMESTAMP,
+        "timestamp": timestamp(),
         "event_type": "dns",
         "host_name": "altprobe-suricata-lab",
         "flow_id": 4002,
@@ -77,7 +79,7 @@ def dns_event(src=SRC_US, dst=DST_JP):
 
 def netflow_event(src=SRC_DE, dst=DST_NL, flow_id=4003):
     return {
-        "timestamp": TIMESTAMP,
+        "timestamp": timestamp(),
         "event_type": "netflow",
         "host_name": "altprobe-suricata-lab",
         "flow_id": flow_id,
@@ -90,8 +92,8 @@ def netflow_event(src=SRC_DE, dst=DST_NL, flow_id=4003):
         "netflow": {
             "pkts": 10,
             "bytes": 2048,
-            "start": TIMESTAMP,
-            "end": TIMESTAMP,
+            "start": timestamp(),
+            "end": timestamp(),
             "age": 0,
             "min_ttl": 64,
             "max_ttl": 64,
@@ -101,7 +103,7 @@ def netflow_event(src=SRC_DE, dst=DST_NL, flow_id=4003):
 
 def detection_event(src=SRC_SG, dst=DST_IN):
     return {
-        "timestamp": TIMESTAMP,
+        "timestamp": timestamp(),
         "event_type": "alert",
         "host_name": "altprobe-suricata-lab",
         "flow_id": 4004,
@@ -136,10 +138,11 @@ def http_event(src=SRC_AU, dst=DST_NL):
     return http_alert("POST", "http://api.example.invalid/mcp", body_text=body, src=src, dst=dst)
 
 
-def http_alert(method, url, body_text="", src=SRC_US, dst=DST_NL, flow_id=4100):
+def http_alert(method, url, body_text="", src=SRC_US, dst=DST_NL, flow_id=4100,
+               response_text="", status=200):
     body = base64.b64encode(body_text.encode()).decode()
     return {
-        "timestamp": TIMESTAMP,
+        "timestamp": timestamp(),
         "event_type": "alert",
         "host_name": "altprobe-suricata-lab",
         "flow_id": flow_id,
@@ -157,14 +160,14 @@ def http_alert(method, url, body_text="", src=SRC_US, dst=DST_NL, flow_id=4100):
             "severity": 2,
             "signature": "SIG_ALERTFLEX_HTTP REST abuse scenario",
         },
-        "flow": {"start": TIMESTAMP},
+        "flow": {"start": timestamp()},
         "http": {
             "http_method": method,
             "url": url,
             "protocol": "HTTP/1.1",
-            "status": 200,
+            "status": status,
             "http_request_body": body,
-            "http_response_body": "",
+            "http_response_body": base64.b64encode(response_text.encode()).decode(),
         },
         "payload": "",
     }
@@ -184,11 +187,12 @@ def rest_abuse_events(src=None, dst=DST_NL):
         src = "10.99.%d.5" % (int(time.time()) % 250 + 1)
     return [
         http_alert("POST", "http://api.example.invalid/api/login",
-                   body_text='{"user":"demo","pass":"wrong"}', src=src, dst=dst, flow_id=4203),
+                   body_text='{"user":"demo","pass":"wrong"}', src=src, dst=dst, flow_id=4203,
+                   response_text='{"error":"authentication failed"}', status=401),
         http_alert("POST", "http://api.example.invalid/api/token/refresh", body_text='{"alg":"none"}',
-                   src=src, dst=dst, flow_id=4204),
+                   src=src, dst=dst, flow_id=4204, response_text='{"error":"refresh token reuse"}', status=401),
         http_alert("POST", "http://api.example.invalid/api/token/validate", body_text='{"alg":"none"}',
-                   src=src, dst=dst, flow_id=4205),
+                   src=src, dst=dst, flow_id=4205, response_text='{"error":"signature verification failed"}', status=401),
         http_alert("GET", "http://api.example.invalid/api/proxy?url=http://169.254.169.254/latest/meta-data/",
                    body_text='{"probe":"ssrf"}', src=src, dst=dst, flow_id=4202),
         http_alert("GET", "http://api.example.invalid/api/fetch?target=http://evil.example/",
@@ -203,7 +207,7 @@ def rest_abuse_events(src=None, dst=DST_NL):
         http_alert("POST", "http://api.example.invalid/orders/45", body_text='{"item":"w"}',
                    src=src, dst=dst, flow_id=4209),
         http_alert("GET", "http://api.example.invalid/api/export?all=1",
-                   src=src, dst=dst, flow_id=4201),
+                   src=src, dst=dst, flow_id=4201, response_text='-----BEGIN PRIVATE KEY----- synthetic fixture'),
     ]
 
 

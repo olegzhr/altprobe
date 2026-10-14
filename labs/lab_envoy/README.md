@@ -88,10 +88,11 @@ docker run --rm -v lab_envoy_envoy-logs:/logs busybox tail -n 5 /logs/access.log
 
 ## Tests
 
-Run the public Python test suites (smoke, function, security, e2e, geo, sbom):
+Run the unified Python test suites (smoke, function, security, e2e, geo, sbom)
+from the shared test directory:
 
 ```bash
-cd tests
+cd ../tests
 python3 -m pip install -r requirements.txt   # once: installs pytest
 LAB_BASE=http://localhost:9080 python3 run_tests.py
 ```
@@ -105,7 +106,7 @@ LAB_BASE=http://localhost:9080 python3 run_tests.py sbom
 The tests only use harmless demo traffic: MCP methods, REST demo endpoints, the
 local AI Gateway mock, emulated Suricata events in Redis, and a bundled
 CycloneDX SBOM fixture. Requires Python 3.8+. Artifacts (JUnit XML report and
-the Altprobe debug log) are written to `tests/logs/`.
+the Altprobe debug log) are written to `labs/tests/logs/`.
 
 ## Ports
 
@@ -125,3 +126,34 @@ docker compose down -v
 ```
 
 `docker compose down -v` also removes indexed lab data.
+
+## Policy and Incident update
+
+Runtime Docker builds download the Altprobe .deb from GitHub Releases. Set
+ALTPROBE_VERSION to a published release containing these changes. See the
+[shared test guide](../tests/README.md) for all ports and the lab test suite.
+
+GET https://localhost:9443/policy-check uses standard ext_authz v3 over gRPC.
+Clients must present a lab CA-signed certificate with exactly one URI SAN.
+The certificate init service generates active/blocked/unknown identities in the
+envoy-certs volume. The Policy regression tests were removed; the retained
+suite covers the proxy plugin and its OpenSearch output. The ordinary detector
+listener is http://localhost:9080.
+
+Mock console changes use
+PATCH http://localhost:8000/lab/policy/agents/policy-active with blockStatus
+blocked or active; Altprobe consumes the status through inventory polling.
+[Envoy ext_authz protocol](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/ext_authz/v3/ext_authz.proto.html).
+
+Incident delivery uses POLICY_INCIDENT_ENABLED / POLICY_* settings. Suricata
+remains a telemetry source; gateway Policy enforces access decisions. Local
+Suricata Response has been removed; see the shared guide.
+
+## TLS verification
+
+SINKS_AF_TLS_VERIFY and SINKS_OS_TLS_VERIFY default to false in this lab. Set
+them to true to verify HTTPS certificates. Optional SINKS_AF_TLS_CA_FILE and
+SINKS_OS_TLS_CA_FILE refer to PEM CA files inside Altprobe; mount the files read-only.
+Alertflex verification also applies to inventory, logs, traces and incidents.
+See [TLS configuration](../../src/doc/tls_clients.md). The default HTTP lab
+services do not perform a TLS handshake.

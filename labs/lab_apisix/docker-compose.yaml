@@ -34,6 +34,9 @@ services:
   mock:
     build: ./mock
     container_name: lab-apisix-mock
+    environment:
+      - LAB_GATEWAY=apisix
+      - LAB_PROBE_HOST=altprobe-apisix-lab
     restart: unless-stopped
     expose:
       - "8000"
@@ -205,14 +208,19 @@ services:
     # Pinned to linux/amd64 — the project Makefile hardcodes "Architecture:
     # amd64" in the .deb control file regardless of the host architecture.
     platform: linux/amd64
+    network_mode: "service:apisix"
     container_name: lab-apisix-altprobe
     depends_on:
+      apisix:
+        condition: service_started
       redis:
         condition: service_healthy
       opensearch:
         condition: service_healthy
       opensearch-init:
         condition: service_completed_successfully
+    volumes:
+      - incident-spool:/var/lib/altprobe
     restart: unless-stopped
     environment:
       # Altprobe settings
@@ -235,8 +243,19 @@ services:
       # Traces: collect per-agent chains and emit matches to Alertflex.
       - TRACE_ENABLED=true
       - TRACE_AGENT_WINDOW=300
-      # Response
-      - RESPONSE_ENABLED=false
+      # Incident delivery.
+      - POLICY_ENABLED=true
+      - POLICY_TYPE_AGENT=apisix
+      - POLICY_IDENTITY_MODE=authenticated
+      - POLICY_UNKNOWN_AGENT=deny
+      - POLICY_UNKNOWN_ENDPOINT=deny
+      - POLICY_INVENTORY_MAX_AGE_SEC=180
+      - POLICY_SIDECAR_HTTP_ENABLED=true
+      - POLICY_SIDECAR_HTTP_BIND_HOST=127.0.0.1
+      - POLICY_SIDECAR_HTTP_TRUSTED_PEERS=127.0.0.1,::1
+      - POLICY_INCIDENT_ENABLED=true
+      - POLICY_ALLOW_HTTP=true
+      - POLICY_SPOOL_DIR=/var/lib/altprobe/incidents
       # Sinks: defaults point at the lab's own mock, which
       # serves /inventory/{asset} (pattern/trigger delivery) and /traces/{asset}
       # (trace capture). Override with a real collector via
@@ -262,4 +281,5 @@ services:
       - SOURCES_SURICATA_LOG=
 
 volumes:
+  incident-spool:
   opensearch-apisix-data:

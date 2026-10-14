@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Altprobe lab test runner (pytest).
+"""Unified Altprobe lab test runner (pytest).
 
-Usage:
+Runs the shared, environment-driven suite against any running lab
+(APISIX, OpenResty or Envoy) from this directory:
+
     python3 run_tests.py                 # all categories
     python3 run_tests.py smoke           # smoke | function | security | e2e | geo | sbom
     python3 run_tests.py smoke -k mcp    # extra args are passed to pytest
 
-Artifacts (in tests/logs/):
+Artifacts (in logs/):
     junit-<category>.xml   pytest JUnit XML report
     altprobe.log           full Altprobe container log (debug includes the
                            collector's stdout; set LAB_ALTPROBE_CONTAINER to
