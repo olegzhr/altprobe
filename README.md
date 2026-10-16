@@ -63,7 +63,7 @@ flowchart BT
 flowchart TD
     NIDS["Suricata (NIDS)"]
     HIDS["Falco Security (HIDS)"]
-    Proxy["API/AI Gateway<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
+    Proxy["AI/API Gateway:<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
 
     Altprobe["<b>Altprobe</b><br/>Collector / Correlator,<br/>Embedded log-based WAF,<br/>Detection Guardrails (internal)"]
 
