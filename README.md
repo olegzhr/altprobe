@@ -63,9 +63,9 @@ flowchart BT
 flowchart TD
     NIDS["Suricata (NIDS)"]
     HIDS["Falco Security (HIDS)"]
-    Proxy["API/AI Gateway<br/><i>primary: Nginx (OpenResty)</i><br/><i>alternatives: APISIX / Envoy / Kong OSS / Traefik / Higress</i>"]
+    Proxy["API/AI Gateway<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
 
-    Altprobe["<b>Altprobe</b><br/>Collector / Correlator<br/>Embedded log-based WAF<br/>Detection Guardrails (internal)"]
+    Altprobe["<b>Altprobe</b><br/>Collector / Correlator,<br/>Embedded log-based WAF,<br/>Detection Guardrails (internal)"]
 
     GLLM["Guard LLM<br/>Detection Guardrails (external)<br/><i>runtime: Ollama; model: Qwen3Guard</i>"]
     Alertflex["Alertflex<br/><i>optional</i>"]
@@ -97,7 +97,7 @@ Component                             | Layer                       | Role      
 --------------------------------------|-----------------------------|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------|--------------------------------------------------------------
 AI Agents                             | Endpoint                    | Autonomous AI workloads generating requests/actions                  | —                                                                                           | ↔ API/AI Gateway (in-band)
 MCP Servers                           | Endpoint                    | Model Context Protocol servers providing tools/context               | —                                                                                           | ↔ API/AI Gateway (in-band)
-API/AI Gateway                        | Security Control            | Front for MCP, A2A, REST; inbound control & monitoring               | primary: Nginx (OpenResty); alternatives: APISIX / Envoy / Kong OSS / Traefik / Higress     | ↔ AI Agents, ↔ MCP Servers, ↔ Altprobe
+API/AI Gateway                        | Security Control            | Front for MCP, A2A, REST; inbound control & monitoring               | Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress     | ↔ AI Agents, ↔ MCP Servers, ↔ Altprobe
 Network IDS                           | Security Control            | Network intrusion detection & prevention                             | Suricata                                                                                    | Out-of-band monitoring → Altprobe (log file / Redis)
 Host IDS / Runtime Security           | Security Control            | Host & container intrusion detection, runtime security               | Falco                                                                                       | Out-of-band monitoring → Altprobe (log file / Redis)
 Altprobe                              | Analytics & Storage         | Collects, correlates, classifies, normalizes to OCSF, embedded WAF   | Custom (Collector / Correlator); Detection Guardrails (internal)                            | Core ↔ Gateway, ← Network IDS, ← Host IDS, ↔ Guard LLM, → OpenSearch, → Alertflex (optional)
@@ -216,11 +216,6 @@ LAB_BASE=<gateway-url> python3 run_tests.py smoke
 | Kong OSS | `labs/lab_kong` | `http://localhost:9080` | `labs/lab_kong/README.md` |
 | Traefik Proxy OSS | `labs/lab_traefik` | `http://localhost:9080` | `labs/lab_traefik/README.md` |
 | Higress | `labs/lab_higress` | `http://localhost:9080` | `labs/lab_higress/README.md` |
-
-Kong OSS, Traefik Proxy and Higress full demo stacks are also available; see
-[gateway labs](labs/README.md). They ship their own mock, Redis, OpenSearch /
-Dashboards assets and gateway plugin, and build Altprobe from source (see the
-gateway labs guide for the source-checkout requirement).
 
 All labs expose OpenSearch at `http://localhost:9200` and OpenSearch Dashboards
 at `http://localhost:5601`.
