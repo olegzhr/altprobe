@@ -1,20 +1,11 @@
-FROM ubuntu:jammy AS builder
-RUN apt-get update && apt-get install -y --no-install-recommends \
- build-essential dpkg-dev curl ca-certificates pkg-config libboost-all-dev \
- libhiredis-dev libyaml-cpp-dev libmodsecurity-dev libmaxminddb-dev libssl-dev \
- libdaemon-dev protobuf-compiler protobuf-compiler-grpc libgrpc++-dev libprotobuf-dev \
- && rm -rf /var/lib/apt/lists/*
-WORKDIR /build
-COPY altprobe/ ./
-RUN make -j2 CONF=Debug
-RUN find scripts tests -name '*.sh' -exec sed -i 's/\r$//' {} + \
- && sh tests/run_cpp_tests.sh
-RUN make package ALTPROBE_VERSION=1.0.2
-
-FROM ubuntu:jammy
+ARG BUILD_IMAGE=ubuntu:jammy
+FROM ${BUILD_IMAGE}
 USER root
+ARG ALTPROBE_VERSION=1.0.2
+ARG ALTPROBE_SHA256=c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8
+ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
-# Runtime package is built from the modified local altprobe/ source above.
+# Runtime package comes from GitHub Releases; no local src build is used.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget ca-certificates python3 libdaemon0 \
     libboost-system1.74.0 libboost-filesystem1.74.0 libboost-regex1.74.0 \
@@ -23,8 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl3 libgrpc++1 libprotobuf23 \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /build/pkg/dpkg/altprobe_1.0.2.deb /tmp/altprobe.deb
-RUN dpkg -i /tmp/altprobe.deb && rm /tmp/altprobe.deb && ldconfig
+RUN wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb" -O /tmp/altprobe.deb \
+ && echo "${ALTPROBE_SHA256}  /tmp/altprobe.deb" | sha256sum -c - \
+ && dpkg -i /tmp/altprobe.deb && rm /tmp/altprobe.deb && ldconfig
 
 # Refuse an old package that would silently ignore the new Policy settings.
 RUN grep -q '^policy:' /etc/altprobe/altprobe.yaml \
@@ -33,7 +25,7 @@ RUN grep -q '^policy:' /etc/altprobe/altprobe.yaml \
  && grep -q 'af_tls_verify:' /etc/altprobe/altprobe.yaml \
  && grep -q 'os_tls_verify:' /etc/altprobe/altprobe.yaml
 
-# Use the same pinned CRS release as src/Makefile's package target.
+# Pin CRS independently so the lab does not depend on collector source files.
 ARG CRS_VERSION=4.29.0
 RUN python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/coreruleset/coreruleset/archive/refs/tags/v${CRS_VERSION}.tar.gz', '/tmp/crs.tar.gz')" \
  && mkdir -p /etc/altprobe/coreruleset \
@@ -64,7 +56,7 @@ EOF
 
 # Public labs do not add custom detection rules. The empty file keeps the build
 # path stable for users who compare this lab with internal examples.
-COPY labs-altprobe/labs/lab_traefik/altprobe/rules/secret_access.conf /etc/altprobe/coreruleset/rules/secret_access.conf
+COPY labs/lab_traefik/altprobe/rules/secret_access.conf /etc/altprobe/coreruleset/rules/secret_access.conf
 
 # SBOM regression uses the bundled CycloneDX fixture. Set LAB_INSTALL_TRIVY=true
 # to install Trivy for optional scans with an available vulnerability database.
@@ -77,11 +69,11 @@ RUN if [ "$INSTALL_TRIVY" = true ]; then \
 
 # Test-only, free MaxMind-compatible GeoLite2 database generated for private
 # lab addresses, plus the SBOM pipeline fixture.
-COPY labs-altprobe/labs/lab_traefik/altprobe/GeoLite2-City-test.mmdb /etc/altprobe/GeoLite2-City-test.mmdb
-COPY labs-altprobe/labs/lab_traefik/altprobe/sbom-fixture.cdx.json /etc/altprobe/sbom-fixture.cdx.json
-COPY labs-altprobe/labs/lab_traefik/altprobe/sbom-test.yaml /etc/altprobe/sbom-test.yaml
+COPY labs/lab_traefik/altprobe/GeoLite2-City-test.mmdb /etc/altprobe/GeoLite2-City-test.mmdb
+COPY labs/lab_traefik/altprobe/sbom-fixture.cdx.json /etc/altprobe/sbom-fixture.cdx.json
+COPY labs/lab_traefik/altprobe/sbom-test.yaml /etc/altprobe/sbom-test.yaml
 
-COPY labs-altprobe/labs/lab_traefik/altprobe/entrypoint.sh /usr/local/bin/
+COPY labs/lab_traefik/altprobe/entrypoint.sh /usr/local/bin/
 RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
  && chmod +x /usr/local/bin/entrypoint.sh
 

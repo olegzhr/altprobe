@@ -2,6 +2,7 @@ ARG BUILD_IMAGE=ubuntu:jammy
 FROM ${BUILD_IMAGE}
 USER root
 ARG ALTPROBE_VERSION=1.0.2
+ARG ALTPROBE_SHA256=c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
 # Runtime package comes from GitHub Releases; no local src build is used.
@@ -14,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 RUN wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb" -O /tmp/altprobe.deb \
+ && echo "${ALTPROBE_SHA256}  /tmp/altprobe.deb" | sha256sum -c - \
  && dpkg -i /tmp/altprobe.deb && rm /tmp/altprobe.deb && ldconfig
 
 # Refuse an old package that would silently ignore the new Policy settings.
@@ -23,11 +25,8 @@ RUN grep -q '^policy:' /etc/altprobe/altprobe.yaml \
  && grep -q 'af_tls_verify:' /etc/altprobe/altprobe.yaml \
  && grep -q 'os_tls_verify:' /etc/altprobe/altprobe.yaml
 
-# Same OWASP CRS activation as lab_v2 (see that Dockerfile for the detailed
-# rationale) — `make package` now fetches CRS itself (Makefile:154-180 in
-# the source tree), so this build's .deb already ships a populated
-# etc/altprobe/coreruleset/ directory. We only need to activate the default
-# config and drop the ModSecurity-3.0.6-incompatible rule file.
+# The published package includes CRS. Activate its default configuration and
+# omit the rule file incompatible with Ubuntu Jammy's ModSecurity 3.0.6.
 RUN cp /etc/altprobe/coreruleset/crs-setup.conf.example /etc/altprobe/coreruleset/crs-setup.conf \
  && rm -f /etc/altprobe/coreruleset/rules/REQUEST-922-MULTIPART-ATTACK.conf \
  && cat >> /etc/altprobe/coreruleset/crs-setup.conf <<'EOF'
@@ -68,6 +67,7 @@ COPY sbom-fixture.cdx.json /etc/altprobe/sbom-fixture.cdx.json
 COPY sbom-test.yaml /etc/altprobe/sbom-test.yaml
 
 COPY entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
+ && chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

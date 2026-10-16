@@ -4,6 +4,10 @@ Altprobe gives security and platform teams visibility into AI agent, MCP, REST A
 
 It discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE ATT&CK / ATLAS - providing observability and detection on top of your existing stack, without requiring you to build or expand a full SIEM.
 
+Altprobe is distributed as a free prebuilt Linux package. This repository
+contains integration sources, rules, deployment assets, dashboards and tests;
+the collector's source code is not included.
+
 ## Table of Contents
 
 - [Architecture](#architecture)
@@ -36,6 +40,7 @@ flowchart BT
         PROXY["AI/API Gateway"]
         SUR["Network IDS"]
         FALCO["Host IDS/Runtime Security"]
+        TRIVY["SBOM Scanner"]
     end
 
     subgraph L3["Analytics & Storage Layer"]
@@ -49,10 +54,12 @@ flowchart BT
 
     MCP -.->|traffic mirroring| SUR
     MCP -.->|runtime events| FALCO
+    MCP -.->|software component scanning| TRIVY
 
     PROXY <-->|inbound control and monitoring| ALT
     SUR -->|out-of-band monitoring| ALT
     FALCO -->|out-of-band monitoring| ALT
+    TRIVY -->|vulnerability findings| ALT
     ALT <-->|analysis loop| GLLM
     ALT -->|indexing / storage| OS
 ```
@@ -63,6 +70,7 @@ flowchart BT
 flowchart TD
     NIDS["Suricata (NIDS)"]
     HIDS["Falco Security (HIDS)"]
+    Sbom["CycloneDX SBOM<br/>Trivy"]
     Proxy["AI/API Gateway:<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
 
     Altprobe["<b>Altprobe</b><br/>Collector / Correlator,<br/>Embedded log-based WAF,<br/>Detection Guardrails (internal)"]
@@ -74,10 +82,11 @@ flowchart TD
     NIDS -->|Alerts/HTTP via Log file/Redis| Altprobe
     HIDS -->|Alerts via Log file/Redis| Altprobe
     Proxy -->|HTTP via Log file/Redis| Altprobe
+    Sbom -->|Scan report| Altprobe
 
     Altprobe <-->|analysis loop| GLLM
     Altprobe -->|A2A/MCP/REST/SBOM<br/>inventory info| Alertflex
-    Altprobe -->|Security findings / HTTP activities<br/>in OCSF format| OpenSearch
+    Altprobe -->|Security findings / HTTP activities<br/>SBOM vulnerability findings| OpenSearch
 
     classDef source fill:#ffffff,stroke:#333,stroke-width:1px
     classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -85,7 +94,7 @@ flowchart TD
     classDef store fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef optional stroke-dasharray: 5 5
 
-    class NIDS,HIDS,Proxy source
+    class NIDS,HIDS,Proxy,Sbom source
     class Altprobe core
     class GLLM downstream
     class Alertflex downstream,optional
@@ -100,10 +109,18 @@ MCP Servers                           | Endpoint                    | Model Cont
 API/AI Gateway                        | Security Control            | Front for MCP, A2A, REST; inbound control & monitoring               | Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress     | ↔ AI Agents, ↔ MCP Servers, ↔ Altprobe
 Network IDS                           | Security Control            | Network intrusion detection & prevention                             | Suricata                                                                                    | Out-of-band monitoring → Altprobe (log file / Redis)
 Host IDS / Runtime Security           | Security Control            | Host & container intrusion detection, runtime security               | Falco                                                                                       | Out-of-band monitoring → Altprobe (log file / Redis)
-Altprobe                              | Analytics & Storage         | Collects, correlates, classifies, normalizes to OCSF, embedded WAF   | Custom (Collector / Correlator); Detection Guardrails (internal)                            | Core ↔ Gateway, ← Network IDS, ← Host IDS, ↔ Guard LLM, → OpenSearch, → Alertflex (optional)
+Trivy Scanner (optional)              | Security Control            | Generates or scans SBOMs and reports software vulnerabilities         | Trivy, invoked through a configured Scanner command                                       | Altprobe Scanner → Trivy → CycloneDX report
+SBOM / Vulnerability Report           | Analytics & Storage         | Software component inventory and vulnerability evidence              | CycloneDX JSON                                                                             | Trivy or another configured producer → Altprobe Scanner → OpenSearch / Alertflex
+Altprobe                              | Analytics & Storage         | Collects, correlates, classifies, normalizes to OCSF, embedded WAF   | Custom (Collector / Correlator / Scanner); Detection Guardrails (internal)                  | Core ↔ Gateway, ← Network IDS, ← Host IDS, ← SBOM, ↔ Guard LLM, → OpenSearch, → Alertflex (optional)
 Guard LLM                             | Analytics & Storage         | LLM-based guardrail: prompt/response inspection, policy, verdicts    | Detection Guardrails (external); runtime: Ollama; model: Qwen3Guard                         | ↔ Altprobe (analysis loop)
 Search & Analytics Store (OpenSearch) | Analytics & Storage         | Search, dashboards, alerting on OCSF findings                        | OpenSearch                                                                                  | ← Altprobe (indexing / storage)
 Alertflex (optional)                  | Analytics & Storage (down.) | Inventory & SBOM context enrichment                                  | Alertflex                                                                                   | ← Altprobe (A2A / MCP / REST / SBOM)
+
+The optional Scanner module runs configured commands and reads their CycloneDX
+output. Trivy is one supported producer; Altprobe sends vulnerability findings
+to OpenSearch as OCSF 2002 and can send SBOM inventory to Alertflex. Public labs
+use a bundled SBOM fixture by default, so their SBOM tests do not require a
+live vulnerability database or demonstrate a scan of the host.
 
 ## Example Screenshots
 
@@ -158,9 +175,11 @@ sudo apt-get install -y \
 
 ALTPROBE_VERSION=1.0.2
 ALTPROBE_RELEASE_BASE_URL="https://github.com/olegzhr/altprobe/releases/download"
+ALTPROBE_SHA256=c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8
 wget "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb"
-sudo dpkg -i "altprobe_${ALTPROBE_VERSION}.deb"
-sudo ldconfig
+echo "${ALTPROBE_SHA256}  altprobe_${ALTPROBE_VERSION}.deb" | sha256sum -c - \
+  && sudo dpkg -i "altprobe_${ALTPROBE_VERSION}.deb" \
+  && sudo ldconfig
 ```
 
 Update `/etc/altprobe/altprobe.yaml` for your sources and sinks.
@@ -178,16 +197,23 @@ altprobe run
 
 The public labs are designed for safe local evaluation. They use harmless mock
 traffic only: MCP ping/tool calls, REST demo endpoints, and a local
-OpenAI-compatible response mock.
+OpenAI-compatible response mock. They exercise integration behavior and do not
+measure detection accuracy against a comprehensive attack benchmark.
+
+Captured traffic is analyzed asynchronously. Access control uses the separate
+synchronous Policy listener on configured routes; a later finding cannot undo
+a request that has already reached its upstream. OpenResty's demo collects
+telemetry without enabling Policy.
 
 ### Quickest Path
 
 If you are not sure which gateway to try first, start with APISIX:
 
 ```bash
-cd labs/lab_apisix
-docker compose build
-docker compose up -d
+git clone https://github.com/olegzhr/altprobe.git
+cd altprobe/labs/lab_apisix
+docker compose build --no-cache altprobe
+docker compose up -d --build --wait
 cd ../tests
 python3 -m pip install -r requirements.txt
 LAB_BASE=http://localhost:9080 python3 run_tests.py smoke
@@ -201,8 +227,8 @@ Use the same flow for any gateway:
 
 ```bash
 cd <lab-directory>
-docker compose build
-docker compose up -d
+docker compose build --no-cache altprobe
+docker compose up -d --build --wait
 cd ../tests
 python3 -m pip install -r requirements.txt
 LAB_BASE=<gateway-url> python3 run_tests.py smoke
@@ -222,4 +248,5 @@ at `http://localhost:5601`.
 
 ## License
 
-See [LICENSE](LICENSE).
+See [LICENSE](LICENSE) for the files published in this repository. The collector
+is supplied as a prebuilt package; its source code is not part of this checkout.

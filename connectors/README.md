@@ -15,5 +15,7 @@ extracted from the quick-start labs and presented without lab-specific setup
 | `opensearch/` | OCSF index templates, Dashboards saved objects and provisioning scripts | `SINKS_OS_URL` (Altprobe native OpenSearch sink) |
 
 Each gateway record is normalized by Altprobe into OCSF and written to the
-configured sink. The gateway connectors only ship telemetry; they do not make
-policy/OPA decisions or deliver Alertflex incidents.
+configured sink. The gateway integrations collect telemetry and, when enabled
+on protected routes, enforce access decisions from Altprobe Policy or a
+compatible OPA endpoint. Altprobe delivers incidents; the gateway plugins do not.
+See each connector's README for its supported authorization mechanism.

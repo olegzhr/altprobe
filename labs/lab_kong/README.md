@@ -6,12 +6,12 @@ that load index templates / saved objects. GeoIP and SBOM use local fixtures. Th
 plugin captures request/response and pushes events to Redis `log_proxy`; the real
 Altprobe normalises them into OCSF and indexes them in OpenSearch.
 
-Altprobe is built from source through its own `altprobe/Dockerfile`: a sibling
-directory `altprobe/` with the Altprobe source tree must exist next to this
-repository (the Docker build context is the parent directory that contains both
-`altprobe/` and `labs-altprobe/`). Source is required because the published
-release does not implement the `kong` gateway type. The Docker build runs five
-C++ regression drivers before packaging.
+Altprobe is installed from the published `1.0.2` Linux package. The build
+verifies its pinned SHA-256 before installation. No collector source checkout
+or particular repository directory name is required. Gateway plugins are built
+from the sources included in this repository.
+
+See the [release and rebuild instructions](../README.md#collector-package).
 
 ## Configuration
 

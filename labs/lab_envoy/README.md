@@ -15,8 +15,8 @@ No external model provider or collector is contacted by default.
 
 ```bash
 cd labs/lab_envoy
-docker compose build
-docker compose up -d
+docker compose build --no-cache altprobe
+docker compose up -d --build --wait
 docker compose ps
 ```
 
@@ -129,8 +129,9 @@ docker compose down -v
 
 ## Policy and Incident update
 
-Runtime Docker builds download the Altprobe .deb from GitHub Releases. Set
-ALTPROBE_VERSION to a published release containing these changes. See the
+Runtime Docker builds install the SHA-256-pinned Altprobe `1.0.2` package.
+For other packages, set both version and digest as described in the
+[package guide](../README.md#collector-package). See the
 [shared test guide](../tests/README.md) for all ports and the lab test suite.
 
 GET https://localhost:9443/policy-check uses standard ext_authz v3 over gRPC.

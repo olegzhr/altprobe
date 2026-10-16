@@ -3,6 +3,7 @@ FROM ubuntu:jammy
 # Altprobe version to install. Override at build time with:
 #   --build-arg ALTPROBE_VERSION=1.0.2
 ARG ALTPROBE_VERSION=1.0.2
+ARG ALTPROBE_SHA256=c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
 # Runtime dependencies for the current Altprobe build.
@@ -16,7 +17,8 @@ RUN apt-get update \
     libssl3 libgrpc++1 libprotobuf23 \
  && rm -rf /var/lib/apt/lists/*
 
-RUN wget -q ${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb -O /tmp/altprobe.deb \
+RUN wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb" -O /tmp/altprobe.deb \
+ && echo "${ALTPROBE_SHA256}  /tmp/altprobe.deb" | sha256sum -c - \
  && dpkg -i /tmp/altprobe.deb \
  && rm -f /tmp/altprobe.deb \
  && ldconfig
@@ -47,6 +49,7 @@ SecAction \
 EOF
 
 COPY entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
+ && chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

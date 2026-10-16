@@ -30,11 +30,11 @@ HTTP 200 with `result.allow` boolean. Deny uses `result.status_code` (default 40
 invalid/unavailable Policy returns 503. An external OPA can use the same contract
 by returning an object from its Rego decision. TLS verification is enabled.
 
-Build Altprobe from source with `kong` gateway-type support
+Install the rebuilt Altprobe `1.0.2` package with `kong` gateway-type support
 (`POLICY_TYPE_AGENT=kong`, HTTP sidecar enabled, `SOURCES_PROXY_REDIS=log_proxy`).
 Share the gateway's network namespace when using loopback Policy. Authenticated
-identity is `auth:kong:<consumer>`. The published release does not implement this
-gateway type.
+identity is `auth:kong:<consumer>`. Use the package digest pinned in the [labs guide](../../labs/README.md#collector-package);
+earlier binaries under the same version may lack this gateway type.
 
 Authorization/cookie/API-key headers are redacted. Bodies can contain sensitive
 data and are only size-limited, not semantically redacted. Request bodies written

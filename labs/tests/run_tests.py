@@ -2,7 +2,7 @@
 """Unified Altprobe lab test runner (pytest).
 
 Runs the shared, environment-driven suite against any running lab
-(APISIX, OpenResty or Envoy) from this directory:
+(APISIX, OpenResty, Envoy, Kong, Traefik or Higress) from this directory:
 
     python3 run_tests.py                 # all categories
     python3 run_tests.py smoke           # smoke | function | security | e2e | geo | sbom

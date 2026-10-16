@@ -2,6 +2,7 @@ ARG BUILD_IMAGE=ubuntu:jammy
 FROM ${BUILD_IMAGE}
 USER root
 ARG ALTPROBE_VERSION=1.0.2
+ARG ALTPROBE_SHA256=c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
 # Runtime package comes from GitHub Releases; no local src build is used.
@@ -14,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 RUN wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb" -O /tmp/altprobe.deb \
+ && echo "${ALTPROBE_SHA256}  /tmp/altprobe.deb" | sha256sum -c - \
  && dpkg -i /tmp/altprobe.deb && rm /tmp/altprobe.deb && ldconfig
 
 # Refuse an old package that would silently ignore the new Policy settings.
@@ -23,7 +25,7 @@ RUN grep -q '^policy:' /etc/altprobe/altprobe.yaml \
  && grep -q 'af_tls_verify:' /etc/altprobe/altprobe.yaml \
  && grep -q 'os_tls_verify:' /etc/altprobe/altprobe.yaml
 
-# Use the same pinned CRS release as src/Makefile's package target.
+# Pin CRS independently so the lab does not depend on collector source files.
 ARG CRS_VERSION=4.29.0
 RUN python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/coreruleset/coreruleset/archive/refs/tags/v${CRS_VERSION}.tar.gz', '/tmp/crs.tar.gz')" \
  && mkdir -p /etc/altprobe/coreruleset \
@@ -72,6 +74,7 @@ COPY labs/lab_apisix/altprobe/sbom-fixture.cdx.json /etc/altprobe/sbom-fixture.c
 COPY labs/lab_apisix/altprobe/sbom-test.yaml /etc/altprobe/sbom-test.yaml
 
 COPY labs/lab_apisix/altprobe/entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
+ && chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

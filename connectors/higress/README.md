@@ -39,7 +39,8 @@ telemetry event; errors are logged, delivery is not durable. Headers containing
 authorization/API keys/cookies are redacted, body contents are not semantically
 redacted. Upgraded WebSocket frames are outside this HTTP capture.
 
-The Policy envelope is identical to APISIX. Build Altprobe from source with
+The Policy envelope is identical to APISIX. Install the rebuilt Altprobe `1.0.2`
+package using the digest pinned in the [labs guide](../../labs/README.md#collector-package), with
 `POLICY_TYPE_AGENT=higress`, HTTP sidecar enabled, and
 `SOURCES_PROXY_REDIS=log_proxy`. The identity key is `auth:higress:<consumer>`.
 OPA can replace the Policy endpoint if its Rego decision returns the same object.

@@ -8,13 +8,14 @@ Envoy, Kong OSS, Traefik, Higress) are available under `labs/`.
 
 ## Start
 
-From this folder, when a matching GitHub release is available:
+From this folder:
 
-    docker compose up -d --build
+    docker compose build --no-cache altprobe
+    docker compose up -d --build --wait
 
-Altprobe is downloaded from GitHub Releases by the runtime Dockerfile; local
-sources are not compiled by this lab. Set ALTPROBE_VERSION to a published
-package. The retained default 1.0.2 may not include the latest changes.
+Altprobe is installed from the published `1.0.2` package and checked against its
+pinned SHA-256. No collector source checkout is required. See the
+[package and rebuild guide](../README.md#collector-package) for version overrides.
 
 | Service | Host port |
 | --- | --- |

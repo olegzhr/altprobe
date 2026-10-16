@@ -42,14 +42,35 @@ gateway scenarios additionally use `LAB_GATEWAY`, `LAB_PROFILE=demo` and
 `LAB_LOCAL_COLLECTOR=1` (see [tests](tests/README.md)). Stop with
 `docker compose down` (`-v` also removes the OpenSearch data volume).
 
-## How Altprobe is built
+## Collector package
 
-- APISIX / OpenResty / Envoy download the published `.deb` from GitHub Releases
-  (`ALTPROBE_VERSION`, default `1.0.2`).
-- Kong OSS / Traefik / Higress demonstrate new gateway types and therefore build
-  Altprobe **from source**. A sibling directory `altprobe/` with the Altprobe
-  source tree must exist next to this repository: the Docker build context is the
-  parent directory that contains both `altprobe/` and `labs-altprobe/`. A
-  published release may not support the `kong` / `traefik` / `higress` types.
+All six labs install the published Altprobe `.deb`; the collector source code is
+not needed. Clone this repository into any directory name:
+
+```bash
+git clone https://github.com/olegzhr/altprobe.git
+cd altprobe/labs/lab_apisix
+docker compose build --no-cache altprobe
+docker compose up -d --build --wait
+```
+
+The package defaults are:
+
+| Build argument | Default |
+|---|---|
+| `ALTPROBE_VERSION` | `1.0.2` |
+| `ALTPROBE_RELEASE_BASE_URL` | `https://github.com/olegzhr/altprobe/releases/download` |
+| `ALTPROBE_SHA256` | `c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8` |
+
+SHA-256 is checked before installation. The digest identifies the rebuilt
+`1.0.2` package published on 2026-10-16, including Kong/Traefik/Higress support.
+The release tag alone does not distinguish it from earlier `1.0.2` builds.
+If you previously built a lab, rebuild its collector with `--no-cache` once;
+Compose does not automatically refresh an existing image.
+
+For a different package, set both `ALTPROBE_VERSION` and `ALTPROBE_SHA256` to
+matching values. Set `ALTPROBE_RELEASE_BASE_URL` only when using a release mirror
+with the same `v<version>/altprobe_<version>.deb` layout. A wrong digest stops
+the build instead of silently installing a different binary.
 
 Gateway plugin sources live in [connectors](../connectors/README.md).

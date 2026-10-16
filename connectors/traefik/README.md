@@ -47,8 +47,9 @@ HTTP redirects are not followed and HTTPS uses the system trust store.
 
 Altprobe: `POLICY_TYPE_AGENT=traefik`, HTTP sidecar enabled,
 `SOURCES_PROXY_REDIS=log_proxy`; identity is `auth:traefik:<consumer>`.
-Build Altprobe from source with `traefik` gateway-type support; the published
-release does not implement this gateway type.
+Install the rebuilt Altprobe `1.0.2` package with `traefik` gateway-type support.
+Use the digest pinned in the [labs guide](../../labs/README.md#collector-package);
+earlier binaries under the same version may lack this gateway type.
 
 Bodies are captured through a bounded tee on request reads and response writes;
 SSE writes explicitly flush to preserve delivery across Yaegi's ResponseWriter

@@ -11,17 +11,18 @@ traffic it collects. It uses only local demo services:
 
 No external model provider or collector is contacted by default.
 
-Altprobe is downloaded from GitHub Releases (ALTPROBE_VERSION); use a published
-package containing the current Policy/Incident changes. CRS is pinned to the version used by `src/Makefile`. SBOM tests use
-the bundled fixture; set `LAB_INSTALL_TRIVY=true` for optional Trivy installation.
+Altprobe is installed from the published `1.0.2` package and checked against its
+pinned SHA-256. No collector source checkout is required. CRS is pinned to
+`4.29.0`. SBOM tests use the bundled fixture; set `LAB_INSTALL_TRIVY=true` for
+optional Trivy installation. See the [package guide](../README.md#collector-package).
 The shared [session pytest suite](../tests/README.md) covers all six labs.
 
 ## Start
 
 ```bash
 cd labs/lab_apisix
-docker compose build
-docker compose up -d
+docker compose build --no-cache altprobe
+docker compose up -d --build --wait
 docker compose ps
 ```
 
@@ -131,8 +132,9 @@ docker compose down -v
 
 ## Policy and Incident update
 
-Runtime Docker builds download the Altprobe .deb from GitHub Releases. Set
-ALTPROBE_VERSION to a published release containing these changes. See the
+Runtime Docker builds install the SHA-256-pinned Altprobe `1.0.2` package.
+For other packages, set both version and digest as described in the
+[package guide](../README.md#collector-package). See the
 [shared test guide](../tests/README.md) for all ports and the lab test suite.
 
 GET /policy-check uses the standard key-auth and opa plugins, with authenticated
