@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LOGS = os.path.join(HERE, "logs")
 
 CATEGORIES = {
+    "gateway": ["altprobe_lab/test_gateway.py"],
     "smoke": ["altprobe_lab/test_smoke.py"],
     "function": ["altprobe_lab/test_function.py"],
     "security": ["altprobe_lab/test_security.py"],

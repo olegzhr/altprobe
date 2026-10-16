@@ -14,7 +14,7 @@ No external model provider or collector is contacted by default.
 Altprobe is downloaded from GitHub Releases (ALTPROBE_VERSION); use a published
 package containing the current Policy/Incident changes. CRS is pinned to the version used by `src/Makefile`. SBOM tests use
 the bundled fixture; set `LAB_INSTALL_TRIVY=true` for optional Trivy installation.
-The shared [session pytest suite](../tests/README.md) covers all five labs.
+The shared [session pytest suite](../tests/README.md) covers all six labs.
 
 ## Start
 
@@ -158,5 +158,6 @@ SINKS_AF_TLS_VERIFY and SINKS_OS_TLS_VERIFY default to false in this lab. Set
 them to true to verify HTTPS certificates. Optional SINKS_AF_TLS_CA_FILE and
 SINKS_OS_TLS_CA_FILE refer to PEM CA files inside Altprobe; mount the files read-only.
 Alertflex verification also applies to inventory, logs, traces and incidents.
-See [TLS configuration](../../src/doc/tls_clients.md). The default HTTP lab
+SINKS_AF_TLS_CA_FILE / SINKS_OS_TLS_CA_FILE point to PEM CA files inside
+Altprobe. The default HTTP lab
 services do not perform a TLS handshake.

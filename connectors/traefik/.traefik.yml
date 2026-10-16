@@ -1,0 +1,8 @@
+displayName: Altprobe
+type: middleware
+import: github.com/altprobe/traefik-altprobe
+summary: Capture bounded HTTP telemetry and enforce Altprobe/OPA decisions
+testData:
+  RedisAddress: redis:6379
+  RedisKey: log_proxy
+  HostName: traefik

@@ -155,5 +155,6 @@ SINKS_AF_TLS_VERIFY and SINKS_OS_TLS_VERIFY default to false in this lab. Set
 them to true to verify HTTPS certificates. Optional SINKS_AF_TLS_CA_FILE and
 SINKS_OS_TLS_CA_FILE refer to PEM CA files inside Altprobe; mount the files read-only.
 Alertflex verification also applies to inventory, logs, traces and incidents.
-See [TLS configuration](../../src/doc/tls_clients.md). The default HTTP lab
+SINKS_AF_TLS_CA_FILE / SINKS_OS_TLS_CA_FILE point to PEM CA files inside
+Altprobe. The default HTTP lab
 services do not perform a TLS handshake.

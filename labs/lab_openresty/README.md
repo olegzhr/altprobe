@@ -3,8 +3,8 @@
 OpenResty captures proxy telemetry in Lua (request/response, capped at 64 KiB)
 and writes it to Redis `log_proxy`; Altprobe shares the network namespace,
 consumes the queue and indexes OCSF events in OpenSearch. This lab runs
-**without policy**: it makes no access decisions. APISIX and Envoy retain their
-existing labs. Kong and stdio-proxy are deferred.
+**without policy**: it makes no access decisions. Other gateway labs (APISIX,
+Envoy, Kong OSS, Traefik, Higress) are available under `labs/`.
 
 ## Start
 
@@ -14,8 +14,7 @@ From this folder, when a matching GitHub release is available:
 
 Altprobe is downloaded from GitHub Releases by the runtime Dockerfile; local
 sources are not compiled by this lab. Set ALTPROBE_VERSION to a published
-package. The retained default 1.0.2 is not a claim that the current workspace
-changes have been published.
+package. The retained default 1.0.2 may not include the latest changes.
 
 | Service | Host port |
 | --- | --- |
@@ -45,7 +44,7 @@ Suricata Redis input `log_suricata` is configured as a telemetry source.
 SINKS_AF_TLS_VERIFY and SINKS_OS_TLS_VERIFY explicitly default to false. Override
 them for HTTPS certificate verification and optionally mount PEM CA files using
 SINKS_AF_TLS_CA_FILE / SINKS_OS_TLS_CA_FILE. These HTTP lab mocks do not use TLS.
-See [TLS settings](../../src/doc/tls_clients.md).
+PEM CA files are mounted into Altprobe via SINKS_AF_TLS_CA_FILE / SINKS_OS_TLS_CA_FILE.
 
 ## Tests
 

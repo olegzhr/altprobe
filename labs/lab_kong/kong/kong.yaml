@@ -1,0 +1,55 @@
+_format_version: '3.0'
+plugins:
+- name: altprobe
+  config:
+    redis_host: redis
+    redis_key: log_proxy
+    host_name: altprobe-kong-lab
+consumers:
+- username: policy-active
+  keyauth_credentials:
+  - key: lab-policy-active-key
+- username: policy-blocked
+  keyauth_credentials:
+  - key: lab-policy-blocked-key
+- username: policy-unknown
+  keyauth_credentials:
+  - key: lab-policy-unknown-key
+services:
+- name: mock
+  url: http://mock:8000
+  routes:
+  - name: policy
+    paths:
+    - ~/policy-check$
+    - ~/policy-other$
+    - ~/policy-unknown$
+    strip_path: false
+    regex_priority: 100
+    plugins:
+    - name: key-auth
+      config:
+        key_names:
+        - apikey
+        hide_credentials: true
+    - name: altprobe
+      config:
+        redis_host: redis
+        redis_key: log_proxy
+        host_name: altprobe-kong-lab
+        policy_enabled: true
+    response_buffering: false
+  - name: all
+    paths:
+    - /
+    strip_path: false
+    response_buffering: false
+- name: ai
+  url: http://mock:8000/test-api/v1/chat/completions
+  routes:
+  - name: ai
+    paths:
+    - ~/ai-gateway/v1/chat/completions$
+    strip_path: true
+    regex_priority: 200
+    response_buffering: false

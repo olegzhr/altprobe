@@ -1,0 +1,14 @@
+# Test-only SBOM pipeline for the public labs.
+#
+# The scanner runs once at startup (scan_interval minutes), then sleeps.
+# It consumes a small, self-contained CycloneDX fixture with 5 known CVEs so the
+# OCSF 2002 path is deterministic and needs no network or vulnerability DB.
+#
+# If a trivy vulnerability DB is present (for example baked into a custom
+# image), trivy re-scans the same fixture instead; otherwise the bundled
+# fixture, which has the same shape as trivy output, is used directly.
+scan_interval: 60
+pipeline:
+  - service_name: "lab-sbom"
+    scan_command: "sh -c 'if [ -f /root/.cache/trivy/db/trivy.db ]; then trivy sbom --skip-db-update --format cyclonedx --output /var/log/sbom.cdx.json /etc/altprobe/sbom-fixture.cdx.json; else cp /etc/altprobe/sbom-fixture.cdx.json /var/log/sbom.cdx.json; fi'"
+    scan_output: "/var/log/sbom.cdx.json"

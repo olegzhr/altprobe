@@ -1,0 +1,92 @@
+static_resources:
+  listeners:
+  - name: http
+    address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 9080
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: higress
+          route_config:
+            name: local
+            virtual_hosts:
+            - name: all
+              domains:
+              - '*'
+              routes:
+              - match:
+                  path: /ai-gateway/v1/chat/completions
+                route:
+                  cluster: mock
+                  prefix_rewrite: /test-api/v1/chat/completions
+                  timeout: 0s
+              - match:
+                  prefix: /
+                route:
+                  cluster: mock
+                  timeout: 0s
+          http_filters:
+          - name: envoy.filters.http.wasm
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+              config:
+                name: altprobe
+                root_id: altprobe
+                vm_config:
+                  vm_id: altprobe
+                  runtime: envoy.wasm.runtime.v8
+                  code:
+                    local:
+                      filename: /etc/envoy/altprobe.wasm
+                configuration:
+                  '@type': type.googleapis.com/google.protobuf.StringValue
+                  value: '{"host_name": "altprobe-higress-lab", "max_body_size": 5000,
+                    "policy_paths": ["/policy-check", "/policy-other", "/policy-unknown"],
+                    "credentials": {"lab-policy-active-key": "policy-active", "lab-policy-blocked-key":
+                    "policy-blocked", "lab-policy-unknown-key": "policy-unknown"},
+                    "policy_cluster": "altprobe_policy", "policy_path": "/v1/data/altprobe/allow",
+                    "collector_cluster": "telemetry", "timeout_ms": 2000}'
+          - name: envoy.filters.http.router
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+  clusters:
+  - name: mock
+    connect_timeout: 2s
+    type: STRICT_DNS
+    load_assignment:
+      cluster_name: mock
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: mock
+                port_value: 8000
+  - name: altprobe_policy
+    connect_timeout: 2s
+    type: STRICT_DNS
+    load_assignment:
+      cluster_name: altprobe_policy
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 8181
+  - name: telemetry
+    connect_timeout: 2s
+    type: STRICT_DNS
+    load_assignment:
+      cluster_name: telemetry
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: telemetry
+                port_value: 8080

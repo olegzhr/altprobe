@@ -1,0 +1,63 @@
+{
+  "attributes": {
+    "title": "API Activity (6003) - Correlation Findings",
+    "hits": 0,
+    "description": "",
+    "panelsJSON": "[{\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 0, \"w\": 16, \"h\": 4, \"i\": \"054212b8-b026-47b7-9e59-b7f6ba39d122\"}, \"panelIndex\": \"054212b8-b026-47b7-9e59-b7f6ba39d122\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_0\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 16, \"y\": 0, \"w\": 16, \"h\": 4, \"i\": \"723de86e-8202-4547-a864-606284ae7a7b\"}, \"panelIndex\": \"723de86e-8202-4547-a864-606284ae7a7b\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_1\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 32, \"y\": 0, \"w\": 16, \"h\": 4, \"i\": \"387da8e5-625e-4afc-a962-a988da93c1e7\"}, \"panelIndex\": \"387da8e5-625e-4afc-a962-a988da93c1e7\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_3\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 4, \"w\": 24, \"h\": 12, \"i\": \"7171f3d9-d34d-4941-88d8-21279eeb93aa\"}, \"panelIndex\": \"7171f3d9-d34d-4941-88d8-21279eeb93aa\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_4\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 4, \"w\": 24, \"h\": 12, \"i\": \"78b6a5fc-2711-410c-a4ba-78f4a432db9c\"}, \"panelIndex\": \"78b6a5fc-2711-410c-a4ba-78f4a432db9c\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_5\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 16, \"w\": 24, \"h\": 12, \"i\": \"d097f3ae-69d0-4aa6-9087-2da55ee3a73e\"}, \"panelIndex\": \"d097f3ae-69d0-4aa6-9087-2da55ee3a73e\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_6\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 16, \"w\": 24, \"h\": 12, \"i\": \"72ec4a21-5e3f-4030-8224-4ce5e5f2e99d\"}, \"panelIndex\": \"72ec4a21-5e3f-4030-8224-4ce5e5f2e99d\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_7\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 28, \"w\": 24, \"h\": 12, \"i\": \"fba29dcd-aec2-4ddd-8acc-9e1e03271c84\"}, \"panelIndex\": \"fba29dcd-aec2-4ddd-8acc-9e1e03271c84\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_8\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 28, \"w\": 24, \"h\": 12, \"i\": \"65bf474d-5e68-4ed2-a7fe-8b5aea79e221\"}, \"panelIndex\": \"65bf474d-5e68-4ed2-a7fe-8b5aea79e221\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_9\"}]",
+    "optionsJSON": "{\"useMargins\": true, \"hidePanelTitles\": false}",
+    "version": 3,
+    "timeRestore": true,
+    "timeFrom": "now-7d",
+    "timeTo": "now",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": [
+    {
+      "name": "panel_0",
+      "type": "visualization",
+      "id": "ocsf-api-findings-api-findings"
+    },
+    {
+      "name": "panel_1",
+      "type": "visualization",
+      "id": "ocsf-api-findings-correlations-600301"
+    },
+    {
+      "name": "panel_3",
+      "type": "visualization",
+      "id": "ocsf-api-findings-distinct-agents"
+    },
+    {
+      "name": "panel_4",
+      "type": "visualization",
+      "id": "ocsf-api-findings-findings-by-type"
+    },
+    {
+      "name": "panel_5",
+      "type": "visualization",
+      "id": "ocsf-api-findings-findings-by-activity"
+    },
+    {
+      "name": "panel_6",
+      "type": "visualization",
+      "id": "ocsf-api-findings-findings-by-severity"
+    },
+    {
+      "name": "panel_7",
+      "type": "visualization",
+      "id": "ocsf-api-findings-by-producer-logname"
+    },
+    {
+      "name": "panel_8",
+      "type": "visualization",
+      "id": "ocsf-api-findings-findings-over-time"
+    },
+    {
+      "name": "panel_9",
+      "type": "visualization",
+      "id": "ocsf-api-findings-top-finding-titles"
+    }
+  ]
+}

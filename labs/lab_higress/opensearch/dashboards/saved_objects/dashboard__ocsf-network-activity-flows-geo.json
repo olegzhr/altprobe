@@ -1,0 +1,53 @@
+{
+  "attributes": {
+    "title": "Network Activity (4005) - Flows & Geo",
+    "hits": 0,
+    "description": "",
+    "panelsJSON": "[{\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 0, \"w\": 16, \"h\": 4, \"i\": \"geo-p0\"}, \"panelIndex\": \"geo-p0\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_0\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 16, \"y\": 0, \"w\": 16, \"h\": 4, \"i\": \"geo-p1\"}, \"panelIndex\": \"geo-p1\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_1\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 32, \"y\": 0, \"w\": 16, \"h\": 4, \"i\": \"geo-p2\"}, \"panelIndex\": \"geo-p2\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_2\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 4, \"w\": 24, \"h\": 14, \"i\": \"geo-p6\"}, \"panelIndex\": \"geo-p6\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_6\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 4, \"w\": 24, \"h\": 14, \"i\": \"geo-p7\"}, \"panelIndex\": \"geo-p7\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_7\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 0, \"y\": 18, \"w\": 24, \"h\": 10, \"i\": \"geo-p4\"}, \"panelIndex\": \"geo-p4\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_4\"}, {\"version\": \"3.4.0\", \"gridData\": {\"x\": 24, \"y\": 18, \"w\": 24, \"h\": 10, \"i\": \"geo-p5\"}, \"panelIndex\": \"geo-p5\", \"embeddableConfig\": {}, \"panelRefName\": \"panel_5\"}]",
+    "optionsJSON": "{\"useMargins\": true, \"hidePanelTitles\": false}",
+    "version": 3,
+    "timeRestore": true,
+    "timeFrom": "now-7d",
+    "timeTo": "now",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": [
+    {
+      "name": "panel_0",
+      "type": "visualization",
+      "id": "ocsf-network-activity-flows-geo-network-flows"
+    },
+    {
+      "name": "panel_1",
+      "type": "visualization",
+      "id": "ocsf-network-activity-flows-geo-distinct-src-ips"
+    },
+    {
+      "name": "panel_2",
+      "type": "visualization",
+      "id": "ocsf-network-activity-flows-geo-distinct-dst-ips"
+    },
+    {
+      "name": "panel_6",
+      "type": "visualization",
+      "id": "ocsf-network-activity-flows-geo-world-map"
+    },
+    {
+      "name": "panel_7",
+      "type": "visualization",
+      "id": "ocsf-network-activity-flows-geo-ip-flows-sankey"
+    },
+    {
+      "name": "panel_4",
+      "type": "visualization",
+      "id": "ocsf-network-activity-flows-geo-top-destinations-by-traffic-bytes"
+    },
+    {
+      "name": "panel_5",
+      "type": "visualization",
+      "id": "ocsf-network-activity-flows-geo-traffic-volume-over-time"
+    }
+  ]
+}

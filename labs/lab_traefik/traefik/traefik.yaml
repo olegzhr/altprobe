@@ -1,0 +1,12 @@
+entryPoints:
+  web:
+    address: :9080
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yaml
+experimental:
+  localPlugins:
+    altprobe:
+      moduleName: github.com/altprobe/traefik-altprobe
+log:
+  level: INFO

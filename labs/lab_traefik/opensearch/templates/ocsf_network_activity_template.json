@@ -1,0 +1,174 @@
+{
+  "index_patterns": [
+    "ocsf-1.1.0-4005-network_activity*"
+  ],
+  "priority": 10,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "activity_id": {
+          "type": "long"
+        },
+        "category_name": {
+          "type": "keyword"
+        },
+        "category_uid": {
+          "type": "long"
+        },
+        "class_name": {
+          "type": "keyword"
+        },
+        "class_uid": {
+          "type": "long"
+        },
+        "type_uid": {
+          "type": "long"
+        },
+        "severity": {
+          "type": "keyword"
+        },
+        "severity_id": {
+          "type": "long"
+        },
+        "time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "activity_name": {
+          "type": "keyword"
+        },
+        "start_time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "end_time": {
+          "type": "date",
+          "format": "epoch_millis"
+        },
+        "connection_info": {
+          "properties": {
+            "packets": {
+              "type": "long"
+            },
+            "bytes": {
+              "type": "long"
+            },
+            "age": {
+              "type": "long"
+            },
+            "min_ttl": {
+              "type": "long"
+            },
+            "max_ttl": {
+              "type": "long"
+            }
+          }
+        },
+        "src_endpoint": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "hostname": {
+              "type": "keyword"
+            },
+            "type_id": {
+              "type": "long"
+            },
+            "location": {
+              "properties": {
+                "city": {
+                  "type": "keyword"
+                },
+                "country": {
+                  "type": "keyword"
+                },
+                "desc": {
+                  "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
+                }
+              }
+            }
+          }
+        },
+        "dst_endpoint": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "hostname": {
+              "type": "keyword"
+            },
+            "type_id": {
+              "type": "long"
+            },
+            "location": {
+              "properties": {
+                "city": {
+                  "type": "keyword"
+                },
+                "country": {
+                  "type": "keyword"
+                },
+                "desc": {
+                  "type": "keyword"
+                },
+                "coordinates": {
+                  "type": "geo_point"
+                }
+              }
+            }
+          }
+        },
+        "metadata": {
+          "properties": {
+            "uid": {
+              "type": "keyword"
+            },
+            "log_name": {
+              "type": "keyword"
+            },
+            "log_provider": {
+              "type": "keyword"
+            },
+            "logged_time": {
+              "type": "date",
+              "format": "epoch_millis"
+            },
+            "version": {
+              "type": "keyword"
+            },
+            "product": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "vendor_name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+http:
+  routers:
+    all:
+      rule: PathPrefix(`/`)
+      entryPoints:
+      - web
+      service: mock
+      middlewares:
+      - altprobe
+      priority: 1
+    ai:
+      rule: Path(`/ai-gateway/v1/chat/completions`)
+      entryPoints:
+      - web
+      service: mock
+      middlewares:
+      - altprobe
+      - ai-path
+      priority: 100
+  services:
+    mock:
+      loadBalancer:
+        servers:
+        - url: http://mock:8000
+  middlewares:
+    ai-path:
+      replacePath:
+        path: /test-api/v1/chat/completions
+    altprobe:
+      plugin:
+        altprobe:
+          HostName: altprobe-traefik-lab
+          PolicyURL: http://127.0.0.1:8181/v1/data/altprobe/allow
+          PolicyPaths:
+          - /policy-check
+          - /policy-other
+          - /policy-unknown
+          Credentials:
+            lab-policy-active-key: policy-active
+            lab-policy-blocked-key: policy-blocked
+            lab-policy-unknown-key: policy-unknown

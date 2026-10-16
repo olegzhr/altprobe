@@ -2,16 +2,24 @@
 
 Unified pytest suite for the Altprobe proxy plugin and its OpenSearch (OCSF)
 output. The same, environment-driven suite runs against any lab gateway
-(APISIX, OpenResty or Envoy); select the target with `LAB_BASE`. Only harmless
+(APISIX, OpenResty, Envoy, Kong OSS, Traefik or Higress); select the target with
+`LAB_BASE`. Only harmless
 demo traffic is used: MCP methods, REST demo endpoints, the local AI Gateway
 mock, emulated Suricata events pushed to Redis, and a bundled CycloneDX SBOM
 fixture.
+
+Kong OSS, Traefik and Higress also use this shared suite. Set `LAB_GATEWAY` to the
+selected gateway and `LAB_PROFILE=demo`; the added `gateway` category checks real
+Redis capture, Altprobe -> OCSF indexing, Dashboards, body limits, SSE and Policy.
+Set `LAB_LOCAL_COLLECTOR=1` to enable the mutable mock block/unblock scenario.
+Start the chosen lab with `docker compose up -d --build --wait` and run the suite
+from this directory (see Run below).
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
-| `run_tests.py` | Runner (`smoke`, `function`, `security`, `e2e`, `geo`, `sbom`) |
+| `run_tests.py` | Runner (`gateway`, `smoke`, `function`, `security`, `e2e`, `geo`, `sbom`) |
 | `pytest.ini`, `requirements.txt` | pytest configuration and dependency |
 | `logs/` | Test artifacts: JUnit XML report and the Altprobe container log |
 | `altprobe_lab/common.py` | `requests`-based HTTP, OpenSearch and Redis helpers |
@@ -22,6 +30,7 @@ fixture.
 | `altprobe_lab/test_e2e.py` | Representative traffic end to end |
 | `altprobe_lab/test_geo.py` | Netflow GeoIP enrichment (test MaxMind DB) |
 | `altprobe_lab/test_sbom.py` | OCSF 2002 findings from the SBOM fixture |
+| `altprobe_lab/test_gateway.py` | Extended gateway checks (Kong/Traefik/Higress): Redis capture, body limits, SSE, Policy |
 
 ## Run
 
@@ -53,6 +62,9 @@ Requires Python 3.8+ and pytest. The runner writes both artifacts to `logs/`:
 - `LAB_INDEX_WAIT` — seconds to wait for indexing (default 10).
 - `LAB_REDIS_HOST` / `LAB_REDIS_PORT` / `LAB_REDIS_KEY` — Redis used for the
   Suricata emulation (defaults `localhost`, `16379`, `log_suricata`).
+- `LAB_GATEWAY` — selected gateway for the extended `gateway` category (`kong`, `traefik`, `higress`).
+- `LAB_PROFILE` — `demo` for the local demo labs.
+- `LAB_LOCAL_COLLECTOR` — set to `1` to enable the mutable mock Policy block/unblock scenario.
 
 All labs expose the gateway on `9080`, the mock on `8000`, OpenSearch on `9200`,
 Dashboards on `5601` and Redis on `16379`.
