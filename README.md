@@ -4,9 +4,9 @@ Altprobe gives security and platform teams visibility into AI agent, MCP, REST A
 
 It discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE ATT&CK / ATLAS - providing observability and detection on top of your existing stack, without requiring you to build or expand a full SIEM.
 
-Altprobe is distributed as a free prebuilt Linux package. This repository
-contains integration sources, rules, deployment assets, dashboards and tests;
-the collector's source code is not included.
+Altprobe is available as a free, ready-to-run Linux package. This repository
+provides reusable gateway connectors, detection rules, deployment assets,
+dashboards and self-contained labs to help you get started.
 
 ## Table of Contents
 
@@ -242,5 +242,8 @@ at `http://localhost:5601`.
 
 ## License
 
-See [LICENSE](LICENSE) for the files published in this repository. The collector
-is supplied as a prebuilt package; its source code is not part of this checkout.
+Altprobe collector binaries published in [GitHub Releases](https://github.com/olegzhr/altprobe/releases)
+and the original code and assets in this repository are licensed under the
+[Apache License, Version 2.0](LICENSE).
+
+Third-party components retain their respective licenses and notices.
