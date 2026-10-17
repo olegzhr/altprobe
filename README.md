@@ -33,13 +33,13 @@ the collector's source code is not included.
 flowchart BT
     subgraph L1["Endpoint Layer"]
         AI["AI Agents"]
-        MCP["MCP Servers"]
+        MCP["A2A / API  MCP Servers"]
     end
 
     subgraph L2["Security Control Layer"]
         PROXY["AI/API Gateway"]
         SUR["Network IDS"]
-        FALCO["Host IDS/Runtime Security"]
+        FALCO["Host IDS / Runtime Security"]
         TRIVY["SBOM Scanner"]
     end
 
@@ -86,7 +86,7 @@ flowchart TD
 
     Altprobe <-->|analysis loop| GLLM
     Altprobe -->|A2A/MCP/REST/SBOM<br/>inventory info| Alertflex
-    Altprobe -->|Security findings / HTTP activities<br/>SBOM vulnerability findings| OpenSearch
+    Altprobe -->|Security findings / HTTP activities / Vulnerability findings| OpenSearch
 
     classDef source fill:#ffffff,stroke:#333,stroke-width:1px
     classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -115,12 +115,6 @@ Altprobe                              | Analytics & Storage         | Collects, 
 Guard LLM                             | Analytics & Storage         | LLM-based guardrail: prompt/response inspection, policy, verdicts    | Detection Guardrails (external); runtime: Ollama; model: Qwen3Guard                         | ↔ Altprobe (analysis loop)
 Search & Analytics Store (OpenSearch) | Analytics & Storage         | Search, dashboards, alerting on OCSF findings                        | OpenSearch                                                                                  | ← Altprobe (indexing / storage)
 Alertflex (optional)                  | Analytics & Storage (down.) | Inventory & SBOM context enrichment                                  | Alertflex                                                                                   | ← Altprobe (A2A / MCP / REST / SBOM)
-
-The optional Scanner module runs configured commands and reads their CycloneDX
-output. Trivy is one supported producer; Altprobe sends vulnerability findings
-to OpenSearch as OCSF 2002 and can send SBOM inventory to Alertflex. Public labs
-use a bundled SBOM fixture by default, so their SBOM tests do not require a
-live vulnerability database or demonstrate a scan of the host.
 
 ## Example Screenshots
 
