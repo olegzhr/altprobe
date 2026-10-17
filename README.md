@@ -33,20 +33,21 @@ dashboards and self-contained labs to help you get started.
 flowchart BT
     subgraph L1["Endpoint Layer"]
         AI["AI Agents"]
-        MCP["A2A / API  MCP Servers"]
+        MCP["A2A / API / MCP Servers"]
     end
 
     subgraph L2["Security Control Layer"]
-        PROXY["AI/API Gateway"]
+        PROXY["API/AI Gateway"]
         SUR["Network IDS"]
         FALCO["Host IDS / Runtime Security"]
-        TRIVY["SBOM Scanner"]
+        TRIVY["SBOM / Vulnerability Scanner"]
     end
 
     subgraph L3["Analytics & Storage Layer"]
         ALT["Altprobe"]
-        GLLM["Guard LLM"]
-        OS["Search & Analytics Store (OpenSearch)"]
+        AFX["Alertflex: Inventory, Tracing & Policy Control<br/><i>optional</i>"]
+        GLLM["Guard LLM:<br/>External Detection Guardrails<br/><i>optional</i>"]
+        OS["OpenSearch:<br/>Search & Analytics Store"]
     end
 
     AI <--> PROXY
@@ -54,39 +55,44 @@ flowchart BT
 
     MCP -.->|traffic mirroring| SUR
     MCP -.->|runtime events| FALCO
-    MCP -.->|software component scanning| TRIVY
+    MCP -.->|SBOM generation / scan request| TRIVY
 
     PROXY <-->|inbound control and monitoring| ALT
     SUR -->|out-of-band monitoring| ALT
     FALCO -->|out-of-band monitoring| ALT
     TRIVY -->|vulnerability findings| ALT
+
+    ALT <-->|inventory / policy| AFX
     ALT <-->|analysis loop| GLLM
     ALT -->|indexing / storage| OS
+
+    classDef optional stroke-dasharray: 5 5
+    class AFX,GLLM optional
 ```
 
 ### Low-Level Design (LLD)
 
 ```mermaid
 flowchart TD
-    NIDS["Suricata (NIDS)"]
-    HIDS["Falco Security (HIDS)"]
-    Sbom["CycloneDX SBOM<br/>Trivy"]
-    Proxy["AI/API Gateway:<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
+    NIDS["Network IDS<br/><i>Suricata</i>"]
+    HIDS["Host IDS / Runtime Security<br/><i>Falco</i>"]
+    Sbom["SBOM / Vulnerability Scanner<br/><i>Trivy</i>"]
+    Proxy["API/AI Gateway<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
 
-    Altprobe["<b>Altprobe</b><br/>Collector & Correlator,<br/>Embedded Detection Guardrails & log-based WAF"]
+    Altprobe["<b>Altprobe</b><br/>Collector &amp; Correlator<br/>Embedded Detection Guardrails &amp; log-based WAF"]
 
-    GLLM["Guard LLM<br/>Detection Guardrails (external)<br/><i>runtime: Ollama; model: Qwen3Guard</i>"]
+    GLLM["Guard LLM<br/><i>External Detection Guardrails</i><br/><i>runtime: Ollama; model: Qwen3Guard</i><br/><i>optional</i>"]
     Alertflex["Alertflex<br/><i>optional</i>"]
     OpenSearch["OpenSearch"]
 
-    NIDS -->|Alerts/HTTP via Log file/Redis| Altprobe
-    HIDS -->|Alerts via Log file/Redis| Altprobe
-    Proxy -->|HTTP via Log file/Redis| Altprobe
-    Sbom -->|Scan report| Altprobe
+    NIDS -->|Alerts / HTTP via Log file / Redis| Altprobe
+    HIDS -->|Alerts via Log file / Redis| Altprobe
+    Proxy -->|HTTP via Log file / Redis| Altprobe
+    Sbom -->|Scan report<br/>CycloneDX JSON| Altprobe
 
     Altprobe <-->|analysis loop| GLLM
-    Altprobe -->|A2A/MCP/REST/SBOM<br/>inventory info| Alertflex
-    Altprobe -->|Security findings / HTTP activities / Vulnerability findings| OpenSearch
+    Altprobe <-->|inventory / policy<br/>A2A / MCP / REST / SBOM| Alertflex
+    Altprobe -->|Security findings / HTTP activities / Vulnerability findings<br/>OCSF| OpenSearch
 
     classDef source fill:#ffffff,stroke:#333,stroke-width:1px
     classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -96,25 +102,25 @@ flowchart TD
 
     class NIDS,HIDS,Proxy,Sbom source
     class Altprobe core
-    class GLLM downstream
+    class GLLM downstream,optional
     class Alertflex downstream,optional
     class OpenSearch store
 ```
 
 ## Components
-Component                             | Layer                       | Role                                                                 | Technology                                                                                  | Flow / Direction
---------------------------------------|-----------------------------|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------|--------------------------------------------------------------
-AI Agents                             | Endpoint                    | Autonomous AI workloads generating requests/actions                  | —                                                                                           | ↔ API/AI Gateway (in-band)
-MCP Servers                           | Endpoint                    | Model Context Protocol servers providing tools/context               | —                                                                                           | ↔ API/AI Gateway (in-band)
-API/AI Gateway                        | Security Control            | Front for MCP, A2A, REST; inbound control & monitoring               | Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress     | ↔ AI Agents, ↔ MCP Servers, ↔ Altprobe
-Network IDS                           | Security Control            | Network intrusion detection & prevention                             | Suricata                                                                                    | Out-of-band monitoring → Altprobe (log file / Redis)
-Host IDS / Runtime Security           | Security Control            | Host & container intrusion detection, runtime security               | Falco                                                                                       | Out-of-band monitoring → Altprobe (log file / Redis)
-Trivy Scanner (optional)              | Security Control            | Generates or scans SBOMs and reports software vulnerabilities         | Trivy, invoked through a configured Scanner command                                       | Altprobe Scanner → Trivy → CycloneDX report
-SBOM / Vulnerability Report           | Analytics & Storage         | Software component inventory and vulnerability evidence              | CycloneDX JSON                                                                             | Trivy or another configured producer → Altprobe Scanner → OpenSearch / Alertflex
-Altprobe                              | Analytics & Storage         | Collects, correlates, classifies, normalizes to OCSF, embedded WAF   | Custom (Collector / Correlator / Scanner); Detection Guardrails (internal)                  | Core ↔ Gateway, ← Network IDS, ← Host IDS, ← SBOM, ↔ Guard LLM, → OpenSearch, → Alertflex (optional)
-Guard LLM                             | Analytics & Storage         | LLM-based guardrail: prompt/response inspection, policy, verdicts    | Detection Guardrails (external); runtime: Ollama; model: Qwen3Guard                         | ↔ Altprobe (analysis loop)
-Search & Analytics Store (OpenSearch) | Analytics & Storage         | Search, dashboards, alerting on OCSF findings                        | OpenSearch                                                                                  | ← Altprobe (indexing / storage)
-Alertflex (optional)                  | Analytics & Storage (down.) | Inventory & SBOM context enrichment                                  | Alertflex                                                                                   | ← Altprobe (A2A / MCP / REST / SBOM)
+
+| Component | Layer | Role | Technology |
+|-----------|-------|------|------------|
+| AI Agents | Endpoint | Autonomous AI workloads generating requests/actions | — |
+| A2A / API / MCP Servers | Endpoint | MCP servers providing tools/context; A2A / REST endpoints | — |
+| API/AI Gateway | Security Control | Front for MCP, A2A, REST; inbound control & monitoring | Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress |
+| Network IDS | Security Control | Network intrusion detection & prevention | Suricata |
+| Host IDS / Runtime Security | Security Control | Host & container intrusion detection, runtime security | Falco |
+| SBOM / Vulnerability Scanner | Security Control | Generates or scans SBOMs and reports software vulnerabilities | Trivy (CycloneDX JSON) |
+| Altprobe | Analytics & Storage | Collects, correlates, classifies, normalizes to OCSF; embedded WAF; Detection Guardrails (internal) | Custom: Collector / Correlator / Scanner |
+| Guard LLM *(optional)* | Analytics & Storage | External Detection Guardrails: prompt/response inspection, policy enforcement, verdicts | Ollama; Qwen3Guard |
+| Search & Analytics Store | Analytics & Storage | Search, dashboards, alerting on OCSF findings | OpenSearch |
+| Alertflex *(optional)* | Analytics & Storage | Inventory, tracing, and policy control | Alertflex |
 
 ## Example Screenshots
 
