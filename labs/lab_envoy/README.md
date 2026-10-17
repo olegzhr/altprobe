@@ -127,6 +127,23 @@ docker compose down -v
 
 `docker compose down -v` also removes indexed lab data.
 
+## Policy on the proxy side
+
+- `envoy/envoy.yaml` has a separate `policy_listener` on **9443** with downstream
+  mTLS (client certificates from `envoy/certs`, generated at startup). Its
+  `/policy-check` route uses `envoy.filters.http.ext_authz` (gRPC) and forwards
+  decisions to the `altprobe_policy` cluster (`127.0.0.1:9191`).
+- The main listener on **9080** (`/mcp`, `/test-api`, AI Gateway) has no
+  `ext_authz`; Policy applies only to the mTLS listener.
+- Altprobe: `POLICY_ENABLED=true`, `POLICY_TYPE_AGENT=envoy`,
+  `POLICY_SIDECAR_GRPC_ENABLED=true` (loopback 9191).
+
+### Run without policy
+
+1. Set `POLICY_ENABLED=false` in `docker-compose.yaml`.
+2. Remove the `policy_listener` (9443) or its `ext_authz` filter from
+   `envoy/envoy.yaml`. The main 9080 listener is unaffected.
+
 ## Policy and Incident update
 
 Runtime Docker builds install the SHA-256-pinned Altprobe `1.0.2` package.

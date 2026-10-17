@@ -47,6 +47,22 @@ $env:LAB_LOCAL_COLLECTOR="1"
 python ../tests/run_tests.py
 ```
 
+## Policy on the proxy side
+
+- `higress/envoy.yaml`: the Wasm filter configuration sets
+  `policy_paths=[/policy-check, /policy-other, /policy-unknown]`, the
+  `credentials` map, `policy_cluster=altprobe_policy` (cluster `127.0.0.1:8181`)
+  and `policy_path=/v1/data/altprobe/allow`; `collector_cluster=telemetry`
+  carries OCSF telemetry.
+- Altprobe: `POLICY_ENABLED=true`, `POLICY_TYPE_AGENT=higress`,
+  `POLICY_SIDECAR_HTTP_ENABLED=true` (loopback 8181).
+
+### Run without policy
+
+1. Set `POLICY_ENABLED=false` in `docker-compose.yaml`.
+2. In the Wasm `configuration` remove `policy_paths`, `credentials`,
+   `policy_cluster` and `policy_path`; keep `collector_cluster`/telemetry.
+
 ## Requests and tests
 
 Demo credentials: `apikey: lab-policy-active-key`, `lab-policy-blocked-key`,

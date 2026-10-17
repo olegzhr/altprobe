@@ -46,6 +46,26 @@ $env:LAB_LOCAL_COLLECTOR="1"
 python ../tests/run_tests.py
 ```
 
+## Policy on the proxy side
+
+- `kong/kong.yaml`: the `policy` route (`/policy-check`, `/policy-other`,
+  `/policy-unknown`) uses the built-in `key-auth` plugin (`apikey` header) and the
+  `altprobe` plugin with `policy_enabled: true`; the plugin calls the Altprobe
+  sidecar at `127.0.0.1:8181/v1/data/altprobe/allow`.
+- Consumers `policy-active`, `policy-blocked`, `policy-unknown` map to the API
+  keys `lab-policy-active-key`, `lab-policy-blocked-key`,
+  `lab-policy-unknown-key`; identity comes from `kong.client.get_consumer()`.
+- Altprobe: `POLICY_ENABLED=true`, `POLICY_TYPE_AGENT=kong`,
+  `POLICY_SIDECAR_HTTP_ENABLED=true` (loopback 8181).
+- The `/` and AI Gateway routes use the telemetry-only `altprobe` plugin.
+
+### Run without policy
+
+1. Set `POLICY_ENABLED=false` in `docker-compose.yaml`.
+2. In `kong/kong.yaml` remove `policy_enabled: true` (or the route-scoped
+   `altprobe` plugin) from the `policy` route so the gateway stops calling the
+   sidecar; remove `key-auth` as well if those paths should be open.
+
 ## Requests and tests
 
 Demo credentials: `apikey: lab-policy-active-key`, `lab-policy-blocked-key`,

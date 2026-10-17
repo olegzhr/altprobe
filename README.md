@@ -139,6 +139,18 @@ normalized OCSF events, agent correlations, and security timelines.
 
 ![Altprobe MITRE ATT&CK and ATLAS Dashboard](img/mitre_atlas.png)
 
+### Network Activity
+
+![Altprobe Network Activity](img/network_activity.png)
+
+### OCSF Sources
+
+![Altprobe OCSF Sources](img/ocsf_sources.png)
+
+### Vulnerability findings
+
+![Altprobe Vulnerability findings](img/vulnr_findings.png)
+
 ## Why Use Altprobe
 
 - Monitor MCP, AI Gateway, and REST API traffic from a single collector.

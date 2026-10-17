@@ -130,6 +130,30 @@ docker compose down -v
 
 `docker compose down -v` also removes indexed lab data.
 
+## Policy on the proxy side
+
+The gateway enforces Policy; Altprobe only evaluates its local inventory snapshot.
+
+- `apisix/entrypoint.sh` creates the `/policy-check` route with the built-in
+  `key-auth` + `opa` plugins (`opa.host=http://127.0.0.1:8181`,
+  `policy=altprobe/allow`, `with_consumer=true`) and registers the consumers
+  `policy-active`, `policy-blocked`, `policy-unknown` with the `apikey` values
+  `lab-policy-active-key`, `lab-policy-blocked-key`, `lab-policy-unknown-key`.
+- Altprobe (`docker-compose.yaml`): `POLICY_ENABLED=true`,
+  `POLICY_TYPE_AGENT=apisix`, `POLICY_SIDECAR_HTTP_ENABLED=true` (loopback 8181).
+- `/mcp*`, `/test-api*` and the AI Gateway alias are **not** policy-gated.
+
+### Run without policy
+
+Disable it on **both** sides:
+
+1. Set `POLICY_ENABLED=false` in `docker-compose.yaml` (stops the Altprobe sidecar).
+2. Remove the `key-auth` + `opa` plugins from the `/policy-check` route in
+   `apisix/entrypoint.sh` (or delete that route). Otherwise the gateway keeps
+   calling the stopped sidecar and requests fail closed with 503.
+
+All other routes already run without Policy.
+
 ## Policy and Incident update
 
 Runtime Docker builds install the SHA-256-pinned Altprobe `1.0.2` package.

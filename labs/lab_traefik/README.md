@@ -47,6 +47,22 @@ $env:LAB_LOCAL_COLLECTOR="1"
 python ../tests/run_tests.py
 ```
 
+## Policy on the proxy side
+
+- `traefik/dynamic.yaml`: the `altprobe` middleware sets
+  `PolicyURL=http://127.0.0.1:8181/v1/data/altprobe/allow`,
+  `PolicyPaths=[/policy-check, /policy-other, /policy-unknown]` and the
+  `Credentials` map (`lab-policy-active-key` -> `policy-active`, etc.). Only those
+  paths are gated; every other path is telemetry-only.
+- Altprobe: `POLICY_ENABLED=true`, `POLICY_TYPE_AGENT=traefik`,
+  `POLICY_SIDECAR_HTTP_ENABLED=true` (loopback 8181).
+
+### Run without policy
+
+1. Set `POLICY_ENABLED=false` in `docker-compose.yaml`.
+2. In `traefik/dynamic.yaml` remove `PolicyURL`, `PolicyPaths` and `Credentials`
+   from the `altprobe` middleware, leaving it telemetry-only.
+
 ## Requests and tests
 
 Demo credentials: `apikey: lab-policy-active-key`, `lab-policy-blocked-key`,
