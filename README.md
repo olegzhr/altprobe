@@ -73,7 +73,7 @@ flowchart TD
     Sbom["CycloneDX SBOM<br/>Trivy"]
     Proxy["AI/API Gateway:<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
 
-    Altprobe["<b>Altprobe</b><br/>Collector / Correlator,<br/>Embedded log-based WAF,<br/>Detection Guardrails (internal)"]
+    Altprobe["<b>Altprobe</b><br/>Collector & Correlator,<br/>Embedded Detection Guardrails & log-based WAF"]
 
     GLLM["Guard LLM<br/>Detection Guardrails (external)<br/><i>runtime: Ollama; model: Qwen3Guard</i>"]
     Alertflex["Alertflex<br/><i>optional</i>"]
