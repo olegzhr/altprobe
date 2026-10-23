@@ -181,13 +181,10 @@ echo "${ALTPROBE_SHA256}  altprobe_${ALTPROBE_VERSION}_amd64.deb" | sha256sum -c
 
 APT installs the runtime libraries declared by this verified package. Docker
 images use the same installation method and check for missing shared libraries
-with `ldd` during the build. The default hash identifies the package uploaded on
-2026-10-24; older `1.0.2` package files have different hashes. Ubuntu Jammy remains
-the supported base for this binary.
+with `ldd` during the build. Ubuntu Jammy remains the supported base for this binary.
 
 The package includes OWASP CRS 4.29.0; Docker builds activate its configuration
-without downloading another CRS archive. Altprobe does not use GeoIP databases
-or a `geoip_db` setting.
+without downloading another CRS archive. 
 
 Update `/etc/altprobe/altprobe.yaml` for your sources and sinks.
 
