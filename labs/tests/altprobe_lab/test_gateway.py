@@ -148,7 +148,8 @@ def test_05_policy_authentication_and_identity(tap):
     assert requests.get(BASE+'/policy-check',timeout=5).status_code==401
     assert requests.get(BASE+'/policy-check',headers={'apikey':'invalid'},timeout=5).status_code==401
     uri='/policy-check?case='+uuid.uuid4().hex
-    spoofed={'apikey':'lab-policy-blocked-key','X-Agent-Id':'policy-active','X-Consumer-Username':'policy-active'}
+    # Identity is the authenticated key only; any client-claimed identity is ignored.
+    spoofed={'apikey':'lab-policy-blocked-key','X-Consumer-Username':'policy-active'}
     response=requests.get(BASE+uri,headers=spoofed,timeout=5)
     assert response.status_code==403, response.text
     assert tap(uri)['consumer_name']=='policy-blocked'

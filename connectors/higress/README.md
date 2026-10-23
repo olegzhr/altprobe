@@ -22,10 +22,11 @@ The configuration is JSON in the Wasm filter's protobuf StringValue:
 ```
 
 Policy paths match exactly, ignoring query strings. Credentials are verified
-against the private server-side map; agent headers never bind the authenticated
-subject. This implementation supplies API-key auth, not JWT/OIDC validation.
-Strip the key before upstream forwarding. Protect client traffic with TLS and
-keep credential configuration private.
+against the private server-side map; the authenticated subject comes only from
+that API key, and client identity headers never bind it. This implementation
+supplies API-key auth, not JWT/OIDC validation. Strip the key before upstream
+forwarding. Protect client traffic with TLS and keep credential configuration
+private.
 
 Define Envoy clusters `altprobe_policy` (loopback:8181) and `telemetry` (private
 collector:8080). The included `collector.py` bridges HTTP POST `/events` to Redis

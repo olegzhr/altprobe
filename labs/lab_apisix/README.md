@@ -88,7 +88,7 @@ curl -s "http://localhost:9200/ocsf-1.1.0-6003-api_activity*/_count"
 
 ## Tests
 
-Run the unified Python test suites (smoke, function, security, e2e, geo, sbom)
+Run the unified Python test suites (smoke, function, security, e2e, sbom)
 from the shared test directory:
 
 ```bash
@@ -104,9 +104,9 @@ LAB_BASE=http://localhost:9080 python3 run_tests.py sbom
 ```
 
 The tests only use harmless demo traffic: MCP methods, REST demo endpoints, the
-local AI Gateway mock, emulated Suricata events in Redis, and a bundled
-CycloneDX SBOM fixture. Requires Python 3.8+. Artifacts (JUnit XML report and
-the Altprobe debug log) are written to `labs/tests/logs/`.
+local AI Gateway mock and a bundled CycloneDX SBOM fixture. Requires Python
+3.8+. Artifacts (JUnit XML report and the Altprobe debug log) are written to
+`labs/tests/logs/`.
 
 ## Ports
 
@@ -141,6 +141,9 @@ The gateway enforces Policy; Altprobe only evaluates its local inventory snapsho
   `lab-policy-active-key`, `lab-policy-blocked-key`, `lab-policy-unknown-key`.
 - Altprobe (`docker-compose.yaml`): `POLICY_ENABLED=true`,
   `POLICY_TYPE_AGENT=apisix`, `POLICY_SIDECAR_HTTP_ENABLED=true` (loopback 8181).
+- The authenticated consumer is the identity (`auth:apisix:<consumer>`); requests
+  without a consumer fall back to the observed source address
+  (`ip:<host>:<remote_addr>`). Client-supplied identity headers are ignored.
 - `/mcp*`, `/test-api*` and the AI Gateway alias are **not** policy-gated.
 
 ### Run without policy
@@ -174,9 +177,8 @@ poll before expecting enforcement to change. Existing /mcp and /test-api routes
 remain detector demos and do not require Policy credentials.
 [APISIX OPA protocol](https://apisix.apache.org/docs/apisix/plugins/opa/).
 
-Incident delivery uses POLICY_INCIDENT_ENABLED / POLICY_* settings. Suricata
-remains a telemetry source; gateway Policy enforces access decisions. Local
-Suricata Response has been removed; see the shared guide.
+Incident delivery uses POLICY_INCIDENT_ENABLED / POLICY_* settings; gateway
+Policy enforces access decisions. See the [shared guide](../tests/README.md).
 
 ## TLS verification
 

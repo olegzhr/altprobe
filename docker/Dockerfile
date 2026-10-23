@@ -3,25 +3,22 @@ FROM ubuntu:jammy
 # Altprobe version to install. Override at build time with:
 #   --build-arg ALTPROBE_VERSION=1.0.2
 ARG ALTPROBE_VERSION=1.0.2
-ARG ALTPROBE_SHA256=c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8
+ARG ALTPROBE_SHA256=d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
-# Runtime dependencies for the current Altprobe build.
+# Install runtime libraries from the verified package's Depends metadata.
+# The published amd64 package targets Ubuntu 22.04 (Jammy).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-    wget ca-certificates \
-    libdaemon0 \
-    libboost-system1.74.0 libboost-filesystem1.74.0 libboost-regex1.74.0 \
-    libboost-iostreams1.74.0 libboost-thread1.74.0 \
-    libyaml-cpp0.7 libhiredis0.14 libmodsecurity3 libmaxminddb0 \
-    libssl3 libgrpc++1 libprotobuf23 \
- && rm -rf /var/lib/apt/lists/*
-
-RUN wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb" -O /tmp/altprobe.deb \
+ && apt-get install -y --no-install-recommends wget ca-certificates \
+ && wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}_amd64.deb" -O /tmp/altprobe.deb \
  && echo "${ALTPROBE_SHA256}  /tmp/altprobe.deb" | sha256sum -c - \
- && dpkg -i /tmp/altprobe.deb \
- && rm -f /tmp/altprobe.deb \
- && ldconfig
+ && apt-get install -y --no-install-recommends /tmp/altprobe.deb \
+ && ldconfig \
+ && ldd /usr/local/bin/altprobe > /tmp/altprobe-ldd.txt \
+ && cat /tmp/altprobe-ldd.txt \
+ && ! grep -q 'not found' /tmp/altprobe-ldd.txt \
+ && rm -f /tmp/altprobe.deb /tmp/altprobe-ldd.txt \
+ && rm -rf /var/lib/apt/lists/*
 
 # Activate the bundled OWASP CRS so ModSecurity starts: the package ships only
 # crs-setup.conf.example, and REQUEST-922-MULTIPART-ATTACK.conf is incompatible

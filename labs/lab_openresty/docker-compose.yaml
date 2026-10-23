@@ -1,4 +1,4 @@
-# OpenResty / APISIX / Envoy / Suricata MVP: OpenResty lab
+# OpenResty / APISIX / Envoy gateway labs: OpenResty lab
 "name": "lab_openresty"
 "networks":
   "default":
@@ -9,7 +9,7 @@
       "args":
         "ALTPROBE_RELEASE_BASE_URL": "${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}"
         "ALTPROBE_VERSION": "${ALTPROBE_VERSION:-1.0.2}"
-        "ALTPROBE_SHA256": "${ALTPROBE_SHA256:-c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8}"
+        "ALTPROBE_SHA256": "${ALTPROBE_SHA256:-d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb}"
         "BUILD_IMAGE": "${ALTPROBE_BUILD_IMAGE:-ubuntu:jammy}"
         "INSTALL_TRIVY": "${LAB_INSTALL_TRIVY:-false}"
       "context": "../.."
@@ -36,7 +36,6 @@
       - "ALTPROBE_API_THRESHOLD=10"
       - "ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset"
       - "ALTPROBE_API_GUARD=/etc/altprobe/api_guard.yaml"
-      - "ALTPROBE_GEOIP_DB=/etc/altprobe/GeoLite2-City-test.mmdb"
       - "ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom-test.yaml"
       - "CORRELATOR_DETECTION_ENABLED=true"
       - "CORRELATOR_ALIAS_TTL=30"
@@ -44,10 +43,8 @@
       - "CORRELATOR_ENTITY_TTL=90"
       - "CORRELATOR_CLEANUP_INTERVAL=100"
       - "TRACE_ENABLED=true"
-      - "TRACE_AGENT_WINDOW=300"
       - "POLICY_ENABLED=true"
       - "POLICY_TYPE_AGENT=openresty"
-      - "POLICY_IDENTITY_MODE=authenticated"
       - "POLICY_UNKNOWN_AGENT=deny"
       - "POLICY_UNKNOWN_ENDPOINT=deny"
       - "POLICY_INVENTORY_MAX_AGE_SEC=180"
@@ -70,10 +67,7 @@
       - "SOURCES_REDIS_HOST=redis"
       - "SOURCES_REDIS_PORT=6379"
       - "SOURCES_PROXY_REDIS=log_proxy"
-      - "SOURCES_SURICATA_REDIS=log_suricata"
-      - "SOURCES_FALCO_LOG="
       - "SOURCES_PROXY_LOG="
-      - "SOURCES_SURICATA_LOG="
     "network_mode": "service:openresty"
     "platform": "linux/amd64"
     "restart": "unless-stopped"

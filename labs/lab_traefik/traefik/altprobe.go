@@ -243,10 +243,6 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if originalLength > int64(size) {
 			size = int(originalLength)
 		}
-		session := headers.Get("Session-Id")
-		if session == "" {
-			session = headers.Get("X-Session-Id")
-		}
 		record := map[string]interface{}{
 			"host_name": m.config.HostName, "consumer_name": subject, "request_id": identifier(),
 			"request_uri": originalURI, "request_method": originalMethod, "http_version": r.Proto,
@@ -258,14 +254,11 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"request_body_truncated": size > len(request.data), "response_body_original_size": response.body.total,
 			"response_body_truncated": response.body.total > len(response.body.data),
 			"req_headers":             string(reqHeaders), "resp_headers": string(respHeaders), "mcp_method": rpc.Method,
-			"mcp_session_id": headers.Get("Mcp-Session-Id"), "http_x_agent_id": headers.Get("X-Agent-Id"),
-			"http_x_claude_code_agent_id":   headers.Get("X-Claude-Code-Agent-Id"),
-			"http_x_claude_code_session_id": headers.Get("X-Claude-Code-Session-Id"), "http_session_id": session,
+			"mcp_session_id": headers.Get("Mcp-Session-Id"),
 			"http_host": r.Host, "http_user_agent": headers.Get("User-Agent"), "http_referer": headers.Get("Referer"),
 			"http_content_type": headers.Get("Content-Type"), "http_content_length": headers.Get("Content-Length"),
-			"http_x_forwarded_for": headers.Get("X-Forwarded-For"), "http_x_real_ip": headers.Get("X-Real-Ip"),
 			"http_accept_language": headers.Get("Accept-Language"), "http_accept_encoding": headers.Get("Accept-Encoding"),
-			"http_connection": headers.Get("Connection"), "http_authorization": "[REDACTED]", "http_cookie": "[REDACTED]",
+			"http_connection": headers.Get("Connection"),
 		}
 		payload, err := json.Marshal(record)
 		if err != nil {

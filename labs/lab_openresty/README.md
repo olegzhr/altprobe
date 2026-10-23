@@ -68,12 +68,14 @@ The lab never requires Alertflex: `SINKS_AF_URL` defaults to the bundled mock
 
 ## Telemetry
 
-Gateway logs go to Redis `log_proxy` (consumer_name is set on policy routes and
-empty on open detector routes). Request and response capture is capped at 64 KiB
-and records missing/truncated sizes. A timer sends the Redis telemetry because
-cosockets are unavailable in log phase. Logs are telemetry only.
-
-Suricata Redis input `log_suricata` is configured as a telemetry source.
+Gateway logs go to Redis `log_proxy`. The authenticated consumer is set on the
+policy routes and is the identity (`auth:openresty:<consumer>`); open detector
+routes carry no consumer, so Altprobe falls back to the observed source address
+(`ip:<host>:<remote_addr>`). Client-supplied identity headers are ignored, and
+MCP session id/method are protocol metadata only. Request and response capture
+is capped at 64 KiB and records missing/truncated sizes. A timer sends the Redis
+telemetry because cosockets are unavailable in log phase. Logs are telemetry
+only.
 
 ## TLS
 

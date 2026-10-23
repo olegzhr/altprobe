@@ -9,7 +9,7 @@ local record = {
     status = ngx.status, request_time = field("request_time"), http_host = field("host"),
     http_user_agent = field("http_user_agent"), http_version = field("server_protocol"),
     http_content_type = field("http_content_type"), http_content_length = field("content_length"),
-    http_x_agent_id = field("http_x_agent_id"), mcp_session_id = field("http_mcp_session_id"),
+    mcp_session_id = field("http_mcp_session_id"),
     request_body = (ctx.request_body or ""):sub(1, 65536), response_body = ctx.response_body or "",
     request_body_original_size = ctx.request_size or 0, response_body_original_size = ctx.response_size or 0,
     request_body_missing = ctx.request_missing or false,

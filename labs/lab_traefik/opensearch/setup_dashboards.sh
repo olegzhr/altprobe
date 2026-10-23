@@ -5,10 +5,10 @@
 # objects rather than creating duplicates.
 #
 # Merged from the previous lab iteration via dashboards/:
-#   * index_patterns/*.json  - the six OCSF class patterns (2004/4001/4002/
-#     4005/4007/6003) plus the combined ocsf-1.1.0-* pattern
-#   * saved_objects/*.json   - 18 dashboards (unified overview + SIEM/network Vega dashboards
-#     plus this lab's "Altprobe - Agent Correlations"), 133 Vega
+#   * index_patterns/*.json  - the OCSF class patterns (2002/2004/4002/6003)
+#     plus the combined ocsf-1.1.0-* pattern
+#   * saved_objects/*.json   - 15 dashboards (unified overview + SIEM Vega
+#     dashboards plus this lab's "Altprobe - Agent Correlations"), 112 Vega
 #     visualizations and 1 saved search
 #
 # The Vega visualizations query OpenSearch directly, so they need no
@@ -104,11 +104,27 @@ for oid in \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-distinct-src-ips" \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-network-flows" \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-top-destinations-by-traffic-bytes" \
-  "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-top-source-countries-geoip" \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-traffic-volume-over-time"
 do
   delete_object "$oid"
 done
+
+purge_retired_classes() {
+  # Removes saved objects left over from the retired DNS/network/TLS activity
+  # dashboards. Objects are matched by title term, so no class numbers are
+  # needed here; a freshly provisioned lab has nothing to delete.
+  for term in dns network tls; do
+    for otype in dashboard visualization search index-pattern; do
+      ids=$(curl -s -m 30 "$OSD_URL/api/saved_objects/_find?type=$otype&search=$term&per_page=200&fields=id" \
+        | grep -o '"id":"[^"]*"' | sed 's/"id":"//; s/"$//')
+      for oid in $ids; do
+        delete_object "$otype/$oid"
+      done
+    done
+  done
+}
+
+purge_retired_classes
 
 echo "[dashboards-init] creating index patterns ..."
 for f in /setup/dashboards/index_patterns/*.json; do

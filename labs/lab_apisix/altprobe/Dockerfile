@@ -2,21 +2,22 @@ ARG BUILD_IMAGE=ubuntu:jammy
 FROM ${BUILD_IMAGE}
 USER root
 ARG ALTPROBE_VERSION=1.0.2
-ARG ALTPROBE_SHA256=c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8
+ARG ALTPROBE_SHA256=d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
-# Runtime package comes from GitHub Releases; no local src build is used.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget ca-certificates python3 libdaemon0 \
-    libboost-system1.74.0 libboost-filesystem1.74.0 libboost-regex1.74.0 \
-    libboost-iostreams1.74.0 libboost-thread1.74.0 \
-    libyaml-cpp0.7 libhiredis0.14 libmodsecurity3 libmaxminddb0 \
-    libssl3 libgrpc++1 libprotobuf23 \
- && rm -rf /var/lib/apt/lists/*
-
-RUN wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}.deb" -O /tmp/altprobe.deb \
+# Install runtime libraries from the verified package's Depends metadata.
+# The published amd64 package targets Ubuntu 22.04 (Jammy).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends wget ca-certificates python3 \
+ && wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}_amd64.deb" -O /tmp/altprobe.deb \
  && echo "${ALTPROBE_SHA256}  /tmp/altprobe.deb" | sha256sum -c - \
- && dpkg -i /tmp/altprobe.deb && rm /tmp/altprobe.deb && ldconfig
+ && apt-get install -y --no-install-recommends /tmp/altprobe.deb \
+ && ldconfig \
+ && ldd /usr/local/bin/altprobe > /tmp/altprobe-ldd.txt \
+ && cat /tmp/altprobe-ldd.txt \
+ && ! grep -q 'not found' /tmp/altprobe-ldd.txt \
+ && rm -f /tmp/altprobe.deb /tmp/altprobe-ldd.txt \
+ && rm -rf /var/lib/apt/lists/*
 
 # Refuse an old package that would silently ignore the new Policy settings.
 RUN grep -q '^policy:' /etc/altprobe/altprobe.yaml \
@@ -24,13 +25,6 @@ RUN grep -q '^policy:' /etc/altprobe/altprobe.yaml \
  && grep -q 'sidecar-grpc:' /etc/altprobe/altprobe.yaml \
  && grep -q 'af_tls_verify:' /etc/altprobe/altprobe.yaml \
  && grep -q 'os_tls_verify:' /etc/altprobe/altprobe.yaml
-
-# Pin CRS independently so the lab does not depend on collector source files.
-ARG CRS_VERSION=4.29.0
-RUN python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/coreruleset/coreruleset/archive/refs/tags/v${CRS_VERSION}.tar.gz', '/tmp/crs.tar.gz')" \
- && mkdir -p /etc/altprobe/coreruleset \
- && tar -xzf /tmp/crs.tar.gz --strip-components=1 -C /etc/altprobe/coreruleset \
- && rm /tmp/crs.tar.gz
 
 # Activate CRS defaults and omit the ModSecurity-3.0.6-incompatible rule file.
 RUN cp /etc/altprobe/coreruleset/crs-setup.conf.example /etc/altprobe/coreruleset/crs-setup.conf \
@@ -67,9 +61,7 @@ RUN if [ "$INSTALL_TRIVY" = true ]; then \
  && dpkg -i /tmp/trivy.deb \
  && rm -f /tmp/trivy.deb; fi
 
-# Test-only, free MaxMind-compatible GeoLite2 database generated for private
-# lab addresses, plus the SBOM pipeline fixture.
-COPY labs/lab_apisix/altprobe/GeoLite2-City-test.mmdb /etc/altprobe/GeoLite2-City-test.mmdb
+# SBOM pipeline fixture (CycloneDX) used by the vulnerability-finding test.
 COPY labs/lab_apisix/altprobe/sbom-fixture.cdx.json /etc/altprobe/sbom-fixture.cdx.json
 COPY labs/lab_apisix/altprobe/sbom-test.yaml /etc/altprobe/sbom-test.yaml
 

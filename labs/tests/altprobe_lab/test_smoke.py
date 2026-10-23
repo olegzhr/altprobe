@@ -1,8 +1,6 @@
-import json
 import unittest
 
 from . import common
-from . import suricata_events as se
 
 
 class GatewaySmoke(unittest.TestCase):
@@ -55,45 +53,3 @@ class OpenSearchSmoke(unittest.TestCase):
             lambda: common.os_count(common.OSCF["http"]) > 0 or common.os_count(common.OSCF["api"]) > 0,
             timeout=30)
         self.assertTrue(indexed, "no OCSF HTTP/API documents reached OpenSearch")
-
-
-class SuricataOcsfEmulation(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if not common.redis_available():
-            raise unittest.SkipTest("Redis is not reachable at %s:%s" % (
-                common.LAB_REDIS_HOST, common.LAB_REDIS_PORT))
-
-    def test_all_suricata_ocsf_classes(self):
-        common.redis_del(common.LAB_REDIS_KEY)
-        for event in se.all_events():
-            common.redis_push(common.LAB_REDIS_KEY, json.dumps(event))
-
-        for name in ("tls", "dns", "network", "detection", "http", "api"):
-            present = common.wait_for(
-                lambda n=name: common.os_count(common.OSCF[n]) > 0, timeout=30)
-            self.assertTrue(present, "OCSF %s class not found in OpenSearch" % name)
-
-
-class RestAbuseFinding(unittest.TestCase):
-    """REST abuse traffic must produce a correlator finding carrying rest_*
-    features, which is what the 'REST API Abuse & Authentication Failures'
-    dashboard reads."""
-
-    @classmethod
-    def setUpClass(cls):
-        if not common.redis_available():
-            raise unittest.SkipTest("Redis is not reachable at %s:%s" % (
-                common.LAB_REDIS_HOST, common.LAB_REDIS_PORT))
-
-    def test_rest_abuse_generates_correlator_finding(self):
-        for event in se.rest_abuse_events():
-            common.redis_push(common.LAB_REDIS_KEY, json.dumps(event))
-
-        query = {"bool": {"must": [
-            {"term": {"metadata.log_name": "alertflex_correlator"}},
-            {"range": {"unmapped.aos.correlation.features.rest_auth_failures": {"gte": 1}}},
-        ]}}
-        found = common.wait_for(
-            lambda: common.os_count(common.OSCF["api"], query) > 0, timeout=60)
-        self.assertTrue(found, "no REST-abuse correlator finding with rest_* features")

@@ -9,6 +9,13 @@
 **/.venv/
 .venv/
 
+# Local secrets and runtime test output
+.env
+.env.*
+*.local.json
+**/tests/results/
+**/.lab-runtime/
+
 # OS / editor
 .DS_Store
 Thumbs.db

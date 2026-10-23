@@ -1,17 +1,31 @@
 -- Telemetry-only request capture for the OpenResty log handler.
 --
--- Mirrors the APISIX redis-logger plugin's access phase so log.lua can emit the
--- exact same field set (which the APISIX lab tests exercise). No policy/OPA
--- decision is made here: the lab does not authenticate or authorize callers.
+-- Mirrors the APISIX redis-logger plugin's access phase so log.lua can emit a
+-- matching field set (minus consumer identity: this connector does not
+-- authenticate or authorize callers).
 local json = require "cjson.safe"
 
 ngx.req.read_body()
 local body = ngx.req.get_body_data() or ""
 ngx.ctx.request_body = body
 
+-- Redact credentials in the header dump; entity identity is never derived from
+-- client headers (Altprobe uses the authenticated gateway consumer or source IP).
+local SENSITIVE = {
+    authorization = true,
+    ["proxy-authorization"] = true,
+    apikey = true,
+    cookie = true,
+    ["set-cookie"] = true,
+}
 local ok, headers = pcall(ngx.req.get_headers)
 if ok and type(headers) == "table" then
-    local eok, encoded = pcall(json.encode, headers)
+    local clean = {}
+    for k, v in pairs(headers) do
+        local key = type(k) == "string" and k:lower() or ""
+        clean[k] = SENSITIVE[key] and "[REDACTED]" or v
+    end
+    local eok, encoded = pcall(json.encode, clean)
     ngx.ctx.req_headers = eok and encoded or "{}"
 else
     ngx.ctx.req_headers = "{}"

@@ -2,8 +2,9 @@
 --
 -- Runs in the log phase and pushes one JSON record per request to a Redis list
 -- that Altprobe reads through its proxy (Redis) source (SOURCES_PROXY_REDIS).
--- The field set matches the APISIX redis-logger plugin, so the same Altprobe
--- proxy parser handles it. Telemetry only: no policy/OPA decision is made.
+-- The record follows the APISIX redis-logger field set, so the same Altprobe
+-- proxy parser handles it; OpenResty does not authenticate, so no consumer_name
+-- is emitted. Telemetry only: no policy/OPA decision is made.
 --
 -- Wire-up (see nginx.conf): access.lua stages request_body/req_headers/mcp_method
 -- and capture.lua stages response_body; this handler assembles the record.
@@ -24,25 +25,29 @@ end
 local function encode_headers(getter)
     local ok, headers = pcall(getter)
     if not ok or type(headers) ~= "table" then return "{}" end
-    local eok, res = pcall(json.encode, headers)
+    local clean = {}
+    for k, v in pairs(headers) do
+        local key = type(k) == "string" and k:lower() or ""
+        if key == "authorization" or key == "proxy-authorization"
+            or key == "apikey" or key == "cookie" or key == "set-cookie" then
+            clean[k] = "[REDACTED]"
+        else
+            clean[k] = v
+        end
+    end
+    local eok, res = pcall(json.encode, clean)
     if not eok then return "{}" end
     return res
 end
 
 local ctx = ngx.ctx
 
--- Keep MCP events tied to a stable session/agent id (priority order used by the
--- APISIX connector).
-local agent_session_id = ngx.var.http_mcp_session_id or ngx.var.http_x_agent_id or "-"
-
+-- Identity is the authenticated gateway consumer when present, otherwise the
+-- observed source IP. mcp_session_id is protocol metadata, not identity.
 local record = {
     host_name = HOST_NAME,
-    mcp_session_id = agent_session_id,
+    mcp_session_id = field("http_mcp_session_id"),
     mcp_method = ctx.mcp_method or "-",
-    http_x_claude_code_agent_id = field("http_x_claude_code_agent_id"),
-    http_x_claude_code_session_id = field("http_x_claude_code_session_id"),
-    http_session_id = field("http_session_id"),
-    http_x_agent_id = field("http_x_agent_id"),
     request_uri = field("request_uri"),
     request_id = field("request_id"),
     request_method = field("request_method"),
@@ -55,17 +60,13 @@ local record = {
     status = ngx.status or 0,
     body_bytes_sent = tonumber(ngx.var.body_bytes_sent) or 0,
     http_referer = field("http_referer"),
-    http_x_forwarded_for = field("http_x_forwarded_for"),
-    http_x_real_ip = field("http_x_real_ip"),
     http_host = field("http_host"),
     http_user_agent = field("http_user_agent"),
-    http_authorization = ngx.var.http_authorization and "[REDACTED]" or "-",
     http_accept_language = field("http_accept_language"),
     http_accept_encoding = field("http_accept_encoding"),
     http_connection = field("http_connection"),
     http_content_type = field("http_content_type"),
     http_content_length = field("http_content_length"),
-    http_cookie = field("http_cookie"),
     request_body = (ctx.request_body or ""):sub(1, MAX_BODY),
     response_body = (ctx.response_body or ""):sub(1, MAX_BODY),
     req_headers = ctx.req_headers or "{}",

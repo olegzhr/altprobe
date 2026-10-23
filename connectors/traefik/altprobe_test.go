@@ -56,7 +56,6 @@ func TestPolicyAndStreamingCapture(t *testing.T) {
 			})
 			r := httptest.NewRequest("POST", "http://localhost/mcp", strings.NewReader("123456789"))
 			r.Header.Set("Apikey", "secret")
-			r.Header.Set("X-Agent-Id", "spoofed")
 			w := httptest.NewRecorder()
 			m.ServeHTTP(w, r)
 			if w.Code != scenario.want {

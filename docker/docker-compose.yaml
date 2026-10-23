@@ -5,7 +5,7 @@ services:
       args:
         ALTPROBE_VERSION: ${ALTPROBE_VERSION:-1.0.2}
         ALTPROBE_RELEASE_BASE_URL: ${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}
-        ALTPROBE_SHA256: ${ALTPROBE_SHA256:-c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8}
+        ALTPROBE_SHA256: ${ALTPROBE_SHA256:-d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb}
     platform: linux/amd64
     image: altprobe/altprobe:latest
     container_name: altprobe
@@ -20,7 +20,6 @@ services:
       - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
       - ALTPROBE_SCORING_WEIGHTS=/etc/altprobe/scoring_weights.yaml
       - ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom.yaml
-      - ALTPROBE_GEOIP_DB=            # example: "/etc/altprobe/GeoLite2-City.mmdb"
 
       # Correlator
       - CORRELATOR_DETECTION_ENABLED=true
@@ -29,12 +28,10 @@ services:
       - CORRELATOR_ENTITY_TTL=90
       - CORRELATOR_CLEANUP_INTERVAL=100
 
-      # Trace: per-agent event chains
+      # Trace: per-entity event chains (identity is the auth key, else source IP)
       - TRACE_ENABLED=true
-      - TRACE_AGENT_WINDOW=300
 
       # Sinks (leave af/os empty to disable)
-      - SINKS_OUTPUT_MODE=all
       - SINKS_AF_URL=
       - SINKS_AF_KEY=
       - SINKS_AF_TLS_VERIFY=false
@@ -46,21 +43,17 @@ services:
       - SINKS_OS_TLS_CA_FILE=
       - SINKS_LOGS_REJECTED_DIR=/var/lib/altprobe/logs-rejected
 
-      # Sources: Redis ingestion from the redis service
+      # Sources: gateway/proxy telemetry from the redis service
       - SOURCES_REDIS_HOST=redis
       - SOURCES_REDIS_PORT=6379
-      - SOURCES_FALCO_REDIS=log_falco
       - SOURCES_PROXY_REDIS=log_proxy
-      - SOURCES_SURICATA_REDIS=log_suri
-      # Altprobe reads log files instead of Redis when these are non-empty.
-      - SOURCES_FALCO_LOG=
+      # Altprobe reads a log file instead of Redis when this is non-empty.
       - SOURCES_PROXY_LOG=
-      - SOURCES_SURICATA_LOG=
 
       # Policy controller (disabled by default; see the gateway lab examples)
       - POLICY_ENABLED=false
       - POLICY_TYPE_AGENT=apisix
-      - POLICY_IDENTITY_MODE=authenticated
+      # Identity is the gateway-authenticated consumer, else the observed source IP.
       - POLICY_UNKNOWN_AGENT=deny
       - POLICY_UNKNOWN_ENDPOINT=allow
       - POLICY_INVENTORY_MAX_AGE_SEC=180

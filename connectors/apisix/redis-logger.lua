@@ -46,10 +46,25 @@ local function safe_encode(obj)
     return res
 end
 
+-- Redact credentials in header dumps; entity identity never comes from headers.
+local function encode_headers(headers)
+    local out = {}
+    for k, v in pairs(headers or {}) do
+        local key = type(k) == "string" and k:lower() or ""
+        if key == "authorization" or key == "proxy-authorization"
+            or key == "apikey" or key == "cookie" or key == "set-cookie" then
+            out[k] = "[REDACTED]"
+        else
+            out[k] = v
+        end
+    end
+    return safe_encode(out) or "{}"
+end
+
 function _M.access(conf, ctx)
     ngx.req.read_body()
     ctx.request_body = ngx.req.get_body_data() or ""
-    ctx.req_headers = safe_encode(core.request.headers(ctx)) or "{}"
+    ctx.req_headers = encode_headers(core.request.headers(ctx))
     ctx.resp_body = ""
 
     -- Trace support: Altprobe's proxy.cpp reads a top-level "mcp_method"
@@ -73,7 +88,7 @@ function _M.access(conf, ctx)
 end
 
 function _M.header_filter(conf, ctx)
-    ctx.resp_headers = safe_encode({ ngx.resp.get_headers() }) or "{}"
+    ctx.resp_headers = encode_headers(ngx.resp.get_headers())
 end
 
 function _M.body_filter(conf, ctx)
@@ -140,52 +155,32 @@ local function publish_log(premature, conf, payload)
 end
 
 function _M.log(conf, ctx)
-    -- Altprobe reads this top-level field from the gateway log envelope to
-    -- keep MCP events associated with a stable session or agent id.
-    local agent_session_id = ngx.var.http_mcp_session_id or ngx.var.http_x_agent_id or "-"
-
-    -- Trace support: Altprobe's computeAgentKey() (trace.cpp) resolves the
-    -- agent identity from the headers below, in this priority order:
-    --   X-Claude-Code-Agent-Id > X-Claude-Code-Session-Id > Session-Id >
-    --   X-Agent-Id > Mcp-Session-Id, falling back to source IP + window.
-    -- Forward each one as its own top-level field so a request that only
-    -- carries e.g. Session-Id is still traceable as a distinct agent.
-    local http_x_claude_code_agent_id = ngx.var.http_x_claude_code_agent_id or "-"
-    local http_x_claude_code_session_id = ngx.var.http_x_claude_code_session_id or "-"
-    local http_session_id = ngx.var.http_session_id or "-"
-    local http_x_agent_id = ngx.var.http_x_agent_id or "-"
-
+    -- Identity: gateway-authenticated consumer (auth key) when present, else
+    -- observed source IP. mcp_session_id is protocol metadata, not identity.
     local log_data = {
         host_name = conf.host_name,
-        mcp_session_id = agent_session_id,
+        consumer_name = ctx.consumer_name or "-",
+        mcp_session_id = ngx.var.http_mcp_session_id or "-",
         mcp_method = ctx.mcp_method or "-",
-        http_x_claude_code_agent_id = http_x_claude_code_agent_id,
-        http_x_claude_code_session_id = http_x_claude_code_session_id,
-        http_session_id = http_session_id,
-        http_x_agent_id = http_x_agent_id,
         request_uri = ngx.var.request_uri or "-",
         request_id = ngx.var.request_id or "-",
         request_method = ngx.req.get_method() or "-",
         http_version = ngx.var.server_protocol or "-",
         remote_addr = ngx.var.remote_addr or "-",
-        remote_user = ngx.var.remote_user or "-",
+        remote_user = ctx.consumer_name or ngx.var.remote_user or "-",
         server_port = tonumber(ngx.var.server_port) or 0,
         time_local = ngx.var.time_local or "-",
         duration = tonumber(ngx.var.request_time) or 0,
         status = ngx.status or 0,
         body_bytes_sent = tonumber(ngx.var.body_bytes_sent) or 0,
         http_referer = ngx.var.http_referer or "-",
-        http_x_forwarded_for = ngx.var.http_x_forwarded_for or "-",
-        http_x_real_ip = ngx.var.http_x_real_ip or "-",
         http_host = ngx.var.http_host or "-",
         http_user_agent = ngx.var.http_user_agent or "-",
-        http_authorization = ngx.var.http_authorization and "[REDACTED]" or "-",
         http_accept_language = ngx.var.http_accept_language or "-",
         http_accept_encoding = ngx.var.http_accept_encoding or "-",
         http_connection = ngx.var.http_connection or "-",
         http_content_type = ngx.var.http_content_type or "-",
         http_content_length = ngx.var.http_content_length or "-",
-        http_cookie = ngx.var.http_cookie or "-",
         request_body = ctx.request_body or "",
         response_body = ctx.resp_body or "",
         req_headers = ctx.req_headers or "{}",

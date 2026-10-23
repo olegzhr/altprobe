@@ -19,3 +19,9 @@ configured sink. The gateway integrations collect telemetry and, when enabled
 on protected routes, enforce access decisions from Altprobe Policy or a
 compatible OPA endpoint. Altprobe delivers incidents; the gateway plugins do not.
 See each connector's README for its supported authorization mechanism.
+
+Identity is exactly the gateway-authenticated auth key
+(`auth:<gateway>:<consumer>`) when the gateway supplies a consumer, and the
+observed source IP (`ip:<host>:<remote_addr>`) otherwise. MCP session ids are
+protocol metadata. Connectors do not extract or forward client identity headers,
+forwarded-for/real-IP headers, or Authorization/cookie values as identity.

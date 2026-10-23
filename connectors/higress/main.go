@@ -216,10 +216,6 @@ func (s *stream) OnHttpStreamDone() {
 	if length, err := strconv.Atoi(s.headers["content-length"]); err == nil && length > size {
 		size = length
 	}
-	session := s.headers["session-id"]
-	if session == "" {
-		session = s.headers["x-session-id"]
-	}
 	record := map[string]interface{}{
 		"host_name": s.config.HostName, "consumer_name": s.subject, "request_uri": s.uri, "request_method": s.method,
 		"request_id": s.headers["x-request-id"], "http_version": "HTTP/1.1", "remote_addr": s.remote, "server_port": 9080,
@@ -228,13 +224,10 @@ func (s *stream) OnHttpStreamDone() {
 		"request_body_original_size": size, "request_body_missing": size > 0 && s.requestSize == 0,
 		"request_body_truncated": size > len(s.request), "response_body_original_size": s.responseSize, "response_body_truncated": s.responseSize > len(s.response),
 		"req_headers": string(headers), "resp_headers": string(responseHeaders), "mcp_method": rpc.Method,
-		"mcp_session_id": s.headers["mcp-session-id"], "http_x_agent_id": s.headers["x-agent-id"],
-		"http_x_claude_code_agent_id": s.headers["x-claude-code-agent-id"], "http_x_claude_code_session_id": s.headers["x-claude-code-session-id"],
-		"http_session_id": session, "http_host": s.headers[":authority"], "http_user_agent": s.headers["user-agent"],
+		"mcp_session_id": s.headers["mcp-session-id"], "http_host": s.headers[":authority"], "http_user_agent": s.headers["user-agent"],
 		"http_referer": s.headers["referer"], "http_content_type": s.headers["content-type"], "http_content_length": s.headers["content-length"],
-		"http_x_forwarded_for": s.headers["x-forwarded-for"], "http_x_real_ip": s.headers["x-real-ip"],
 		"http_accept_language": s.headers["accept-language"], "http_accept_encoding": s.headers["accept-encoding"],
-		"http_connection": s.headers["connection"], "http_authorization": "[REDACTED]", "http_cookie": "[REDACTED]",
+		"http_connection": s.headers["connection"],
 	}
 	raw, err := json.Marshal(record)
 	if err != nil {

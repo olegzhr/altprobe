@@ -6,9 +6,7 @@
 # Unlike the APISIX lab, Envoy does not push its own logs to Redis: its
 # file access logger writes one JSON object per request to a shared volume
 # (/var/log/envoy/access.log), and Altprobe reads that file through its
-# standard proxy source (SOURCES_PROXY_LOG) — no altprobe code changes. Redis is
-# still started so the OpenSearch smoke tests can emulate Suricata events via
-# SOURCES_SURICATA_REDIS.
+# standard proxy source (SOURCES_PROXY_LOG), without any altprobe change.
 #
 # Wire-up:
 #   curl -> envoy:9080 -> mock:8000 (MCP / test-api / AI Gateway)
@@ -18,20 +16,6 @@
 # =============================================================================
 
 services:
-
-  redis:
-    image: redis:7-alpine
-    container_name: lab-envoy-redis
-    restart: unless-stopped
-    ports:
-      # 6379 is commonly taken by a host redis-server; publish on 16379.
-      - "16379:6379"
-    command: ["redis-server", "--appendonly", "no"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 2s
-      timeout: 2s
-      retries: 30
 
   # Creates the shared access-log file before Envoy/Altprobe start, so
   # Altprobe's Proxy::Open() finds it on the very first start (it opens the
@@ -190,8 +174,9 @@ services:
       context: ./altprobe
       args:
         ALTPROBE_VERSION: ${ALTPROBE_VERSION:-1.0.2}
-        ALTPROBE_SHA256: ${ALTPROBE_SHA256:-c89ec517fcd4ff5831cee8cb63f51e8d717f36a274868717177431baa31a0ce8}
+        ALTPROBE_SHA256: ${ALTPROBE_SHA256:-d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb}
         ALTPROBE_RELEASE_BASE_URL: ${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}
+        INSTALL_TRIVY: ${LAB_INSTALL_TRIVY:-false}
     # Pinned to linux/amd64 — the project Makefile hardcodes "Architecture:
     # amd64" in the .deb control file regardless of host architecture.
     platform: linux/amd64
@@ -202,8 +187,6 @@ services:
         condition: service_completed_successfully
       envoy:
         condition: service_started
-      redis:
-        condition: service_healthy
       opensearch:
         condition: service_healthy
       opensearch-init:
@@ -218,8 +201,7 @@ services:
       - ALTPROBE_API_THRESHOLD=10
       - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
       - ALTPROBE_API_GUARD=/etc/altprobe/api_guard.yaml
-      # Test-only GeoLite2-compatible DB (private lab IPs) and SBOM fixture
-      - ALTPROBE_GEOIP_DB=/etc/altprobe/GeoLite2-City-test.mmdb
+      # SBOM fixture for the vulnerability-finding pipeline.
       - ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom-test.yaml
       # Correlator
       - CORRELATOR_DETECTION_ENABLED=true
@@ -229,11 +211,9 @@ services:
       - CORRELATOR_CLEANUP_INTERVAL=100
       # Traces (stage 3)
       - TRACE_ENABLED=true
-      - TRACE_AGENT_WINDOW=300
       # Incident delivery.
       - POLICY_ENABLED=true
       - POLICY_TYPE_AGENT=envoy
-      - POLICY_IDENTITY_MODE=authenticated
       - POLICY_UNKNOWN_AGENT=deny
       - POLICY_UNKNOWN_ENDPOINT=deny
       - POLICY_INVENTORY_MAX_AGE_SEC=180
@@ -256,15 +236,9 @@ services:
       - SINKS_OS_PWD=admin
       - SINKS_LOKI_URL=
       # Sources: Envoy writes the access log to a shared file; Altprobe reads it
-      # via the standard proxy file source. Redis carries emulated Suricata
-      # events for the OCSF smoke test (SOURCES_SURICATA_REDIS).
-      - SOURCES_REDIS_HOST=redis
-      - SOURCES_REDIS_PORT=6379
+      # via the standard proxy file source.
       - SOURCES_PROXY_LOG=/var/log/envoy/access.log
       - SOURCES_PROXY_REDIS=
-      - SOURCES_SURICATA_REDIS=log_suricata
-      - SOURCES_FALCO_LOG=
-      - SOURCES_SURICATA_LOG=
     volumes:
       - incident-spool:/var/lib/altprobe
       - envoy-logs:/var/log/envoy:ro

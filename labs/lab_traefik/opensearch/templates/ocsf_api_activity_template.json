@@ -228,13 +228,6 @@
             }
           }
         },
-        "container": {
-          "properties": {
-            "id": {
-              "type": "keyword"
-            }
-          }
-        },
         "http_request": {
           "properties": {
             "method": {

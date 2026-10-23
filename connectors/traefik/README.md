@@ -46,7 +46,9 @@ Both Altprobe Policy and an OPA decision returning this object are supported.
 HTTP redirects are not followed and HTTPS uses the system trust store.
 
 Altprobe: `POLICY_TYPE_AGENT=traefik`, HTTP sidecar enabled,
-`SOURCES_PROXY_REDIS=log_proxy`; identity is `auth:traefik:<consumer>`.
+`SOURCES_PROXY_REDIS=log_proxy`; identity is `auth:traefik:<consumer>` when the
+API key maps to a consumer, and `ip:<host>:<remote_addr>` otherwise. MCP session
+ids are protocol metadata, not identity.
 Install the rebuilt Altprobe `1.0.2` package with `traefik` gateway-type support.
 Use the digest pinned in the [labs guide](../../labs/README.md#collector-package);
 earlier binaries under the same version may lack this gateway type.

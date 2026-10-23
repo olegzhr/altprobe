@@ -2,8 +2,9 @@
 
 OpenResty (nginx + Lua) stages request/response data in the access, body and log
 phases, and `log.lua` pushes one JSON record per request to a Redis list that
-Altprobe reads through its proxy (Redis) source. Records use the same field set
-as the APISIX connector, so Altprobe's proxy parser handles them unchanged.
+Altprobe reads through its proxy (Redis) source. Records follow the APISIX
+connector field set (without a consumer, since this connector does not
+authenticate), so Altprobe's proxy parser handles them unchanged.
 
 ## Files
 
@@ -29,15 +30,19 @@ as the APISIX connector, so Altprobe's proxy parser handles them unchanged.
 
 ## Log fields
 
-`host_name`, `mcp_session_id`, `mcp_method`, `http_x_claude_code_agent_id`,
-`http_x_claude_code_session_id`, `http_session_id`, `http_x_agent_id`,
-`request_uri`, `request_id`, `request_method`, `http_version`, `remote_addr`,
-`remote_user`, `server_port`, `time_local`, `duration`, `status`,
-`body_bytes_sent`, `http_referer`, `http_x_forwarded_for`, `http_x_real_ip`,
-`http_host`, `http_user_agent`, `http_authorization`, `http_accept_language`,
-`http_accept_encoding`, `http_connection`, `http_content_type`,
-`http_content_length`, `http_cookie`, `request_body`, `response_body`,
-`req_headers`, `resp_headers`.
+`host_name`, `mcp_session_id`, `mcp_method`, `request_uri`, `request_id`,
+`request_method`, `http_version`, `remote_addr`, `remote_user`, `server_port`,
+`time_local`, `duration`, `status`, `body_bytes_sent`, `http_referer`,
+`http_host`, `http_user_agent`, `http_accept_language`, `http_accept_encoding`,
+`http_connection`, `http_content_type`, `http_content_length`, `request_body`,
+`response_body`, `req_headers`, `resp_headers`.
+
+Identity: this telemetry-only connector does not authenticate requests, so
+Altprobe identifies entities by the observed source IP
+(`ip:<host>:<remote_addr>`). When the gateway is fronted by an authenticating
+tier that supplies a consumer, Altprobe uses that auth key instead.
+`mcp_session_id` is MCP protocol metadata, not identity. Client identity headers
+are not read or forwarded, and credentials in the header dumps are redacted.
 
 ## Notes
 

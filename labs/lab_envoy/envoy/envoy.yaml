@@ -5,13 +5,13 @@
 #   * Envoy is the AI Gateway data plane. This static config fronts the lab
 #     mock and exposes an AI-gateway route (/ai-gateway/v1/chat/completions)
 #     that is rewritten to the mock's openai-compatible endpoint.
-#   * Request/response bodies + the agent-session headers Altprobe's trace
-#     code reads are captured by the Lua HTTP filter into dynamic metadata and
+#   * Request/response bodies and MCP protocol metadata are captured by the
+#     Lua HTTP filter into dynamic metadata and
 #     written by the FILE access logger as one JSON object per line to
 #     /var/log/envoy/access.log. Altprobe consumes that file via its standard
 #     proxy source (SOURCES_PROXY_LOG), no altprobe changes.
-#   * Bodies are capped so a single JSON log line stays well under Altprobe's
-#     20480-byte line buffer (OS_PAYLOAD_SIZE).
+#   * Body caps apply before JSON escaping and do not bound the serialized line.
+#     Altprobe reads complete JSON lines with a separate 1 MiB record limit.
 admin:
   address:
     socket_address:
@@ -65,21 +65,12 @@ static_resources:
                             -- iteration below (Lua "object used outside of
                             -- proper scope").
                             local headers = request_handle:headers()
-                            local h_claude_agent = headers:get("x-claude-code-agent-id")
-                            if h_claude_agent == nil or h_claude_agent == "" then h_claude_agent = "-" end
-                            local h_claude_session = headers:get("x-claude-code-session-id")
-                            if h_claude_session == nil or h_claude_session == "" then h_claude_session = "-" end
-                            local h_session_id = headers:get("session-id")
-                            if h_session_id == nil or h_session_id == "" then h_session_id = headers:get("x-session-id") end
-                            if h_session_id == nil or h_session_id == "" then h_session_id = "-" end
-                            local h_agent_id = headers:get("x-agent-id")
-                            if h_agent_id == nil or h_agent_id == "" then h_agent_id = "-" end
                             local h_content_type = headers:get("content-type")
                             if h_content_type == nil or h_content_type == "" then h_content_type = "-" end
                             local h_content_length = headers:get("content-length")
                             if h_content_length == nil or h_content_length == "" then h_content_length = "-" end
+                            -- MCP session id is protocol metadata, not identity.
                             local mcp_sid = headers:get("mcp-session-id")
-                            if mcp_sid == nil or mcp_sid == "" then mcp_sid = h_agent_id end
                             if mcp_sid == nil or mcp_sid == "" then mcp_sid = "-" end
 
                             local max_body = 4096
@@ -103,10 +94,6 @@ static_resources:
                             md:set("envoy.lua", "request_body", requestBody)
                             md:set("envoy.lua", "mcp_method", mcp_method)
                             md:set("envoy.lua", "mcp_session_id", mcp_sid)
-                            md:set("envoy.lua", "http_x_claude_code_agent_id", h_claude_agent)
-                            md:set("envoy.lua", "http_x_claude_code_session_id", h_claude_session)
-                            md:set("envoy.lua", "http_session_id", h_session_id)
-                            md:set("envoy.lua", "http_x_agent_id", h_agent_id)
                             md:set("envoy.lua", "http_content_type", h_content_type)
                             md:set("envoy.lua", "http_content_length", h_content_length)
                           end
@@ -147,25 +134,17 @@ static_resources:
                           status: "%RESPONSE_CODE%"
                           body_bytes_sent: "%BYTES_SENT%"
                           http_referer: "%REQ(REFERER)%"
-                          http_x_forwarded_for: "%REQ(X-FORWARDED-FOR)%"
-                          http_x_real_ip: "%REQ(X-REAL-IP)%"
                           http_host: "%REQ(:AUTHORITY)%"
                           http_user_agent: "%REQ(USER-AGENT)%"
-                          http_authorization: "[REDACTED]"
                           http_accept_language: "%REQ(ACCEPT-LANGUAGE)%"
                           http_accept_encoding: "%REQ(ACCEPT-ENCODING)%"
                           http_connection: "%REQ(CONNECTION)%"
-                          http_cookie: "%REQ(COOKIE)%"
                           http_content_type: "%DYNAMIC_METADATA(envoy.lua:http_content_type)%"
                           http_content_length: "%DYNAMIC_METADATA(envoy.lua:http_content_length)%"
                           request_body: "%DYNAMIC_METADATA(envoy.lua:request_body)%"
                           response_body: "%DYNAMIC_METADATA(envoy.lua:response_body)%"
                           mcp_session_id: "%DYNAMIC_METADATA(envoy.lua:mcp_session_id)%"
                           mcp_method: "%DYNAMIC_METADATA(envoy.lua:mcp_method)%"
-                          http_x_claude_code_agent_id: "%DYNAMIC_METADATA(envoy.lua:http_x_claude_code_agent_id)%"
-                          http_x_claude_code_session_id: "%DYNAMIC_METADATA(envoy.lua:http_x_claude_code_session_id)%"
-                          http_session_id: "%DYNAMIC_METADATA(envoy.lua:http_session_id)%"
-                          http_x_agent_id: "%DYNAMIC_METADATA(envoy.lua:http_x_agent_id)%"
 
     - name: policy_listener
       address:

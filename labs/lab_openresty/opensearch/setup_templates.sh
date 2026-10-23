@@ -3,7 +3,7 @@
 # with OpenSearch so the daily ocsf-1.1.0-* indices get the correct mappings
 # (epoch_millis `time`, keyword/enum fields, nested correlation timelines).
 #
-# The six OCSF class templates are reused from the previous lab iteration.
+# The OCSF class templates cover the classes this gateway lab emits.
 #
 # Idempotent: PUT to a fixed template name overwrites, so reruns are safe.
 set -e
@@ -59,16 +59,13 @@ for f in /setup/templates/*.json; do
   put_template "$name" "$f"
 done
 
-# Ensure an index exists for every OCSF class pattern, so OpenSearch Dashboards
-# does not log "No matching indices found" for classes this lab does not emit
-# (e.g. DNS/network/TLS). Empty indices are harmless: the class template gives
-# them the right mapping and altprobe still writes its own daily indices.
+# Ensure an index exists for every emitted OCSF class pattern, so OpenSearch
+# Dashboards does not log "No matching indices found" before the first event.
+# Empty indices are harmless: the class template gives them the right mapping
+# and altprobe still writes its own daily indices.
 for idx in ocsf-1.1.0-2002-vulnerability_finding-000001 \
            ocsf-1.1.0-2004-detection_finding-000001 \
-           ocsf-1.1.0-4001-dns_activity-000001 \
            ocsf-1.1.0-4002-http_activity-000001 \
-           ocsf-1.1.0-4005-network_activity-000001 \
-           ocsf-1.1.0-4007-tls_activity-000001 \
            ocsf-1.1.0-6003-api_activity-000001; do
   code=$(curl -s -o /dev/null -w "%{http_code}" -m 10 -X PUT "$OS_URL/$idx" 2>/dev/null || true)
   [ -z "$code" ] && code="000"

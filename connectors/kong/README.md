@@ -22,8 +22,9 @@ On protected routes attach `key-auth` and a route-specific `altprobe` plugin wit
 the same telemetry settings plus `policy_enabled: true` and
 `policy_url: http://127.0.0.1:8181/v1/data/altprobe/allow`.
 Authentication must execute before this plugin (priority 700). Only
-`kong.client.get_consumer().username` supplies the authenticated principal.
-The stock commercial Kong OPA plugin is not required.
+`kong.client.get_consumer().username` supplies the authenticated principal;
+client identity headers are never used. The stock commercial Kong OPA plugin is
+not required.
 
 Policy accepts the APISIX `input.type/request/var/consumer` envelope and requires
 HTTP 200 with `result.allow` boolean. Deny uses `result.status_code` (default 403);

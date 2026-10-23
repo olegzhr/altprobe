@@ -1,6 +1,6 @@
 # Envoy -> Altprobe connector
 
-Envoy captures request/response bodies and agent/session headers with a Lua HTTP
+Envoy captures request/response bodies and MCP protocol fields with a Lua HTTP
 filter into dynamic metadata, and the file access logger writes one JSON object
 per request to a log file. Altprobe reads that file through its proxy (file)
 source and normalizes the traffic into OCSF.
@@ -33,14 +33,17 @@ source and normalizes the traffic into OCSF.
 Populated by the access logger: `host_name`, `request_id`, `server_port`,
 `request_uri`, `request_method`, `http_version`, `remote_addr`, `remote_user`,
 `time_local`, `duration`, `status`, `body_bytes_sent`, `http_referer`,
-`http_x_forwarded_for`, `http_x_real_ip`, `http_host`, `http_user_agent`,
-`http_authorization`, `http_accept_language`, `http_accept_encoding`,
-`http_connection`, `http_cookie`.
+`http_host`, `http_user_agent`, `http_accept_language`, `http_accept_encoding`,
+`http_connection`.
 
 Populated by the Lua filter (via dynamic metadata): `request_body`,
-`response_body`, `mcp_session_id`, `mcp_method`, `http_x_claude_code_agent_id`,
-`http_x_claude_code_session_id`, `http_session_id`, `http_x_agent_id`,
-`http_content_type`, `http_content_length`.
+`response_body`, `mcp_session_id`, `mcp_method`, `http_content_type`,
+`http_content_length`.
+
+Identity: Altprobe uses an authenticated principal when the deployment supplies
+one (for example an ext_authz or mTLS consumer), and the observed source IP
+(`remote_addr`) otherwise. `mcp_session_id` is MCP protocol metadata, not
+identity. The filter does not read or forward client identity headers.
 
 ## Notes
 

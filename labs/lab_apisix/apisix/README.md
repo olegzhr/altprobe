@@ -56,12 +56,12 @@ The `redis-logger` plugin asynchronously writes a full JSON log of each proxied 
 
 | Phase | What it collects |
 |-------|-----------------|
-| `access` | request body (`request_body`), request headers (`req_headers`) |
+| `access` | request body (`request_body`), redacted request headers (`req_headers`) |
 | `header_filter` | response headers (`resp_headers`) |
 | `body_filter` | response body (`response_body`, truncated to `max_body_size`) |
 | `log` | all request variables, builds JSON, sends via `ngx.timer.at(0, publish_log)` |
 
-Log fields: `host_name`, `request_uri`, `request_id`, `request_method`, `http_version`, `remote_addr`, `remote_user`, `server_port`, `time_local`, `duration`, `status`, `body_bytes_sent`, `http_referer`, `http_x_forwarded_for`, `http_x_real_ip`, `http_host`, `http_user_agent`, `http_authorization`, `http_accept_language`, `http_accept_encoding`, `http_connection`, `http_cookie`, `request_body`, `response_body`, `req_headers`, `resp_headers`.
+Log fields: `host_name`, `consumer_name`, `request_uri`, `request_id`, `request_method`, `http_version`, `remote_addr`, `remote_user`, `server_port`, `time_local`, `duration`, `status`, `body_bytes_sent`, `http_referer`, `http_host`, `http_user_agent`, `http_accept_language`, `http_accept_encoding`, `http_connection`, `mcp_session_id`, `mcp_method`, `request_body`, `response_body`, `req_headers`, `resp_headers`. Credential headers (`authorization`, `cookie`, `apikey`) are redacted inside the header maps.
 
 Connection is configured in `plugin_attr.redis-logger` in `conf/config.yaml`. The plugin can also be configured per-route — `entrypoint.sh` attaches it during route creation.
 

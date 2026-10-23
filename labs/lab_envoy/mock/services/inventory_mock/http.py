@@ -30,7 +30,7 @@ async def get_inventory(asset: str = Path(...)):
         "projectId": "demo-project",
         "assetKnown": True,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "endpoints": [{"path": "/policy-check", "method": "GET", "type": "REST", "authorizationReady": True, "blockStatus": _target_status["endpoint"]}],
+        "endpoints": [{"path": "/policy-check", "method": "GET", "type": "REST", "authorizationReady": True, "accessApproved": True, "blockStatus": _target_status["endpoint"]}],
         "agents": policy_agents(asset),
         "a2a_agents": [],
         "mcp_tools": [],

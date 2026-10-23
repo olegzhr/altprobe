@@ -94,15 +94,11 @@ function Handler:log(conf)
     response_body_truncated = (ctx.response_size or 0) > #(ctx.response_body or ""),
     req_headers = json.encode(ctx.headers or {}), resp_headers = json.encode(ctx.response_headers or {}),
     mcp_method = type(decoded) == "table" and type(decoded.method) == "string" and decoded.method or "-",
-    mcp_session_id = h("mcp_session_id"), http_x_agent_id = h("x_agent_id"),
-    http_x_claude_code_agent_id = h("x_claude_code_agent_id"),
-    http_x_claude_code_session_id = h("x_claude_code_session_id"),
-    http_session_id = ngx.var.http_session_id or ngx.var.http_x_session_id or "-",
+    mcp_session_id = h("mcp_session_id"),
     http_host = h("host"), http_user_agent = h("user_agent"), http_referer = h("referer"),
-    http_x_forwarded_for = h("x_forwarded_for"), http_x_real_ip = h("x_real_ip"),
     http_content_type = h("content_type"), http_content_length = h("content_length"),
     http_accept_language = h("accept_language"), http_accept_encoding = h("accept_encoding"),
-    http_connection = h("connection"), http_authorization = "[REDACTED]", http_cookie = "[REDACTED]",
+    http_connection = h("connection"),
   }
   local payload, err = json.encode(record)
   if not payload then kong.log.err("altprobe encoding failed: ", err); return end

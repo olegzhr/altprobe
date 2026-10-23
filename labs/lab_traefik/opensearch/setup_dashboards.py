@@ -39,9 +39,16 @@ def main():
     call('/api/status')
     # Match the same obsolete bundle IDs retired by the original APISIX script.
     original = (ROOT/'setup_dashboards.sh').read_text()
-    retired = re.findall(r'^\s*"((?:dashboard|search|visualization)/[^"$]+)"', original, re.MULTILINE)
+    retired = re.findall(r'^\s*"((?:dashboard|search|visualization|index-pattern)/[^"$]+)"', original, re.MULTILINE)
     for identifier in retired:
         call('/api/saved_objects/'+identifier, method='DELETE', missing_ok=True)
+    # Saved objects left over from the retired DNS/network/TLS activity dashboards
+    # are matched by title term, so no class numbers are needed here.
+    for term in ('dns', 'network', 'tls'):
+        for kind in ('dashboard', 'visualization', 'search', 'index-pattern'):
+            found = call('/api/saved_objects/_find?type='+kind+'&search='+term+'&per_page=200&fields=id')
+            for row in found.get('saved_objects', []):
+                call('/api/saved_objects/'+row['type']+'/'+row['id'], method='DELETE', missing_ok=True)
     objects = []
     for path in sorted((ROOT/'dashboards/index_patterns').glob('*.json')):
         objects.append(dict(json.loads(path.read_text()), type='index-pattern', id=path.stem))

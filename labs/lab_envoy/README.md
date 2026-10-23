@@ -88,7 +88,7 @@ docker run --rm -v lab_envoy_envoy-logs:/logs busybox tail -n 5 /logs/access.log
 
 ## Tests
 
-Run the unified Python test suites (smoke, function, security, e2e, geo, sbom)
+Run the unified Python test suites (smoke, function, security, e2e, sbom)
 from the shared test directory:
 
 ```bash
@@ -104,9 +104,9 @@ LAB_BASE=http://localhost:9080 python3 run_tests.py sbom
 ```
 
 The tests only use harmless demo traffic: MCP methods, REST demo endpoints, the
-local AI Gateway mock, emulated Suricata events in Redis, and a bundled
-CycloneDX SBOM fixture. Requires Python 3.8+. Artifacts (JUnit XML report and
-the Altprobe debug log) are written to `labs/tests/logs/`.
+local AI Gateway mock and a bundled CycloneDX SBOM fixture. Requires Python
+3.8+. Artifacts (JUnit XML report and the Altprobe debug log) are written to
+`labs/tests/logs/`.
 
 ## Ports
 
@@ -137,6 +137,10 @@ docker compose down -v
   `ext_authz`; Policy applies only to the mTLS listener.
 - Altprobe: `POLICY_ENABLED=true`, `POLICY_TYPE_AGENT=envoy`,
   `POLICY_SIDECAR_GRPC_ENABLED=true` (loopback 9191).
+- The single URI SAN of the client certificate is the identity
+  (`auth:envoy:<principal>`). Requests without an authenticated principal, and
+  all traffic on the main listener, fall back to the observed source address
+  (`ip:<host>:<remote_addr>`). Client-supplied identity headers are ignored.
 
 ### Run without policy
 
@@ -163,9 +167,8 @@ PATCH http://localhost:8000/lab/policy/agents/policy-active with blockStatus
 blocked or active; Altprobe consumes the status through inventory polling.
 [Envoy ext_authz protocol](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/ext_authz/v3/ext_authz.proto.html).
 
-Incident delivery uses POLICY_INCIDENT_ENABLED / POLICY_* settings. Suricata
-remains a telemetry source; gateway Policy enforces access decisions. Local
-Suricata Response has been removed; see the shared guide.
+Incident delivery uses POLICY_INCIDENT_ENABLED / POLICY_* settings; gateway
+Policy enforces access decisions. See the [shared guide](../tests/README.md).
 
 ## TLS verification
 

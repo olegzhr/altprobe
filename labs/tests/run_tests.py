@@ -5,7 +5,7 @@ Runs the shared, environment-driven suite against any running lab
 (APISIX, OpenResty, Envoy, Kong, Traefik or Higress) from this directory:
 
     python3 run_tests.py                 # all categories
-    python3 run_tests.py smoke           # smoke | function | security | e2e | geo | sbom
+    python3 run_tests.py smoke           # smoke | function | security | e2e | sbom
     python3 run_tests.py smoke -k mcp    # extra args are passed to pytest
 
 Artifacts (in logs/):
@@ -14,8 +14,7 @@ Artifacts (in logs/):
                            collector's stdout; set LAB_ALTPROBE_CONTAINER to
                            override auto-detection)
 
-Environment: LAB_BASE, LAB_OS_BASE, LAB_INDEX_WAIT, LAB_REDIS_HOST,
-LAB_REDIS_PORT, LAB_REDIS_KEY.
+Environment: LAB_BASE, LAB_OS_BASE, LAB_INDEX_WAIT.
 """
 
 import os
@@ -31,7 +30,6 @@ CATEGORIES = {
     "function": ["altprobe_lab/test_function.py"],
     "security": ["altprobe_lab/test_security.py"],
     "e2e": ["altprobe_lab/test_e2e.py"],
-    "geo": ["altprobe_lab/test_geo.py"],
     "sbom": ["altprobe_lab/test_sbom.py"],
 }
 

@@ -37,15 +37,20 @@ through its proxy (Redis) source and normalizes the traffic into OCSF.
 
 ## Log fields
 
-`host_name`, `mcp_session_id`, `mcp_method`, `http_x_claude_code_agent_id`,
-`http_x_claude_code_session_id`, `http_session_id`, `http_x_agent_id`,
-`request_uri`, `request_id`, `request_method`, `http_version`, `remote_addr`,
-`remote_user`, `server_port`, `time_local`, `duration`, `status`,
-`body_bytes_sent`, `http_referer`, `http_x_forwarded_for`, `http_x_real_ip`,
-`http_host`, `http_user_agent`, `http_authorization`, `http_accept_language`,
+`host_name`, `consumer_name`, `mcp_session_id`, `mcp_method`, `request_uri`,
+`request_id`, `request_method`, `http_version`, `remote_addr`, `remote_user`,
+`server_port`, `time_local`, `duration`, `status`, `body_bytes_sent`,
+`http_referer`, `http_host`, `http_user_agent`, `http_accept_language`,
 `http_accept_encoding`, `http_connection`, `http_content_type`,
-`http_content_length`, `http_cookie`, `request_body`, `response_body`,
-`req_headers`, `resp_headers`.
+`http_content_length`, `request_body`, `response_body`, `req_headers`,
+`resp_headers`.
+
+Identity: Altprobe uses the gateway-authenticated auth key
+(`auth:<gateway>:<consumer>` from `consumer_name`) when an APISIX auth plugin
+has run, and the observed source IP (`ip:<host>:<remote_addr>`) otherwise.
+`mcp_session_id` is MCP protocol metadata, not identity. Client identity
+headers are not extracted or forwarded, and credentials in the header dumps are
+redacted.
 
 Configuration keys (per route or in `plugin_attr`): `output_type`,
 `redis_host`, `redis_port`, `redis_password`, `redis_database`, `redis_key`,

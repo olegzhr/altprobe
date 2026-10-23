@@ -2,10 +2,14 @@
 
 Full stack modelled on the APISIX lab: its own `mock/`, `opensearch/`,
 `altprobe/` and `higress/`, plus Redis, OpenSearch 2.19.1, Dashboards and init
-jobs that load index templates / saved objects. GeoIP and SBOM use local
-fixtures. The plugin captures request/response and pushes events to Redis
-`log_proxy`; the real Altprobe normalises them into OCSF and indexes them in
-OpenSearch.
+jobs that load index templates / saved objects. The SBOM regression uses a
+bundled CycloneDX fixture. The plugin captures request/response and pushes
+events to Redis `log_proxy`; the real Altprobe normalises them into OCSF and
+indexes them in OpenSearch.
+
+Identity is the gateway-authenticated auth key (`auth:higress:<consumer>`) first
+and the observed source address (`ip:<host>:<remote_addr>`) otherwise. MCP
+session id and JSON-RPC method are protocol metadata, not identity.
 
 Altprobe is installed from the published `1.0.2` Linux package. The build
 verifies its pinned SHA-256 before installation. No collector source checkout
@@ -19,7 +23,7 @@ See the [release and rebuild instructions](../README.md#collector-package).
 | Parameter | Value |
 |---|---|
 | Gateway | `higress` |
-| Asset / identity | `auth:higress:<consumer>` |
+| Asset / identity | `auth:higress:<consumer>`, else `ip:<host>:<remote_addr>` |
 | Mock | MCP, REST, OpenAI-compatible, inventory, traces, incidents, echo/SSE |
 | Telemetry | bounded copies of both bodies, Redis -> Altprobe -> OpenSearch |
 | Policy | OPA HTTP envelope, localhost:8181 in the gateway network namespace |
@@ -66,12 +70,13 @@ python ../tests/run_tests.py
 ## Requests and tests
 
 Demo credentials: `apikey: lab-policy-active-key`, `lab-policy-blocked-key`,
-`lab-policy-unknown-key`. The consumer identity comes from the key check, not
-from client identity headers. The AI path `/ai-gateway/v1/chat/completions` is
+`lab-policy-unknown-key`. The consumer identity comes from the key check;
+client-supplied identity headers are ignored. Without an authenticated
+consumer, events are keyed by `ip:<host>:<remote_addr>`. The AI path `/ai-gateway/v1/chat/completions` is
 rewritten to the local mock `/test-api/v1/chat/completions`.
 
 The shared tests check MCP/REST/AI, auth failures and containment, OCSF
-HTTP/API/Suricata/GeoIP/SBOM, provisioned Dashboards, Redis capture of both
+4002/2004/6003, SBOM 2002, provisioned Dashboards, Redis capture of both
 bodies, truncation of the copied body while forwarding the full message, SSE and
 real Policy. The optional slow policy case is marked `slow_policy`; exclude it
 with `-m "not slow_policy"`.
@@ -84,7 +89,7 @@ with `-m "not slow_policy"`.
 | 9200 | OpenSearch |
 | 5601 | OpenSearch Dashboards |
 
-Run the stands sequentially: host ports are shared. Container/project names and
+Run the stands sequentially: host ports are shared. Compose project names and
 volumes differ by gateway. `docker compose down` keeps the data in volumes. Test
 artifacts are written to `../tests/logs/`.
 
