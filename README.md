@@ -38,7 +38,6 @@ flowchart LR
     SBOM["SBOM: Trivy or Syft + Grype"] --> AP
     AP --> OS["OpenSearch<br/>events, traces, dashboards"]
     AP -.-> AF["Alertflex (optional)<br/>inventory, traces, incidents, access"]
-    AF -.-> GW
 ```
 
 The collector is a single Linux service. It reads gateway logs or Redis lists,
