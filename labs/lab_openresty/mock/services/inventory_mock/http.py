@@ -22,29 +22,13 @@ TEST_PATTERNS: List[Dict[str, Any]] = [{
 
 @inventory_router.get("/inventory/{asset}")
 async def get_inventory(asset: str = Path(...)):
-    from fastapi import HTTPException
-    if not _inventory_available: raise HTTPException(503, "lab inventory unavailable")
     return {
-        "policyTargetVersion": 1,
-        "asset": asset,
-        "projectId": "demo-project",
-        "assetKnown": True,
+        "asset": asset, "projectId": "demo-project", "assetKnown": True,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "endpoints": [{"path": "/policy-check", "method": "GET", "type": "REST", "authorizationReady": True, "accessApproved": True, "blockStatus": _target_status["endpoint"]}],
-        "agents": policy_agents(asset),
-        "a2a_agents": [],
-        "mcp_tools": [],
-        "mcp_resources": [],
-        "mcp_prompts": [],
+        "endpoints": [], "agents": [], "a2a_agents": [],
+        "mcp_tools": [], "mcp_resources": [], "mcp_prompts": [],
         "patterns": TEST_PATTERNS,
-        "stats": {
-            "totalEndpoints": 1,
-            "totalAgents": len(_policy_status),
-            "totalMcpTools": 0,
-            "totalMcpResources": 0,
-            "totalMcpPrompts": 0,
-            "totalPatterns": len(TEST_PATTERNS),
-        },
+        "stats": {"totalEndpoints": 0, "totalAgents": 0, "totalPatterns": len(TEST_PATTERNS)},
     }
 
 
@@ -148,87 +132,6 @@ async def inventory_counters(request: Request, asset: str = Path(...)):
     return {"status": "ok", "asset": asset}
 
 
-_policy_status = {"policy-active": "active", "policy-blocked": "blocked"}
-_target_status = {"endpoint": "active"}
-_inventory_available = True
-_incident_records = {}
-
-def policy_agents(asset):
-    import os
-    gateway = os.environ.get("LAB_GATEWAY", "apisix")
-    probe = os.environ.get("LAB_PROBE_HOST", "altprobe-" + gateway + "-lab")
-    return [{"id": str(i), "name": name, "ip": "", "version": "lab", "jsonRpc": "2.0",
-             "assetName": asset, "apiCalls": 0, "blockStatus": state, "blockIncidentId": "",
-             "blockReason": "lab fixture" if state == "blocked" else "", "blockedAt": None,
-             "autoBlockEnabled": False, "bindingAssetName": asset, "probeHostname": probe,
-             "correlationUid": "auth:" + gateway + ":" + ("spiffe://lab/" if gateway == "envoy" else "") + name,
-             "createdAt": None, "lastObserved": None}
-            for i, (name, state) in enumerate(_policy_status.items(), 1)]
-
 @inventory_router.get("/health")
 async def collector_health():
     return {"status": "ok"}
-
-@inventory_router.get("/policy-check")
-async def policy_check():
-    return {"allowed": True, "upstream": "mock"}
-
-@inventory_router.patch("/lab/policy/agents/{name}")
-async def set_agent_status(name: str, request: Request):
-    from fastapi import HTTPException
-    payload = await request.json()
-    if name not in _policy_status or payload.get("blockStatus") not in ("active", "blocked"):
-        raise HTTPException(400, "invalid lab decision")
-    _policy_status[name] = payload["blockStatus"]
-    return {"name": name, "blockStatus": _policy_status[name]}
-
-@inventory_router.put("/lab/policy/inventory-state")
-async def set_inventory_state(request: Request):
-    global _inventory_available
-    from fastapi import HTTPException
-    payload = await request.json()
-    if type(payload.get("available")) is not bool:
-        raise HTTPException(400, "available must be boolean")
-    _inventory_available = payload["available"]
-    return {"available": _inventory_available}
-
-@inventory_router.post("/projects/{project}/incidents")
-async def receive_incident(project: str, request: Request):
-    import hashlib, json, uuid
-    from fastapi.responses import JSONResponse
-    raw = await request.body()
-    if len(raw) > 262144:
-        return JSONResponse({"error": "too_large"}, status_code=413)
-    try:
-        payload = json.loads(raw)
-        identifier = payload["incident_id"]
-        uuid.UUID(identifier)
-        finding = payload["finding"]
-        valid = payload["schema_version"] == "1.0" and payload["project_id"] == project and project == "demo-project"
-        valid = valid and finding["class_uid"] == 6003 and finding["severity_id"] in (3, 4)
-        valid = valid and finding["metadata"]["uid"] == identifier
-        if not valid: raise ValueError("invalid incident")
-    except (KeyError, ValueError, TypeError):
-        return JSONResponse({"error": "invalid_incident"}, status_code=400)
-    digest = hashlib.sha256(raw).hexdigest()
-    old = _incident_records.get(identifier)
-    if old:
-        return JSONResponse({"incident_id": identifier, "status": "duplicate" if old["digest"] == digest else "conflict"},
-                            status_code=200 if old["digest"] == digest else 409)
-    if len(_incident_records) >= 500:
-        return JSONResponse({"error": "lab_capacity"}, status_code=429)
-    _incident_records[identifier] = {"digest": digest, "payload": payload}
-    return JSONResponse({"incident_id": identifier, "status": "accepted"}, status_code=202)
-
-@inventory_router.get("/lab/incidents")
-async def list_incidents():
-    return {"count": len(_incident_records), "incidents": [v["payload"] for v in _incident_records.values()]}
-
-@inventory_router.patch("/lab/policy/targets/{kind}")
-async def set_target_status(kind: str, request: Request):
-    from fastapi import HTTPException
-    payload = await request.json()
-    if kind not in _target_status or payload.get("blockStatus") not in ("active", "blocked"):
-        raise HTTPException(400, "invalid target decision")
-    _target_status[kind] = payload["blockStatus"]
-    return {"kind": kind, "blockStatus": _target_status[kind]}

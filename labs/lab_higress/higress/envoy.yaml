@@ -44,15 +44,23 @@ static_resources:
                       filename: /etc/envoy/altprobe.wasm
                 configuration:
                   '@type': type.googleapis.com/google.protobuf.StringValue
-                  value: '{"host_name": "altprobe-higress-lab", "max_body_size": 5000,
-                    "policy_paths": ["/policy-check", "/policy-other", "/policy-unknown"],
-                    "credentials": {"lab-policy-active-key": "policy-active", "lab-policy-blocked-key":
-                    "policy-blocked", "lab-policy-unknown-key": "policy-unknown"},
-                    "policy_cluster": "altprobe_policy", "policy_path": "/v1/data/altprobe/allow",
-                    "collector_cluster": "telemetry", "timeout_ms": 2000}'
+                  value: '{"host_name": "altprobe-higress-lab", "max_body_size": 5000, "collector_cluster": "telemetry",
+                    "timeout_ms": 2000}'
           - name: envoy.filters.http.router
             typed_config:
               '@type': type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+          tracing:
+            random_sampling:
+              value: 100
+            provider:
+              name: envoy.tracers.opentelemetry
+              typed_config:
+                '@type': type.googleapis.com/envoy.config.trace.v3.OpenTelemetryConfig
+                grpc_service:
+                  envoy_grpc:
+                    cluster_name: altprobe_otel
+                  timeout: 2s
+                service_name: higress-native
   clusters:
   - name: mock
     connect_timeout: 2s
@@ -66,18 +74,6 @@ static_resources:
               socket_address:
                 address: mock
                 port_value: 8000
-  - name: altprobe_policy
-    connect_timeout: 2s
-    type: STRICT_DNS
-    load_assignment:
-      cluster_name: altprobe_policy
-      endpoints:
-      - lb_endpoints:
-        - endpoint:
-            address:
-              socket_address:
-                address: 127.0.0.1
-                port_value: 8181
   - name: telemetry
     connect_timeout: 2s
     type: STRICT_DNS
@@ -90,3 +86,16 @@ static_resources:
               socket_address:
                 address: telemetry
                 port_value: 8080
+  - name: altprobe_otel
+    type: STATIC
+    connect_timeout: 2s
+    http2_protocol_options: {}
+    load_assignment:
+      cluster_name: altprobe_otel
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 4317

@@ -4,22 +4,8 @@
 # Idempotent: each call uses overwrite=true, so reruns overwrite the same
 # objects rather than creating duplicates.
 #
-# Merged from the previous lab iteration via dashboards/:
-#   * index_patterns/*.json  - the four OCSF class patterns (2002/2004/4002/
-#     6003) plus the combined ocsf-1.1.0-* pattern
-#   * saved_objects/*.json   - 15 dashboards (unified overview + detection/API
-#     dashboards plus "Altprobe - Agent Correlations"), 110 Vega
-#     visualizations and 2 saved searches
-#
-# The Vega visualizations query OpenSearch directly, so they need no
-# index-pattern field cache; Discover remains usable for ad-hoc browsing (run
-# opensearch/refresh_index_pattern_fields.sh after traffic exists if the cached
-# field list is empty on a fresh boot).
-#
-# OpenSearch stores the proxy/API OCSF telemetry (4002/6003), detection
-# findings (2004), vulnerability findings (2002) and the correlator's own
-# findings (600301). DNS/network/TLS (4001/4005/4007) assets were retired with
-# their producers.
+# Includes gateway/API findings plus Falco and Suricata DNS, TLS, IP flows
+# and dedicated direct-AI correlation. No MaxMind or geographic maps.
 set -e
 
 # Resolve the data directory relative to this script so it works both when the
@@ -81,8 +67,8 @@ put_object() {
     fi
     sleep 3
   done
+  case "$code" in 200|201) ;; *) cat /tmp/resp.json >&2; exit 1;; esac
   echo "[dashboards-init] PUT $1: HTTP $code"
-  cat /tmp/resp.json
   echo
 }
 
@@ -127,34 +113,7 @@ for oid in \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-top-destinations-by-traffic-bytes" \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-top-source-countries-geoip" \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-traffic-volume-over-time" \
-  "dashboard/ocsf-dns-activity" \
-  "dashboard/ocsf-tls-activity" \
-  "dashboard/ocsf-network-flows" \
   "dashboard/ocsf-network-activity-flows-geo" \
-  "visualization/ocsf-dns-activity-distinct-hostnames" \
-  "visualization/ocsf-dns-activity-distinct-src-ips" \
-  "visualization/ocsf-dns-activity-dns-queries" \
-  "visualization/ocsf-dns-activity-dns-queries-over-time" \
-  "visualization/ocsf-dns-activity-queries-with-answers" \
-  "visualization/ocsf-dns-activity-query-type" \
-  "visualization/ocsf-dns-activity-record-types-rrtype" \
-  "visualization/ocsf-dns-activity-top-queried-hostnames" \
-  "visualization/ocsf-tls-activity-distinct-issuers" \
-  "visualization/ocsf-tls-activity-distinct-ja3" \
-  "visualization/ocsf-tls-activity-distinct-sni" \
-  "visualization/ocsf-tls-activity-tls-handshakes" \
-  "visualization/ocsf-tls-activity-tls-sessions-over-time" \
-  "visualization/ocsf-tls-activity-tls-versions" \
-  "visualization/ocsf-tls-activity-top-issuers" \
-  "visualization/ocsf-tls-activity-top-sni-names" \
-  "visualization/ocsf-network-flows-network-flows" \
-  "visualization/ocsf-network-flows-distinct-src-ips" \
-  "visualization/ocsf-network-flows-distinct-dst-ips" \
-  "visualization/ocsf-network-flows-bytes-transferred" \
-  "visualization/ocsf-network-flows-top-source-ips-by-flows" \
-  "visualization/ocsf-network-flows-top-destination-ips-by-flows" \
-  "visualization/ocsf-network-flows-top-destinations-by-bytes" \
-  "visualization/ocsf-network-flows-bytes-over-time" \
   "visualization/ocsf-network-activity-flows-geo-network-flows" \
   "visualization/ocsf-network-activity-flows-geo-distinct-src-ips" \
   "visualization/ocsf-network-activity-flows-geo-distinct-dst-ips" \
@@ -162,11 +121,7 @@ for oid in \
   "visualization/ocsf-network-activity-flows-geo-ip-flows-sankey" \
   "visualization/ocsf-network-activity-flows-geo-top-destinations-by-traffic-bytes" \
   "visualization/ocsf-network-activity-flows-geo-top-source-countries-geoip" \
-  "visualization/ocsf-network-activity-flows-geo-traffic-volume-over-time" \
-  "visualization/ocsf-top-talkers-total-bytes-netflow" \
-  "index-pattern/ocsf-4001-dns-activity" \
-  "index-pattern/ocsf-4005-network-activity" \
-  "index-pattern/ocsf-4007-tls-activity"
+  "visualization/ocsf-network-activity-flows-geo-traffic-volume-over-time"
 do
   delete_object "$oid"
 done

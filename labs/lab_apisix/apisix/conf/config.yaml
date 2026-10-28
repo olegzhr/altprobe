@@ -4,23 +4,19 @@ deployment:
     config_provider: etcd
   etcd:
     host:
-      - "http://etcd:2379"
+    - http://etcd:2379
   admin:
     admin_key:
-      - name: admin
-        key: edd1c9f034335f136f87ad84b625c8f1   # example admin key
-        role: admin
-
+    - name: admin
+      key: edd1c9f034335f136f87ad84b625c8f1
+      role: admin
 apisix:
   node_listen:
-    - 9080
-
+  - 9080
 plugins:
-  - key-auth
-  - opa
-  - redis-logger
-  - ai-proxy
-
+- redis-logger
+- ai-proxy
+- opentelemetry
 plugin_attr:
   redis-logger:
     output_type: redis

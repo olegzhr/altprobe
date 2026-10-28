@@ -30,12 +30,3 @@ http:
       plugin:
         altprobe:
           HostName: altprobe-traefik-lab
-          PolicyURL: http://127.0.0.1:8181/v1/data/altprobe/allow
-          PolicyPaths:
-          - /policy-check
-          - /policy-other
-          - /policy-unknown
-          Credentials:
-            lab-policy-active-key: policy-active
-            lab-policy-blocked-key: policy-blocked
-            lab-policy-unknown-key: policy-unknown

@@ -1,0 +1,47 @@
+# Falco syscall observations for direct AI egress correlation.
+# Load as a YAML rules file; enable json_output and include_output_property.
+# Keep these lists aligned with correlator.outbound workload selectors.
+- list: altprobe_ai_namespaces
+  items: [ai, ai-agents]
+- list: altprobe_ai_containers
+  items: [lab-ai-agent]
+- list: altprobe_host_ai_processes
+  items: []
+- list: altprobe_proxy_namespaces
+  items: [ai-gateway]
+- list: altprobe_proxy_containers
+  items: [lab-ai-proxy]
+- macro: altprobe_ai_workload
+  condition: >
+    (k8s.ns.name in (altprobe_ai_namespaces) or
+     container.name in (altprobe_ai_containers) or
+     proc.name in (altprobe_host_ai_processes))
+- macro: altprobe_proxy_workload
+  condition: >
+    (k8s.ns.name in (altprobe_proxy_namespaces) or
+     container.name in (altprobe_proxy_containers))
+- rule: AI Outbound Connect
+  desc: Successful client connect from an AI workload; domain and bypass require Suricata correlation
+  condition: >
+    evt.type=connect and evt.dir=< and evt.rawres=0 and
+    fd.type in (ipv4, ipv6) and fd.is_server=false and
+    altprobe_ai_workload and not altprobe_proxy_workload
+  output: >
+    AI client connect (evt_type=%evt.type evt_res=%evt.res rawres=%evt.rawres
+    is_server=%fd.is_server cip=%fd.cip sip=%fd.sip cport=%fd.cport sport=%fd.sport
+    proto=%fd.l4proto proc=%proc.name pid=%proc.pid user=%user.name
+    container_id=%container.id container_name=%container.name
+    namespace=%k8s.ns.name pod=%k8s.pod.name pod_id=%k8s.pod.id)
+  priority: NOTICE
+  tags: [ai, network, altprobe, outbound]
+
+# Runtime context remains independently searchable as OCSF Detection Findings.
+# IPC and process launch alone never imply an attack or a proxy bypass.
+- rule: MCP AI Runtime Execution
+  desc: AI workload process execution context
+  condition: evt.type in (execve, execveat) and evt.dir=< and evt.rawres=0 and altprobe_ai_workload
+  output: >
+    AI process (evt_type=%evt.type proc=%proc.name pid=%proc.pid cmd=%proc.cmdline
+    container_id=%container.id container_name=%container.name namespace=%k8s.ns.name pod=%k8s.pod.name)
+  priority: INFORMATIONAL
+  tags: [ai, runtime, altprobe]

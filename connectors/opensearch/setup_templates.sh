@@ -3,8 +3,7 @@
 # with OpenSearch so the daily ocsf-1.1.0-* indices get the correct mappings
 # (epoch_millis `time`, keyword/enum fields, nested correlation timelines).
 #
-# The four remaining OCSF class templates are reused from the previous lab
-# iteration. DNS/network/TLS templates were retired with their producers.
+# Gateway/API and restored DNS/network/TLS classes share the same OCSF sinks.
 #
 # Idempotent: PUT to a fixed template name overwrites, so reruns are safe.
 set -e
@@ -69,26 +68,18 @@ put_template() {
     fi
     sleep 3
   done
+  case "$code" in 200|201) ;; *) cat /tmp/resp.json >&2; exit 1;; esac
   echo "[os-templates] PUT _index_template/$1: HTTP $code"
   [ -f /tmp/resp.json ] && cat /tmp/resp.json
   echo
 }
 
-echo "[os-templates] deleting templates for retired OCSF classes ..."
-for name in ocsf_dns_activity_template ocsf_network_activity_template ocsf_tls_activity_template; do
-  code=$(curl -s -o /tmp/resp.json -w "%{http_code}" -m 10 \
-    -X DELETE "$OS_URL/_index_template/$name" 2>/dev/null || true)
-  [ -z "$code" ] && code="000"
-  case "$code" in
-    200|404)
-      echo "[os-templates] DELETE stale _index_template/$name: HTTP $code"
-      ;;
-    *)
-      echo "[os-templates] DELETE stale _index_template/$name: HTTP $code" >&2
-      cat /tmp/resp.json >&2
-      echo >&2
-      ;;
-  esac
+# Register the OTLP projection before templates reference it.
+for f in "$DATA_DIR"/pipelines/*.json; do
+  [ -e "$f" ] || continue
+  name=$(basename "$f" .json)
+  curl -fsS -X PUT "$OS_URL/_ingest/pipeline/$name" \
+    -H "Content-Type: application/json" --data-binary @"$f"
 done
 
 for f in "$DATA_DIR"/templates/*.json; do
@@ -101,8 +92,11 @@ done
 # emitted data yet (e.g. vulnerability findings before the first SBOM scan).
 # Empty indices are harmless: the class template gives them the right mapping
 # and altprobe still writes its own daily indices.
-for idx in ocsf-1.1.0-2002-vulnerability_finding-000001 \
+for idx in otel-v1-traces-empty ocsf-1.1.0-2002-vulnerability_finding-000001 \
            ocsf-1.1.0-2004-detection_finding-000001 \
+           ocsf-1.1.0-4001-dns_activity-000001 \
+           ocsf-1.1.0-4005-network_activity-000001 \
+           ocsf-1.1.0-4007-tls_activity-000001 \
            ocsf-1.1.0-4002-http_activity-000001 \
            ocsf-1.1.0-6003-api_activity-000001; do
   code=$(curl -s -o /dev/null -w "%{http_code}" -m 10 -X PUT "$OS_URL/$idx" 2>/dev/null || true)

@@ -40,7 +40,11 @@ REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 REDIS_KEY="${REDIS_KEY:-log_proxy}"
 
-PLUGINS='{"redis-logger":{"output_type":"redis","redis_host":"'$REDIS_HOST'","redis_port":'$REDIS_PORT',"redis_key":"'$REDIS_KEY'","log_file_path":"/usr/local/apisix/logs/proxy-json.log"}}'
+# Native gateway tracing is independent of Altprobe's log-derived spans.
+curl -fsS -X PUT "$API/plugin_metadata/opentelemetry" "${ADMIN_AUTH[@]}" \
+  -H "Content-Type: application/json" \
+  -d '{"resource":{"service.name":"apisix-native"},"collector":{"address":"127.0.0.1:4318","request_timeout":3},"batch_span_processor":{"batch_timeout":2,"inactive_timeout":1,"max_export_batch_size":16}}' >/dev/null
+PLUGINS='{"opentelemetry":{"sampler":{"name":"always_on"}},"redis-logger":{"output_type":"redis","redis_host":"'$REDIS_HOST'","redis_port":'$REDIS_PORT',"redis_key":"'$REDIS_KEY'","log_file_path":"/usr/local/apisix/logs/proxy-json.log"}}'
 
 create_route() {
   local id=$1 uri=$2 upstream=$3
@@ -68,6 +72,7 @@ create_route 3 "/test-api*" "$UPSTREAM_MCP"
 # AI Gateway route. APISIX forwards the request to the local mock's
 # OpenAI-compatible endpoint; no external model provider is contacted.
 AI_GATEWAY_PLUGINS='{
+  "opentelemetry": {"sampler":{"name":"always_on"}},
   "ai-proxy": {
     "provider": "openai-compatible",
     "override": {"endpoint": "http://'$UPSTREAM_HOST':8000/test-api/v1/chat/completions"},
@@ -82,15 +87,5 @@ code=$(curl -fsS -o /dev/null -w "%{http_code}" -X PUT "$API/routes/6" \
   -d "{\"uri\":\"/ai-gateway/v1/chat/completions\",\"methods\":[\"POST\"],\"upstream\":$UPSTREAM_MCP,\"plugins\":$AI_GATEWAY_PLUGINS}")
 echo "Route 6 (/ai-gateway/v1/chat/completions, AI Gateway): HTTP $code" >&2
 
-# Built-in authentication supplies the trusted consumer to the built-in OPA plugin.
-for name in policy-active policy-blocked policy-unknown; do
-  curl -fsS -X PUT "$API/consumers" "${ADMIN_AUTH[@]}" -H "Content-Type: application/json" \
-    -d "{\"username\":\"$name\",\"plugins\":{\"key-auth\":{\"key\":\"lab-$name-key\"}}}" >/dev/null
-done
-POLICY_PLUGINS='{"key-auth":{},"opa":{"host":"http://127.0.0.1:8181","policy":"altprobe/allow","with_consumer":true,"timeout":2000},"redis-logger":{"output_type":"redis","redis_host":"'$REDIS_HOST'","redis_port":'$REDIS_PORT',"redis_key":"'$REDIS_KEY'","log_file_path":"/usr/local/apisix/logs/proxy-json.log"}}'
-curl -fsS -X PUT "$API/routes/7" "${ADMIN_AUTH[@]}" -H "Content-Type: application/json" \
-  -d "{\"uri\":\"/policy-check\",\"methods\":[\"GET\"],\"upstream\":$UPSTREAM_MCP,\"plugins\":$POLICY_PLUGINS}" >/dev/null
-
 echo "Done" >&2
-
 tail -f /usr/local/apisix/logs/error.log

@@ -25,8 +25,3 @@ async def stream():
             yield 'data: ' + value + '\n\n'
             await asyncio.sleep(0.35)
     return StreamingResponse(chunks(), media_type='text/event-stream')
-
-
-@gateway_lab_router.get('/policy-other')
-async def other_endpoint():
-    return {'allowed': True, 'upstream': 'mock'}

@@ -13,7 +13,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -25,9 +24,6 @@ type Config struct {
 	MaxBodySize  int
 	TimeoutMS    int
 	QueueSize    int
-	PolicyURL    string
-	PolicyPaths  []string
-	Credentials  map[string]string
 }
 
 func CreateConfig() *Config {
@@ -45,21 +41,7 @@ func New(ctx context.Context, next http.Handler, c *Config, name string) (http.H
 	if c.MaxBodySize < 1 || c.MaxBodySize > 32768 || c.TimeoutMS < 1 || c.QueueSize < 1 || c.QueueSize > 65536 {
 		return nil, fmt.Errorf("invalid Altprobe body, timeout or queue limits")
 	}
-	if len(c.PolicyPaths) > 0 {
-		u, err := url.Parse(c.PolicyURL)
-		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-			return nil, fmt.Errorf("invalid policy URL")
-		}
-		if len(c.Credentials) == 0 {
-			return nil, fmt.Errorf("policy requires server-side credentials")
-		}
-	}
 	config := *c
-	config.PolicyPaths = append([]string(nil), c.PolicyPaths...)
-	config.Credentials = make(map[string]string)
-	for k, v := range c.Credentials {
-		config.Credentials[k] = v
-	}
 	m := &middleware{next: next, config: config, client: &http.Client{Timeout: time.Duration(c.TimeoutMS) * time.Millisecond,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, queue: make(chan []byte, c.QueueSize)}
 	go m.deliver(ctx)
@@ -162,66 +144,12 @@ func identifier() string {
 	return hex.EncodeToString(b)
 }
 
-func (m *middleware) authorize(r *http.Request, subject string) (int, string) {
-	if subject == "" {
-		return 401, "authentication_required"
-	}
-	// The APISIX envelope deliberately authorizes the surface without guessing a body operation.
-	// OPA distinguishes single header values from repeated identity headers.
-	headers := map[string]interface{}{}
-	for name, values := range clean(r.Header) {
-		if len(values) == 1 {
-			headers[name] = values[0]
-		} else {
-			headers[name] = values
-		}
-	}
-	input := map[string]interface{}{"input": map[string]interface{}{
-		"type": "http", "consumer": map[string]string{"username": subject},
-		"request": map[string]interface{}{"method": r.Method, "path": r.URL.RequestURI(), "headers": headers},
-		"var":     map[string]string{"remote_addr": remoteIP(r.RemoteAddr)},
-	}}
-	body, _ := json.Marshal(input)
-	request, err := http.NewRequestWithContext(r.Context(), "POST", m.config.PolicyURL, bytes.NewReader(body))
-	if err != nil {
-		return 503, "policy_unavailable"
-	}
-	request.Header.Set("Content-Type", "application/json")
-	response, err := m.client.Do(request)
-	if err != nil {
-		return 503, "policy_unavailable"
-	}
-	defer response.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(response.Body, 65537))
-	var doc struct {
-		Result struct {
-			Allow  *bool  `json:"allow"`
-			Reason string `json:"reason"`
-			Status int    `json:"status_code"`
-		} `json:"result"`
-	}
-	if err != nil || len(raw) > 65536 || response.StatusCode != 200 || json.Unmarshal(raw, &doc) != nil || doc.Result.Allow == nil {
-		return 503, "policy_unavailable"
-	}
-	if !*doc.Result.Allow {
-		status := doc.Result.Status
-		if status < 400 || status > 599 {
-			status = 403
-		}
-		return status, doc.Result.Reason
-	}
-	return 0, ""
-}
-
 func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	originalURI := r.URL.RequestURI()
 	originalMethod := r.Method
 	headers := r.Header.Clone()
 	subject := ""
-	if values := r.Header.Values("Apikey"); len(values) == 1 {
-		subject = m.config.Credentials[values[0]]
-	}
 	request := capture{limit: m.config.MaxBodySize}
 	originalLength := r.ContentLength
 	if r.Body != nil {
@@ -255,7 +183,7 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"response_body_truncated": response.body.total > len(response.body.data),
 			"req_headers":             string(reqHeaders), "resp_headers": string(respHeaders), "mcp_method": rpc.Method,
 			"mcp_session_id": headers.Get("Mcp-Session-Id"),
-			"http_host": r.Host, "http_user_agent": headers.Get("User-Agent"), "http_referer": headers.Get("Referer"),
+			"http_host":      r.Host, "http_user_agent": headers.Get("User-Agent"), "http_referer": headers.Get("Referer"),
 			"http_content_type": headers.Get("Content-Type"), "http_content_length": headers.Get("Content-Length"),
 			"http_accept_language": headers.Get("Accept-Language"), "http_accept_encoding": headers.Get("Accept-Encoding"),
 			"http_connection": headers.Get("Connection"),
@@ -271,17 +199,6 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Print("altprobe: telemetry queue full; event dropped")
 		}
 	}()
-	for _, path := range m.config.PolicyPaths {
-		if r.URL.Path == path {
-			if code, reason := m.authorize(r, subject); code != 0 {
-				response.Header().Set("Content-Type", "application/json")
-				response.WriteHeader(code)
-				_ = json.NewEncoder(response).Encode(map[string]string{"reason": reason})
-				return
-			}
-			break
-		}
-	}
 	// Do not forward lab authentication secrets to upstream services.
 	r.Header.Del("Apikey")
 	m.next.ServeHTTP(response, r)

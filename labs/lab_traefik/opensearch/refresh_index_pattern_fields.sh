@@ -17,8 +17,22 @@ set -euo pipefail
 
 OSD_URL="${OSD_URL:-http://localhost:5601}"
 
+# Authentication and TLS for a security-enabled OpenSearch Dashboards.
+#   OSD_USER / OSD_PWD   - Basic-auth credentials (empty = security disabled)
+#   OSD_INSECURE=true    - skip TLS certificate verification (self-signed cert)
+OSD_USER="${OSD_USER:-${OS_USER:-}}"
+OSD_PWD="${OSD_PWD:-${OS_PWD:-}}"
+OSD_INSECURE="${OSD_INSECURE:-${OS_INSECURE:-false}}"
+
+# Wrap curl so every call carries the configured auth/TLS settings.
+curl() {
+  if [ "$OSD_INSECURE" = "true" ]; then set -- -k "$@"; fi
+  if [ -n "$OSD_USER" ]; then command curl -u "$OSD_USER:$OSD_PWD" "$@"; else command curl "$@"; fi
+}
+
 # pattern-id | wildcard
 PATTERNS=(
+  "ocsf-2002-vulnerability-finding|ocsf-1.1.0-2002-vulnerability_finding*"
   "ocsf-2004-detection-finding|ocsf-1.1.0-2004-detection_finding*"
   "ocsf-4002-http-activity|ocsf-1.1.0-4002-http_activity*"
   "ocsf-6003-api-activity|ocsf-1.1.0-6003-api_activity*"

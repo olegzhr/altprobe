@@ -1,27 +1,19 @@
-# connectors
+# Connectors
 
-Reusable integration code that connects gateways and sinks to **Altprobe**,
-extracted from the quick-start labs and presented without lab-specific setup
-(no docker-compose, mock services, lab ports or asset names).
+Reusable gateway and sink integrations for Altprobe. Each connector contains
+the files needed for deployment; the runnable demos live in
+[`labs/`](../labs/README.md).
 
-| Connector | What it does | Where Altprobe reads it |
-|-----------|--------------|-------------------------|
-| `apisix/` | APISIX `redis-logger` plugin ships proxy logs to Redis | `SOURCES_PROXY_REDIS` (Redis list, default `log_proxy`) |
-| `envoy/` | Envoy Lua filter + file access logger writes proxy logs to a file | `SOURCES_PROXY_LOG` (log file) |
-| `openresty/` | OpenResty nginx + Lua ships proxy logs to Redis | `SOURCES_PROXY_REDIS` (Redis list, default `log_proxy`) |
-| `kong/` | Kong OSS Lua plugin ships proxy logs to Redis | `SOURCES_PROXY_REDIS` (Redis list, default `log_proxy`) |
-| `traefik/` | Traefik Yaegi middleware ships proxy logs to Redis | `SOURCES_PROXY_REDIS` (Redis list, default `log_proxy`) |
-| `higress/` | Higress Go/Wasm filter ships proxy logs to Redis | `SOURCES_PROXY_REDIS` (Redis list, default `log_proxy`) |
-| `opensearch/` | OCSF index templates, Dashboards saved objects and provisioning scripts | `SINKS_OS_URL` (Altprobe native OpenSearch sink) |
+| Connector | Transport | Altprobe source |
+|---|---|---|
+| [`apisix`](apisix/README.md) | APISIX `redis-logger` → Redis | `SOURCES_PROXY_REDIS` |
+| [`envoy`](envoy/README.md) | Envoy access log → JSON-lines file | `SOURCES_PROXY_LOG` |
+| [`openresty`](openresty/README.md) | OpenResty Lua → Redis | `SOURCES_PROXY_REDIS` |
+| [`kong`](kong/README.md) | Kong Lua plugin → Redis | `SOURCES_PROXY_REDIS` |
+| [`traefik`](traefik/README.md) | Traefik Yaegi middleware → Redis | `SOURCES_PROXY_REDIS` |
+| [`higress`](higress/README.md) | Higress Wasm filter → Redis | `SOURCES_PROXY_REDIS` |
+| [`opensearch`](opensearch/README.md) | OCSF templates, dashboards, provisioning | `SINKS_OS_URL` |
 
-Each gateway record is normalized by Altprobe into OCSF and written to the
-configured sink. The gateway integrations collect telemetry and, when enabled
-on protected routes, enforce access decisions from Altprobe Policy or a
-compatible OPA endpoint. Altprobe delivers incidents; the gateway plugins do not.
-See each connector's README for its supported authorization mechanism.
-
-Identity is exactly the gateway-authenticated auth key
-(`auth:<gateway>:<consumer>`) when the gateway supplies a consumer, and the
-observed source IP (`ip:<host>:<remote_addr>`) otherwise. MCP session ids are
-protocol metadata. Connectors do not extract or forward client identity headers,
-forwarded-for/real-IP headers, or Authorization/cookie values as identity.
+Altprobe normalizes every record to OCSF. Identity comes from the authenticated
+gateway consumer when available, otherwise from the observed source address.
+Client identity headers are not trusted.

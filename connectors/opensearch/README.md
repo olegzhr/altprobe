@@ -1,72 +1,80 @@
-# OpenSearch sink connector for Altprobe
+# OpenSearch assets
 
-OCSF index templates, Dashboards saved objects and provisioning scripts for the
-OpenSearch sink Altprobe writes to (`SINKS_OS_URL`).
+Install these assets on an existing OpenSearch 2.x + OpenSearch Dashboards 2.x
+deployment. The scripts are POSIX `sh` and require `curl`; they do not use Docker
+Compose or lab hostnames.
 
-## Files
+Contents:
 
-| Path | Purpose |
-|------|---------|
-| `templates/*.json` | OCSF index templates (mappings: epoch_millis `time`, nested correlation timelines). |
-| `dashboards/index_patterns/*.json` | Dashboard index patterns. |
-| `dashboards/saved_objects/*.json` | Dashboards, saved searches and visualizations. |
-| `setup_templates.sh` | Registers the index templates (run before Altprobe writes). |
-| `setup_dashboards.sh` | Imports index patterns / searches / visualizations / dashboards. |
-| `recover_stale_kibana.sh` | Clears an empty `.kibana_1` left by OpenSearch Dashboards racing OpenSearch. |
-| `refresh_index_pattern_fields.sh` | Refreshes index-pattern fields from the current mappings. |
+- `templates/` — OCSF and OTLP index templates.
+- `pipelines/` — OTLP span projection pipeline.
+- `dashboards/index_patterns/` — index patterns.
+- `dashboards/saved_objects/` — dashboards, visualizations and saved searches.
+- `setup_templates.sh`, `setup_dashboards.sh` — idempotent installers.
 
-## Install
-
-The scripts talk to OpenSearch / Dashboards over HTTP and expect `OS_URL` (e.g.
-`http://opensearch:9200`) and `OSD_URL` (e.g. `http://opensearch-dashboards:5601`).
-Run them from this directory (the scripts resolve `templates/` and `dashboards/`
-relative to themselves; override with `DATA_DIR`):
+## Configure
 
 ```bash
-OS_URL=http://localhost:9200 sh setup_templates.sh
-OSD_URL=http://localhost:5601 sh setup_dashboards.sh
-# after an unclean Dashboards start:
-OS_URL=http://localhost:9200 sh recover_stale_kibana.sh
+export OS_URL="https://opensearch.example.com:9200"
+export OS_USER="altprobe-installer"
+export OS_PWD="<password>"
+export OS_INSECURE="false"          # true only for a self-signed test endpoint
+
+export OSD_URL="https://dashboards.example.com"
+export OSD_USER="altprobe-installer"
+export OSD_PWD="<password>"
+export OSD_INSECURE="false"
 ```
 
-## Security-enabled OpenSearch
+Use HTTPS and an account allowed to create index templates, ingest pipelines,
+indices, index patterns and Dashboards saved objects. Do not use an admin
+account for normal operation.
 
-When the OpenSearch security plugin is enabled (user/password authentication),
-pass Basic-auth credentials; the scripts add them (and optional TLS skipping) to
-every request. Leaving `OS_USER` empty keeps anonymous access for a
-security-disabled cluster.
+## Install templates and pipeline
 
-| Variable | Applies to | Meaning |
-|----------|-----------|---------|
-| `OS_USER` / `OS_PWD` | OpenSearch API | Basic-auth user/password |
-| `OSD_USER` / `OSD_PWD` | Dashboards API | Basic-auth user/password (defaults to `OS_USER`/`OS_PWD`) |
-| `OS_INSECURE` | OpenSearch API | `true` = skip TLS certificate verification (self-signed cert) |
-| `OSD_INSECURE` | Dashboards API | `true` = skip TLS verification (defaults to `OS_INSECURE`) |
+From this directory:
 
 ```bash
-OS_URL=https://localhost:9200 OS_USER=admin OS_PWD=MySecret OS_INSECURE=true \
-  sh setup_templates.sh
-OSD_URL=https://localhost:5601 OSD_USER=admin OSD_PWD=MySecret OSD_INSECURE=true \
-  sh setup_dashboards.sh
-OS_URL=https://localhost:9200 OS_USER=admin OS_PWD=MySecret OS_INSECURE=true \
-  sh recover_stale_kibana.sh
+./setup_templates.sh
 ```
 
-For a trusted CA you can keep `OS_INSECURE=false` (default) and rely on the
-system trust store.
+The script creates the OCSF templates, the `altprobe-otel-spans` pipeline and
+empty class indices so Dashboards do not report missing patterns. It is
+idempotent; re-running overwrites the templates.
 
-Run `setup_templates.sh` before Altprobe starts writing so the daily
-`ocsf-1.1.0-*` indices are created with the expected mappings.
+## Install dashboards
 
-## Altprobe side
+```bash
+./setup_dashboards.sh
+```
 
-- Set `SINKS_OS_URL`, `SINKS_OS_USER` and `SINKS_OS_PWD` to the OpenSearch
-  endpoint. `SINKS_OS_TLS_VERIFY` / `SINKS_OS_TLS_CA_FILE` control HTTPS
-  verification.
-- Leave `SINKS_LOKI_URL` empty unless a Loki sink is also used.
+The script imports index patterns, visualizations and dashboards with
+`overwrite=true` and removes a fixed list of legacy geo/policy objects from
+older bundles. Back up saved objects first if you have local edits.
 
-## Notes
+Open `OSD_URL/app/dashboards` and verify the Altprobe dashboards. The Network
+Flows panel uses `src_endpoint.ip` and `dst_endpoint.ip`; no MaxMind or
+geographic data is used.
 
-- All scripts are idempotent and safe to rerun.
-- The saved-object import uses `overwrite=true`, so re-running updates existing
-  dashboards rather than duplicating them.
+## Existing indices
+
+Templates affect new indices. If you already have OCSF or `otel-v1-traces*`
+indices created without these mappings, reindex them after applying the
+templates and pipeline. Reindex into a new index, verify documents and
+dashboards, then switch the alias or index pattern. Keep a backup until the
+migration is verified.
+
+`refresh_index_pattern_fields.sh` is an optional helper for refreshing field
+lists from the current mapping.
+
+## Security Analytics
+
+The OCSF templates provide mapped fields for OpenSearch Security Analytics.
+Create detectors and rules in Security Analytics after the templates are
+installed. The collector sends OCSF events; detector policy remains an
+OpenSearch configuration.
+
+## Optional UI theme
+
+`ui/` contains the lab dashboard theme and nginx proxy used by the labs. It is
+optional and does not modify indexed data.

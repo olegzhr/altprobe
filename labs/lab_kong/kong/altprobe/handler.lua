@@ -1,6 +1,5 @@
 local json = require "cjson.safe"
 local redis = require "resty.redis"
-local http = require "resty.http"
 local Handler = { VERSION = "1.0.0", PRIORITY = 700 }
 
 local function scrub(headers)
@@ -27,32 +26,6 @@ function Handler:access(conf)
   kong.service.request.clear_header("apikey")
   local consumer = kong.client.get_consumer()
   ctx.consumer = consumer and consumer.username or "-"
-  -- key-auth runs first (priority 1250). Identity is never taken from agent headers.
-  if not conf.policy_enabled then return end
-  if ctx.consumer == "-" then
-    return kong.response.exit(401, {reason = "authentication_required"})
-  end
-  local envelope = json.encode({input = {
-    type = "http", consumer = {username = ctx.consumer},
-    request = {method = kong.request.get_method(), path = ngx.var.request_uri, headers = ctx.headers},
-    var = {remote_addr = ngx.var.remote_addr},
-  }})
-  local client = http.new()
-  client:set_timeout(conf.timeout)
-  local response = client:request_uri(conf.policy_url, {
-    method = "POST", body = envelope, headers = {["Content-Type"] = "application/json"},
-    ssl_verify = true, keepalive = true,
-  })
-  local doc = response and response.status == 200 and json.decode(response.body)
-  local result = type(doc) == "table" and doc.result
-  if type(result) ~= "table" or type(result.allow) ~= "boolean" then
-    return kong.response.exit(503, {reason = "policy_unavailable"})
-  end
-  if not result.allow then
-    local status = tonumber(result.status_code) or 403
-    if status < 400 or status > 599 then status = 403 end
-    return kong.response.exit(status, {reason = result.reason, inventory_version = result.inventory_version})
-  end
 end
 
 function Handler:header_filter(conf)

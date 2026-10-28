@@ -1,177 +1,126 @@
 # Altprobe
 
-Altprobe gives security and platform teams visibility into AI agent, MCP, REST API, and gateway traffic, adding detection guardrails for AI and API interactions. It collects events from API/AI gateways and proxy logs, normalizes them into OCSF, and sends them to OpenSearch or compatible downstream systems.
+Altprobe is a free collector for AI, MCP, REST API and gateway traffic. It
+collects events from the gateways you already run, normalizes them to OCSF, and
+sends security events, OTEL traces and agent software vulnerability findings to
+OpenSearch.
 
-It discovers AI agents, MCP servers, and APIs (including undocumented ones), identifies threats based on OWASP Top 10, and correlates them by MITRE ATT&CK / ATLAS - providing observability and detection on top of your existing AI stack.
+Alertflex is optional. Use Altprobe with OpenSearch for monitoring, or add
+Alertflex for MCP/API inventory, traces, incidents, AI explanations and access
+management.
 
-Altprobe is available as a free, ready-to-run Linux package. This repository
-provides reusable gateway connectors, deployment assets, dashboards and
-self-contained labs to help you get started.
+**Altprobe collects. Alertflex helps you understand.** Search events in
+OpenSearch; use Alertflex to investigate traces and incidents, get AI
+explanations and manage access.
 
-## Table of Contents
+## What Altprobe provides
 
-- [Architecture](#architecture)
-- [Components](#components)
-- [Example Screenshots](#example-screenshots)
-  - [Agent Correlations](#altprobe---agent-correlations)
-  - [MCP & Tool-Abuse Watchlist](#mcp--tool-abuse-watchlist)
-  - [MITRE ATT&CK / ATLAS Timeline](#mitre-attck--atlas-timeline)
-  - [Vulnerability Findings](#vulnerability-findings)
-- [Why Use Altprobe](#why-use-altprobe)
-- [Repository Contents](#repository-contents)
-- [Requirements](#requirements)
-- [Install From Package](#install-from-package)
-- [Run Altprobe](#run-altprobe)
-- [Quick-Start Labs](#quick-start-labs)
-  - [Quickest Path](#quickest-path)
-- [License](#license)
+- Gateway traffic analysis for LLM, MCP and API calls, with prebuilt Altprobe
+  rules and OWASP CRS; Qwen3Guard is optional.
+- Direct AI egress detection by correlating Suricata network events with Falco
+  process and container events.
+- SBOM-based software composition analysis with Trivy or Syft + Grype.
+- Security events in OCSF, with field mappings for OpenSearch Security Analytics.
+- All collected OTEL traces in OTLP/JSON, from built-in collection or external
+  OTLP sources.
+- Six ready-to-run gateway labs with tests and sample traffic, plus 70+ IDS rules.
 
-## Architecture
+Access management is separate from monitoring. When enabled, the gateway applies
+Altprobe Policy or a compatible OPA decision; access changes take effect when
+settings refresh.
 
-Altprobe collects API/AI gateway and proxy logs (Redis lists or log files) plus
-SBOM scan reports; it normalizes them into OCSF and writes to the configured
-sink.
-
-### High-Level Design (HLD)
+## How it works
 
 ```mermaid
-flowchart BT
-    subgraph L1["Endpoint Layer"]
-        AI["AI Agents"]
-        MCP["A2A / API / MCP Servers"]
-    end
-
-    subgraph L2["Security Control Layer"]
-        PROXY["API/AI Gateway"]
-        TRIVY["SBOM / Vulnerability Scanner"]
-    end
-
-    subgraph L3["Analytics & Storage Layer"]
-        ALT["Altprobe"]
-        AFX["Alertflex: Inventory, Tracing & Policy Control<br/><i>optional</i>"]
-        GLLM["Guard LLM:<br/>External Detection Guardrails<br/><i>optional</i>"]
-        OS["OpenSearch:<br/>Search & Analytics Store"]
-    end
-
-    AI <--> PROXY
-    MCP <--> PROXY
-
-    MCP -.->|SBOM generation / scan request| TRIVY
-
-    PROXY -->|gateway / proxy logs| ALT
-    TRIVY -->|vulnerability findings| ALT
-
-    ALT <-->|inventory / policy| AFX
-    ALT <-->|analysis loop| GLLM
-    ALT -->|indexing / storage| OS
-
-    classDef optional stroke-dasharray: 5 5
-    class AFX,GLLM optional
+flowchart LR
+    GW["AI agents / MCP / API<br/>through your gateway"] --> AP["Altprobe<br/>collect + correlate + OCSF"]
+    IDS["Falco + Suricata"] --> AP
+    SBOM["SBOM: Trivy or Syft + Grype"] --> AP
+    AP --> OS["OpenSearch<br/>events, traces, dashboards"]
+    AP -.-> AF["Alertflex (optional)<br/>inventory, traces, incidents, access"]
+    AF -.-> GW
 ```
 
-### Low-Level Design (LLD)
+The collector is a single Linux service. It reads gateway logs or Redis lists,
+optional IDS events and SBOM reports; it writes OCSF findings and OTEL spans to
+OpenSearch.
 
-```mermaid
-flowchart TD
-    Sbom["SBOM / Vulnerability Scanner<br/><i>Trivy</i>"]
-    Proxy["API/AI Gateway<br/>Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress"]
+## Supported gateways
 
-    Altprobe["<b>Altprobe</b><br/>Collector &amp; Correlator<br/>Embedded Detection Guardrails &amp; log-based WAF"]
+| Gateway | Connector | Lab |
+|---|---|---|
+| APISIX | [`connectors/apisix`](connectors/apisix/README.md) | [`labs/lab_apisix`](labs/lab_apisix/README.md) |
+| Envoy | [`connectors/envoy`](connectors/envoy/README.md) | [`labs/lab_envoy`](labs/lab_envoy/README.md) |
+| OpenResty | [`connectors/openresty`](connectors/openresty/README.md) | [`labs/lab_openresty`](labs/lab_openresty/README.md) |
+| Kong OSS | [`connectors/kong`](connectors/kong/README.md) | [`labs/lab_kong`](labs/lab_kong/README.md) |
+| Traefik | [`connectors/traefik`](connectors/traefik/README.md) | [`labs/lab_traefik`](labs/lab_traefik/README.md) |
+| Higress | [`connectors/higress`](connectors/higress/README.md) | [`labs/lab_higress`](labs/lab_higress/README.md) |
 
-    GLLM["Guard LLM<br/><i>External Detection Guardrails</i><br/><i>runtime: Ollama; model: Qwen3Guard</i><br/><i>optional</i>"]
-    Alertflex["Alertflex<br/><i>optional</i>"]
-    OpenSearch["OpenSearch"]
+## Quick start
 
-    Proxy -->|gateway / proxy logs via Log file / Redis| Altprobe
-    Sbom -->|Scan report<br/>CycloneDX JSON| Altprobe
+Start with APISIX:
 
-    Altprobe <-->|analysis loop| GLLM
-    Altprobe <-->|inventory / policy<br/>A2A / MCP / REST / SBOM| Alertflex
-    Altprobe -->|Security findings / HTTP activities / Vulnerability findings<br/>OCSF| OpenSearch
-
-    classDef source fill:#ffffff,stroke:#333,stroke-width:1px
-    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef downstream fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef store fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef optional stroke-dasharray: 5 5
-
-    class Proxy,Sbom source
-    class Altprobe core
-    class GLLM downstream,optional
-    class Alertflex downstream,optional
-    class OpenSearch store
+```bash
+git clone https://github.com/olegzhr/altprobe.git
+cd altprobe/labs/lab_apisix
+docker compose up -d --build --wait --wait-timeout 600
 ```
 
-## Components
+Open:
 
-| Component | Layer | Role | Technology |
-|-----------|-------|------|------------|
-| AI Agents | Endpoint | Autonomous AI workloads generating requests/actions | — |
-| A2A / API / MCP Servers | Endpoint | MCP servers providing tools/context; A2A / REST endpoints | — |
-| API/AI Gateway | Security Control | Front for MCP, A2A, REST; inbound control & monitoring | Nginx (OpenResty) / APISIX / Envoy / Kong OSS / Traefik / Higress |
-| SBOM / Vulnerability Scanner | Security Control | Generates or scans SBOMs and reports software vulnerabilities | Trivy (CycloneDX JSON) |
-| Altprobe | Analytics & Storage | Collects, correlates, classifies, normalizes to OCSF; embedded WAF; Detection Guardrails (internal); Policy/PEP for gateway authorization | Custom: Collector / Correlator / Scanner |
-| Guard LLM *(optional)* | Analytics & Storage | External Detection Guardrails: prompt/response inspection, policy enforcement, verdicts | Ollama; Qwen3Guard |
-| Search & Analytics Store | Analytics & Storage | Search, dashboards, alerting on OCSF findings | OpenSearch |
-| Alertflex *(optional)* | Analytics & Storage | Inventory, tracing, and policy control | Alertflex |
+- Gateway: `http://localhost:9080`
+- OpenSearch: `http://localhost:9200`
+- Dashboards: `http://localhost:5601/app/dashboards`
+- OTEL traces: `http://localhost:5601/app/dashboards#/view/altprobe-otel-traces`
 
-## Example Screenshots
+Run the smoke tests:
 
-The quick-start labs provision OpenSearch Dashboards so you can inspect
-normalized OCSF events, agent correlations, and security timelines.
+```bash
+cd ../tests
+python3 -m pip install -r requirements.txt
+LAB_GATEWAY=apisix python3 run_tests.py smoke
+```
 
-### Altprobe - Agent Correlations
+Run one lab at a time; the labs share host ports. See [`labs/README.md`](labs/README.md)
+for the other gateways and [`labs/tests/README.md`](labs/tests/README.md) for all
+test categories.
 
-![Altprobe - Agent Correlations](img/agent_correlations.png)
+## Dashboards
 
-### MCP & Tool-Abuse Watchlist
+The labs provision OpenSearch Dashboards with:
 
-![MCP & Tool-Abuse Watchlist](img/mcp_tools.png)
+- AI / MCP attack signals and tool-abuse signals;
+- OCSF HTTP, API, DNS, TLS and network activity;
+- source-to-destination IP flows and top talkers;
+- MITRE ATT&CK / ATLAS timelines;
+- vulnerability findings from SBOM scans.
+
+### AI / MCP Attack Signals
+
+![AI / MCP Attack Signals](img/mcp_signals.png)
+
+### OCSF All Sources Overview
+
+![OCSF All Sources Overview](img/ocsf_sources.png)
+
+### Network Flows
+
+![Network Flows](img/network_flows.png)
 
 ### MITRE ATT&CK / ATLAS Timeline
 
-![Altprobe MITRE ATT&CK and ATLAS Dashboard](img/mitre_atlas.png)
+![MITRE ATT&CK / ATLAS](img/mitre_atlas.png)
 
 ### Vulnerability Findings
 
-![Altprobe Vulnerability findings](img/vulnr_findings.png)
+![Vulnerability Findings](img/vulnr_findings.png)
 
-## Why Use Altprobe
-
-- Monitor MCP, AI Gateway, and REST API traffic from a single collector.
-- Convert heterogeneous gateway and proxy events into OCSF.
-- Send normalized events to OpenSearch for search, dashboards, and alerting.
-- Correlate API and agent activity by host, route, authentication key or source
-  IP, and request data.
-- Start with a local lab, then adapt the same source and sink pattern for a
-  production gateway.
-
-## Repository Contents
-
-- `connectors/` - reusable gateway connectors (APISIX, Envoy, Higress, Kong OSS, OpenResty, Traefik) plus OpenSearch dashboards and templates.
-- `docker/` - base Docker assets for Altprobe.
-- `labs/` - public quick-start labs for OpenResty, APISIX, Envoy, Kong OSS, Traefik and Higress.
-- `img/` - screenshots used in this README.
-
-Gateway connectors collect telemetry; access control is enforced separately by
-the Altprobe Policy/PEP on protected routes. Altprobe identifies entities by the
-gateway-authenticated auth key (`auth:<gateway>:<consumer>`) when present, and by
-the observed source IP (`ip:<host>:<remote_addr>`) otherwise. Client identity
-headers are not used.
-
-## Requirements
-
-- Docker and Docker Compose for the labs.
-- Ubuntu 22.04 amd64 for the
-  Linux package install path.
-- Optional: OpenSearch or another supported sink for production deployments.
-
-## Install From Package
+## Install from package
 
 ```bash
 ALTPROBE_VERSION=1.0.2
 ALTPROBE_RELEASE_BASE_URL="https://github.com/olegzhr/altprobe/releases/download"
-ALTPROBE_SHA256=d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb
+ALTPROBE_SHA256=9d4106796e7bf16bbd9b789aae7c3c36742c4b2a82f69a5dd94b11a1f5b2e25a
 wget "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}_amd64.deb"
 echo "${ALTPROBE_SHA256}  altprobe_${ALTPROBE_VERSION}_amd64.deb" | sha256sum -c - \
   && sudo apt-get update \
@@ -179,81 +128,40 @@ echo "${ALTPROBE_SHA256}  altprobe_${ALTPROBE_VERSION}_amd64.deb" | sha256sum -c
   && sudo ldconfig
 ```
 
-APT installs the runtime libraries declared by this verified package. Docker
-images use the same installation method and check for missing shared libraries
-with `ldd` during the build. Ubuntu Jammy remains the supported base for this binary.
-
-The package includes OWASP CRS 4.29.0; Docker builds activate its configuration
-without downloading another CRS archive. 
-
-Update `/etc/altprobe/altprobe.yaml` for your sources and sinks.
-
-## Run Altprobe
+Ubuntu 22.04 amd64 is the supported package target. The package includes OWASP
+CRS; configure sources and sinks in `/etc/altprobe/altprobe.yaml`.
 
 ```bash
 altprobe-start
 altprobe-status
 altprobe-stop
-altprobe run
 ```
 
-## Quick-Start Labs
+## Repository layout
 
-The public labs are designed for safe local evaluation. They use harmless mock
-traffic only: MCP ping/tool calls, REST demo endpoints, and a local
-OpenAI-compatible response mock. They exercise integration behavior and do not
-measure detection accuracy against a comprehensive attack benchmark.
+- `connectors/` — gateway connectors and OpenSearch assets.
+- `labs/` — six self-contained gateway labs.
+- `ids-rules/` — Falco and Suricata rules for direct AI egress and HTTP inspection.
+- `docker/` — base Altprobe container assets.
+- `img/` — dashboard screenshots.
 
-Captured traffic is analyzed asynchronously. Access control uses the separate
-synchronous Policy listener on configured routes; a later finding cannot undo
-a request that has already reached its upstream. OpenResty's demo collects
-telemetry without enabling Policy.
+## Documentation
 
-### Quickest Path
+- [Gateway labs](labs/README.md)
+- [Connectors](connectors/README.md)
+- [OpenSearch assets](connectors/opensearch/README.md)
+- [IDS overlay](labs/ids/README.md)
+- [IDS rules](ids-rules/README.md)
+- [Lab tests](labs/tests/README.md)
 
-If you are not sure which gateway to try first, start with APISIX:
+## Requirements
 
-```bash
-git clone https://github.com/olegzhr/altprobe.git
-cd altprobe/labs/lab_apisix
-docker compose build --no-cache altprobe
-docker compose up -d --build --wait
-cd ../tests
-python3 -m pip install -r requirements.txt
-LAB_BASE=http://localhost:9080 python3 run_tests.py smoke
-```
-
-Expected result: the smoke suite reports every test passed (e.g. `N passed`). Then open OpenSearch
-Dashboards at `http://localhost:5601` and review the provisioned Altprobe
-dashboards.
-
-Use the same flow for any gateway:
-
-```bash
-cd <lab-directory>
-docker compose build --no-cache altprobe
-docker compose up -d --build --wait
-cd ../tests
-python3 -m pip install -r requirements.txt
-LAB_BASE=<gateway-url> python3 run_tests.py smoke
-```
-
-| Gateway | Lab directory | Gateway URL | Details |
-|---------|---------------|-------------|---------|
-| APISIX | `labs/lab_apisix` | `http://localhost:9080` | `labs/lab_apisix/README.md` |
-| Envoy | `labs/lab_envoy` | `http://localhost:9080` | `labs/lab_envoy/README.md` |
-| Nginx (OpenResty) | `labs/lab_openresty` | `http://localhost:9080` | `labs/lab_openresty/README.md` |
-| Kong OSS | `labs/lab_kong` | `http://localhost:9080` | `labs/lab_kong/README.md` |
-| Traefik Proxy OSS | `labs/lab_traefik` | `http://localhost:9080` | `labs/lab_traefik/README.md` |
-| Higress | `labs/lab_higress` | `http://localhost:9080` | `labs/lab_higress/README.md` |
-
-All labs expose OpenSearch at `http://localhost:9200` and OpenSearch Dashboards
-at `http://localhost:5601`.
+- Docker and Docker Compose for the labs.
+- Ubuntu 22.04 amd64 for the package install path.
+- OpenSearch or another supported sink for monitoring.
 
 ## License
 
-Altprobe collector binaries published in [GitHub Releases](https://github.com/olegzhr/altprobe/releases)
-and the original code and assets in this repository are licensed under the
-[Apache License, Version 2.0](LICENSE).
-
-Third-party components retain their respective licenses and notices.
+Altprobe binaries and the original code and assets in this repository are
+licensed under the [Apache License, Version 2.0](LICENSE). Third-party
+components retain their respective licenses and notices.

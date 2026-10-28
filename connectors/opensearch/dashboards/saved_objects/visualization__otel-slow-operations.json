@@ -1,0 +1,13 @@
+{
+  "attributes": {
+    "title": "Slow operations (average ms)",
+    "description": "Live OTLP observations; original resourceSpans remain in _source.",
+    "visState": "{\"title\": \"Slow operations (average ms)\", \"type\": \"table\", \"params\": {\"perPage\": 15, \"showTotal\": false}, \"aggs\": [{\"id\": \"1\", \"enabled\": true, \"type\": \"avg\", \"schema\": \"metric\", \"params\": {\"field\": \"span.duration_ms\"}}, {\"id\": \"2\", \"enabled\": true, \"type\": \"terms\", \"schema\": \"bucket\", \"params\": {\"field\": \"span.name\", \"size\": 15, \"order\": \"desc\", \"orderBy\": \"1\"}}]}",
+    "uiStateJSON": "{\"vis\": {\"colors\": {\"Count\": \"#00739d\", \"internal\": \"#00739d\", \"gateway-native\": \"#7db6c9\", \"altprobe\": \"#00739d\", \"apisix-native\": \"#7db6c9\"}}}",
+    "version": 1,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"index\": \"altprobe-otel-traces\", \"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

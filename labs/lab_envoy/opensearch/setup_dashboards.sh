@@ -4,23 +4,30 @@
 # Idempotent: each call uses overwrite=true, so reruns overwrite the same
 # objects rather than creating duplicates.
 #
-# Merged from the previous lab iteration via dashboards/:
-#   * index_patterns/*.json  - the OCSF class patterns (2002/2004/4002/6003)
-#     plus the combined ocsf-1.1.0-* pattern
-#   * saved_objects/*.json   - 15 dashboards (unified overview + SIEM Vega
-#     dashboards plus this lab's "Altprobe - Agent Correlations"), 112 Vega
-#     visualizations and 1 saved search
-#
-# The Vega visualizations query OpenSearch directly, so they need no
-# index-pattern field cache; Discover remains usable for ad-hoc browsing (run
-# opensearch/refresh_index_pattern_fields.sh after traffic exists if the cached
-# field list is empty on a fresh boot).
-#
-# OpenSearch only stores and displays the correlator's own findings (OCSF
-# 600301).
+# Includes gateway/API findings plus Falco and Suricata DNS, TLS, IP flows
+# and dedicated direct-AI correlation. No MaxMind or geographic maps.
 set -e
 
+# Resolve the data directory relative to this script so it works both when the
+# directory is mounted at /setup (labs) and when run in place (connectors).
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+DATA_DIR="${DATA_DIR:-$HERE}"
+
 OSD_URL="${OSD_URL:-http://opensearch-dashboards:5601}"
+
+# Authentication and TLS for a security-enabled OpenSearch Dashboards.
+#   OSD_USER / OSD_PWD   - Basic-auth credentials (empty = security disabled)
+#   OSD_INSECURE=true    - skip TLS certificate verification (self-signed cert)
+# Defaults fall back to the OpenSearch credentials when unset.
+OSD_USER="${OSD_USER:-${OS_USER:-}}"
+OSD_PWD="${OSD_PWD:-${OS_PWD:-}}"
+OSD_INSECURE="${OSD_INSECURE:-${OS_INSECURE:-false}}"
+
+# Wrap curl so every call carries the configured auth/TLS settings.
+curl() {
+  if [ "$OSD_INSECURE" = "true" ]; then set -- -k "$@"; fi
+  if [ -n "$OSD_USER" ]; then command curl -u "$OSD_USER:$OSD_PWD" "$@"; else command curl "$@"; fi
+}
 
 http_code() {
   # Numeric HTTP code only (000 on failure); never trips `set -e`.
@@ -60,8 +67,8 @@ put_object() {
     fi
     sleep 3
   done
+  case "$code" in 200|201) ;; *) cat /tmp/resp.json >&2; exit 1;; esac
   echo "[dashboards-init] PUT $1: HTTP $code"
-  cat /tmp/resp.json
   echo
 }
 
@@ -104,40 +111,38 @@ for oid in \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-distinct-src-ips" \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-network-flows" \
   "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-top-destinations-by-traffic-bytes" \
-  "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-traffic-volume-over-time"
+  "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-top-source-countries-geoip" \
+  "visualization/e230ce50-6c32-11f1-a88c-61f8c15a044f-traffic-volume-over-time" \
+  "dashboard/ocsf-network-activity-flows-geo" \
+  "visualization/ocsf-network-activity-flows-geo-network-flows" \
+  "visualization/ocsf-network-activity-flows-geo-distinct-src-ips" \
+  "visualization/ocsf-network-activity-flows-geo-distinct-dst-ips" \
+  "visualization/ocsf-network-activity-flows-geo-world-map" \
+  "visualization/ocsf-network-activity-flows-geo-ip-flows-sankey" \
+  "visualization/ocsf-network-activity-flows-geo-top-destinations-by-traffic-bytes" \
+  "visualization/ocsf-network-activity-flows-geo-top-source-countries-geoip" \
+  "visualization/ocsf-network-activity-flows-geo-traffic-volume-over-time"
 do
   delete_object "$oid"
 done
 
-purge_retired_classes() {
-  # Removes saved objects left over from the retired DNS/network/TLS activity
-  # dashboards. Objects are matched by title term, so no class numbers are
-  # needed here; a freshly provisioned lab has nothing to delete.
-  for term in dns network tls; do
-    for otype in dashboard visualization search index-pattern; do
-      ids=$(curl -s -m 30 "$OSD_URL/api/saved_objects/_find?type=$otype&search=$term&per_page=200&fields=id" \
-        | grep -o '"id":"[^"]*"' | sed 's/"id":"//; s/"$//')
-      for oid in $ids; do
-        delete_object "$otype/$oid"
-      done
-    done
-  done
-}
-
-purge_retired_classes
-
 echo "[dashboards-init] creating index patterns ..."
-for f in /setup/dashboards/index_patterns/*.json; do
+for f in "$DATA_DIR"/dashboards/index_patterns/*.json; do
   pid=$(basename "$f" .json)
   put_object "index-pattern/$pid" "$f"
 done
 
-echo "[dashboards-init] importing saved searches, visualizations and dashboards ..."
-for f in /setup/dashboards/saved_objects/*.json; do
-  base=$(basename "$f" .json)
-  otype=${base%%__*}
-  oid=${base#*__}
-  put_object "$otype/$oid" "$f"
+echo "[dashboards-init] importing saved searches, then visualizations, then dashboards ..."
+# Import in dependency order: the panels a dashboard references (searches and
+# visualizations) are created before the dashboards themselves, so a dashboard
+# opened mid-import never reports an unresolved panel reference.
+for otype in search visualization dashboard; do
+  for f in "$DATA_DIR"/dashboards/saved_objects/${otype}__*.json; do
+    [ -e "$f" ] || continue
+    base=$(basename "$f" .json)
+    oid=${base#*__}
+    put_object "$otype/$oid" "$f"
+  done
 done
 
 echo "[dashboards-init] done. Open http://localhost:5601/app/dashboards (search for \"OCSF\" / \"Altprobe\")."

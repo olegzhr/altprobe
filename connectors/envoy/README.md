@@ -1,53 +1,28 @@
-# Envoy -> Altprobe connector
+# Envoy → Altprobe
 
-Envoy captures request/response bodies and MCP protocol fields with a Lua HTTP
-filter into dynamic metadata, and the file access logger writes one JSON object
-per request to a log file. Altprobe reads that file through its proxy (file)
-source and normalizes the traffic into OCSF.
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `envoy.yaml` | Envoy bootstrap config with the Lua filter, JSON file access log and a placeholder `app` cluster. |
+Envoy's Lua HTTP filter captures request/response data and MCP fields into
+dynamic metadata; the JSON access logger writes one line per request. Altprobe
+reads the file through `SOURCES_PROXY_LOG`.
 
 ## Install
 
-1. Merge `envoy.yaml` into your Envoy bootstrap config (or mount it as the
-   bootstrap file).
-2. Point the cluster `app` (`address: BACKEND`, port `8000`) at your
-   application upstream.
-3. Ensure the access-log directory exists and is writable, e.g.
-   `mkdir -p /var/log/envoy && touch /var/log/envoy/access.log`.
-4. Namespace routes as needed: you can expose an `/ai-gateway/...` path that is
-   prefix-rewritten to the upstream's real endpoint so `api_guard` matches the
-   AI-gateway context. Add such a route when you want that behavior.
+1. Merge `envoy.yaml` into the Envoy bootstrap configuration.
+2. Point the `app` cluster at your upstream.
+3. Create a writable access-log directory, for example:
 
-## Altprobe side
+```bash
+mkdir -p /var/log/envoy
+touch /var/log/envoy/access.log
+```
 
-- Set `SOURCES_PROXY_LOG=/var/log/envoy/access.log` (must match `path` in the
-  access logger) and leave `SOURCES_PROXY_REDIS` empty.
+## Altprobe
 
-## Log fields
+```yaml
+sources:
+  proxy_log: /var/log/envoy/access.log
+  proxy_redis: ""
+```
 
-Populated by the access logger: `host_name`, `request_id`, `server_port`,
-`request_uri`, `request_method`, `http_version`, `remote_addr`, `remote_user`,
-`time_local`, `duration`, `status`, `body_bytes_sent`, `http_referer`,
-`http_host`, `http_user_agent`, `http_accept_language`, `http_accept_encoding`,
-`http_connection`.
-
-Populated by the Lua filter (via dynamic metadata): `request_body`,
-`response_body`, `mcp_session_id`, `mcp_method`, `http_content_type`,
-`http_content_length`.
-
-Identity: Altprobe uses an authenticated principal when the deployment supplies
-one (for example an ext_authz or mTLS consumer), and the observed source IP
-(`remote_addr`) otherwise. `mcp_session_id` is MCP protocol metadata, not
-identity. The filter does not read or forward client identity headers.
-
-## Notes
-
-- Bodies are capped (`max_body` 4096 request / 8192 response) so a single JSON
-  log line stays within Altprobe's line buffer.
-- Header values are read into plain strings before iterating body chunks: the
-  header map handle must not be used after body iteration.
+`max_body` caps captured bodies (4096 request / 8192 response). The filter does
+not trust client identity headers; identity comes from an authenticated
+principal when the deployment supplies one, otherwise from `remote_addr`.

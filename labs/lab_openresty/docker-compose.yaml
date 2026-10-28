@@ -1,287 +1,288 @@
-# OpenResty / APISIX / Envoy gateway labs: OpenResty lab
-"name": "lab_openresty"
-"networks":
-  "default":
-    "name": "lab_openresty_default"
-"services":
-  "altprobe":
-    "build":
-      "args":
-        "ALTPROBE_RELEASE_BASE_URL": "${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}"
-        "ALTPROBE_VERSION": "${ALTPROBE_VERSION:-1.0.2}"
-        "ALTPROBE_SHA256": "${ALTPROBE_SHA256:-d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb}"
-        "BUILD_IMAGE": "${ALTPROBE_BUILD_IMAGE:-ubuntu:jammy}"
-        "INSTALL_TRIVY": "${LAB_INSTALL_TRIVY:-false}"
-      "context": "../.."
-      "dockerfile": "labs/lab_openresty/altprobe/Dockerfile"
-    "container_name": "lab-openresty-altprobe"
-    "depends_on":
-      "opensearch":
-        "condition": "service_healthy"
-        "required": true
-      "opensearch-init":
-        "condition": "service_completed_successfully"
-        "required": true
-      "redis":
-        "condition": "service_healthy"
-        "required": true
-      "openresty":
-        "condition": "service_started"
-        "required": true
-    "environment":
-      - "ALTPROBE_ASSET_NAME=altprobe-openresty-lab"
-      - "ALTPROBE_HOST_NAME=altprobe-openresty-lab"
-      - "ALTPROBE_PROJECT_ID=demo-project"
-      - "ALTPROBE_LOG_DEBUG=true"
-      - "ALTPROBE_API_THRESHOLD=10"
-      - "ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset"
-      - "ALTPROBE_API_GUARD=/etc/altprobe/api_guard.yaml"
-      - "ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom-test.yaml"
-      - "CORRELATOR_DETECTION_ENABLED=true"
-      - "CORRELATOR_ALIAS_TTL=30"
-      - "CORRELATOR_ALERT_COOLDOWN=30"
-      - "CORRELATOR_ENTITY_TTL=90"
-      - "CORRELATOR_CLEANUP_INTERVAL=100"
-      - "TRACE_ENABLED=true"
-      - "POLICY_ENABLED=true"
-      - "POLICY_TYPE_AGENT=openresty"
-      - "POLICY_UNKNOWN_AGENT=deny"
-      - "POLICY_UNKNOWN_ENDPOINT=deny"
-      - "POLICY_INVENTORY_MAX_AGE_SEC=180"
-      - "POLICY_SIDECAR_HTTP_ENABLED=true"
-      - "POLICY_SIDECAR_HTTP_BIND_HOST=127.0.0.1"
-      - "POLICY_SIDECAR_HTTP_TRUSTED_PEERS=127.0.0.1,::1"
-      - "POLICY_INCIDENT_ENABLED=true"
-      - "POLICY_ALLOW_HTTP=true"
-      - "POLICY_SPOOL_DIR=/var/lib/altprobe/incidents"
-      - "SINKS_AF_TLS_VERIFY=${SINKS_AF_TLS_VERIFY:-false}"
-      - "SINKS_AF_TLS_CA_FILE=${SINKS_AF_TLS_CA_FILE:-}"
-      - "SINKS_OS_TLS_VERIFY=${SINKS_OS_TLS_VERIFY:-false}"
-      - "SINKS_OS_TLS_CA_FILE=${SINKS_OS_TLS_CA_FILE:-}"
-      - "SINKS_AF_URL=${ALERTFLEX_URL:-http://mock:8000}"
-      - "SINKS_AF_KEY=${ALERTFLEX_KEY:-test-key-not-validated-by-mock}"
-      - "SINKS_OS_URL=http://opensearch:9200"
-      - "SINKS_OS_USER=admin"
-      - "SINKS_OS_PWD=admin"
-      - "SINKS_LOKI_URL="
-      - "SOURCES_REDIS_HOST=redis"
-      - "SOURCES_REDIS_PORT=6379"
-      - "SOURCES_PROXY_REDIS=log_proxy"
-      - "SOURCES_PROXY_LOG="
-    "network_mode": "service:openresty"
-    "platform": "linux/amd64"
-    "restart": "unless-stopped"
-    "volumes":
-      -
-        "source": "incident-spool"
-        "target": "/var/lib/altprobe"
-        "type": "volume"
-        "volume": {}
-  "mock":
-    "build":
-      "context": "./mock"
-      "dockerfile": "Dockerfile"
-    "container_name": "lab-openresty-mock"
-    "environment":
-      - "LAB_GATEWAY=openresty"
-      - "LAB_PROBE_HOST=altprobe-openresty-lab"
-    "expose":
-      - "8000"
-    "healthcheck":
-      "interval": "3s"
-      "retries": 30
-      "test":
-        - "CMD"
-        - "python"
-        - "-c"
-        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status==200 else 1)"
-      "timeout": "3s"
-    "networks":
-      "default": null
-    "ports":
-      -
-        "mode": "ingress"
-        "protocol": "tcp"
-        "published": "8000"
-        "target": 8000
-    "restart": "unless-stopped"
-  "opensearch":
-    "container_name": "lab-openresty-opensearch"
-    "environment":
-      - "discovery.type=single-node"
-      - "DISABLE_SECURITY_PLUGIN=true"
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "bootstrap.memory_lock=true"
-    "healthcheck":
-      "interval": "5s"
-      "retries": 40
-      "test":
-        - "CMD-SHELL"
-        - "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|\"status\":\"yellow\"'"
-      "timeout": "5s"
-    "image": "opensearchproject/opensearch:2.19.1"
-    "networks":
-      "default": null
-    "ports":
-      -
-        "mode": "ingress"
-        "protocol": "tcp"
-        "published": "9200"
-        "target": 9200
-    "restart": "unless-stopped"
-    "ulimits":
-      "memlock":
-        "hard": -1
-        "soft": -1
-    "volumes":
-      -
-        "source": "opensearch-openresty-data"
-        "target": "/usr/share/opensearch/data"
-        "type": "volume"
-        "volume": {}
-  "opensearch-dashboards":
-    "container_name": "lab-openresty-opensearch-dashboards"
-    "depends_on":
-      "opensearch":
-        "condition": "service_healthy"
-        "required": true
-      "opensearch-dashboards-recover":
-        "condition": "service_completed_successfully"
-        "required": true
-    "environment":
-      - "OPENSEARCH_HOSTS=[\"http://opensearch:9200\"]"
-      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
-    "healthcheck":
-      "interval": "5s"
-      "retries": 60
-      "start_period": "30s"
-      "test":
-        - "CMD-SHELL"
-        - "curl -s -o /dev/null -w '%{http_code}' http://localhost:5601/api/status | grep -q 200"
-      "timeout": "5s"
-    "image": "opensearchproject/opensearch-dashboards:2.19.1"
-    "networks":
-      "default": null
-    "ports":
-      -
-        "mode": "ingress"
-        "protocol": "tcp"
-        "published": "5601"
-        "target": 5601
-    "restart": "unless-stopped"
-  "opensearch-dashboards-init":
-    "container_name": "lab-openresty-dashboards-init"
-    "depends_on":
-      "opensearch-dashboards":
-        "condition": "service_healthy"
-        "required": true
-      "opensearch-init":
-        "condition": "service_completed_successfully"
-        "required": true
-    "entrypoint":
-      - "sh"
-      - "/setup/setup_dashboards.sh"
-    "environment":
-      - "OSD_URL=http://opensearch-dashboards:5601"
-    "image": "curlimages/curl:8.10.1"
-    "networks":
-      "default": null
-    "restart": "no"
-    "volumes":
-      -
-        "bind":
-          "create_host_path": true
-        "read_only": true
-        "source": "./opensearch"
-        "target": "/setup"
-        "type": "bind"
-  "opensearch-dashboards-recover":
-    "container_name": "lab-openresty-osd-recover"
-    "depends_on":
-      "opensearch":
-        "condition": "service_healthy"
-        "required": true
-    "entrypoint":
-      - "sh"
-      - "/setup/recover_stale_kibana.sh"
-    "environment":
-      - "OS_URL=http://opensearch:9200"
-    "image": "curlimages/curl:8.10.1"
-    "networks":
-      "default": null
-    "restart": "no"
-    "volumes":
-      -
-        "bind":
-          "create_host_path": true
-        "read_only": true
-        "source": "./opensearch"
-        "target": "/setup"
-        "type": "bind"
-  "opensearch-init":
-    "container_name": "lab-openresty-opensearch-init"
-    "depends_on":
-      "opensearch":
-        "condition": "service_healthy"
-        "required": true
-    "entrypoint":
-      - "sh"
-      - "/setup/setup_templates.sh"
-    "environment":
-      - "OS_URL=http://opensearch:9200"
-    "image": "curlimages/curl:8.10.1"
-    "networks":
-      "default": null
-    "restart": "no"
-    "volumes":
-      -
-        "bind":
-          "create_host_path": true
-        "read_only": true
-        "source": "./opensearch"
-        "target": "/setup"
-        "type": "bind"
-  "redis":
-    "command":
-      - "redis-server"
-      - "--appendonly"
-      - "no"
-    "container_name": "lab-openresty-redis"
-    "healthcheck":
-      "interval": "2s"
-      "retries": 30
-      "test":
-        - "CMD"
-        - "redis-cli"
-        - "ping"
-      "timeout": "2s"
-    "image": "redis:7-alpine"
-    "networks":
-      "default": null
-    "ports":
-      -
-        "mode": "ingress"
-        "protocol": "tcp"
-        "published": "16379"
-        "target": 6379
-    "restart": "unless-stopped"
-  "openresty":
-    "build":
-      "context": "./openresty"
-    "container_name": "lab-openresty-gateway"
-    "depends_on":
-      "mock":
-        "condition": "service_healthy"
-      "redis":
-        "condition": "service_healthy"
-    "ports":
-      -
-        "target": 9080
-        "published": "9080"
-        "protocol": "tcp"
-    "restart": "unless-stopped"
-"volumes":
-  "incident-spool":
-    "name": "lab_openresty_incident-spool"
-  "opensearch-openresty-data":
-    "name": "lab_openresty_opensearch-openresty-data"
+name: lab_openresty
+networks:
+  default:
+    name: lab_openresty_default
+services:
+  altprobe:
+    build:
+      args:
+        ALTPROBE_RELEASE_BASE_URL: ${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}
+        ALTPROBE_VERSION: ${ALTPROBE_VERSION:-1.0.2}
+        ALTPROBE_SHA256: ${ALTPROBE_SHA256:-9d4106796e7bf16bbd9b789aae7c3c36742c4b2a82f69a5dd94b11a1f5b2e25a}
+        BUILD_IMAGE: ${ALTPROBE_BUILD_IMAGE:-ubuntu:jammy}
+        INSTALL_TRIVY: ${LAB_INSTALL_TRIVY:-false}
+        ALTPROBE_PACKAGE_URL: ${ALTPROBE_PACKAGE_URL:-}
+      context: ../..
+      dockerfile: labs/lab_openresty/altprobe/Dockerfile
+    container_name: lab-openresty-altprobe
+    depends_on:
+      opensearch:
+        condition: service_healthy
+        required: true
+      opensearch-init:
+        condition: service_completed_successfully
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+      openresty:
+        condition: service_started
+        required: true
+      opensearch-dashboards-init:
+        condition: service_completed_successfully
+    environment:
+      ALTPROBE_ASSET_NAME: altprobe-openresty-lab
+      ALTPROBE_HOST_NAME: altprobe-openresty-lab
+      ALTPROBE_PROJECT_ID: demo-project
+      ALTPROBE_LOG_DEBUG: 'true'
+      ALTPROBE_RULESET_PATH: /etc/altprobe/coreruleset
+      ALTPROBE_API_GUARD: /etc/altprobe/api_guard.yaml
+      ALTPROBE_SBOM_CONFIG: /etc/altprobe/sbom-test.yaml
+      CORRELATOR_DETECTION_ENABLED: 'true'
+      CORRELATOR_ALIAS_TTL: '30'
+      CORRELATOR_ALERT_COOLDOWN: '30'
+      CORRELATOR_ENTITY_TTL: '90'
+      CORRELATOR_CLEANUP_INTERVAL: '100'
+      SINKS_AF_TLS_VERIFY: ${SINKS_AF_TLS_VERIFY:-false}
+      SINKS_AF_TLS_CA_FILE: ${SINKS_AF_TLS_CA_FILE:-}
+      SINKS_OS_TLS_VERIFY: ${SINKS_OS_TLS_VERIFY:-false}
+      SINKS_OS_TLS_CA_FILE: ${SINKS_OS_TLS_CA_FILE:-}
+      SINKS_AF_URL: ${ALERTFLEX_URL:-http://mock:8000}
+      SINKS_AF_KEY: ${ALERTFLEX_KEY:-test-key-not-validated-by-mock}
+      SINKS_OS_URL: http://opensearch:9200
+      SINKS_OS_USER: admin
+      SINKS_OS_PWD: admin
+      SINKS_LOKI_URL: ''
+      SOURCES_REDIS_HOST: redis
+      SOURCES_REDIS_PORT: '6379'
+      SOURCES_PROXY_REDIS: log_proxy
+      SOURCES_PROXY_LOG: ''
+      TRACE_MODE: internal
+      SINKS_OS_TYPES: OCSF,HTTP,OTEL
+      SINKS_TRACE_SPOOL_DIR: /var/lib/altprobe/traces
+    network_mode: service:openresty
+    platform: linux/amd64
+    restart: unless-stopped
+    volumes:
+    - source: trace-spool
+      target: /var/lib/altprobe
+      type: volume
+      volume: {}
+    image: altprobe-lab-openresty:local
+  mock:
+    build:
+      context: ./mock
+      dockerfile: Dockerfile
+    container_name: lab-openresty-mock
+    environment:
+    - LAB_GATEWAY=openresty
+    - LAB_PROBE_HOST=altprobe-openresty-lab
+    expose:
+    - '8000'
+    healthcheck:
+      interval: 3s
+      retries: 30
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status==200
+        else 1)
+      timeout: 3s
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      protocol: tcp
+      published: '8000'
+      target: 8000
+      host_ip: 127.0.0.1
+    restart: unless-stopped
+  opensearch:
+    container_name: lab-openresty-opensearch
+    environment:
+    - discovery.type=single-node
+    - DISABLE_SECURITY_PLUGIN=true
+    - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    - bootstrap.memory_lock=true
+    healthcheck:
+      interval: 5s
+      retries: 40
+      test:
+      - CMD-SHELL
+      - curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green\|"status":"yellow"'
+      timeout: 5s
+    image: opensearchproject/opensearch:2.19.1
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      protocol: tcp
+      published: '9200'
+      target: 9200
+      host_ip: 127.0.0.1
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        hard: -1
+        soft: -1
+    volumes:
+    - source: opensearch-openresty-data
+      target: /usr/share/opensearch/data
+      type: volume
+      volume: {}
+  opensearch-dashboards:
+    container_name: lab-openresty-opensearch-dashboards
+    depends_on:
+      opensearch:
+        condition: service_healthy
+        required: true
+      opensearch-dashboards-recover:
+        condition: service_completed_successfully
+        required: true
+    environment:
+    - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+    - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    healthcheck:
+      interval: 5s
+      retries: 60
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - curl -s -o /dev/null -w '%{http_code}' http://localhost:5601/api/status | grep -q 200
+      timeout: 5s
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    networks:
+      default: null
+    restart: unless-stopped
+  opensearch-dashboards-init:
+    container_name: lab-openresty-dashboards-init
+    depends_on:
+      opensearch-dashboards:
+        condition: service_healthy
+        required: true
+      opensearch-init:
+        condition: service_completed_successfully
+        required: true
+    entrypoint:
+    - sh
+    - /setup/setup_dashboards.sh
+    environment:
+    - OSD_URL=http://opensearch-dashboards:5601
+    image: curlimages/curl:8.10.1
+    networks:
+      default: null
+    restart: 'no'
+    volumes:
+    - bind:
+        create_host_path: true
+      read_only: true
+      source: ./opensearch
+      target: /setup
+      type: bind
+  opensearch-dashboards-recover:
+    container_name: lab-openresty-osd-recover
+    depends_on:
+      opensearch:
+        condition: service_healthy
+        required: true
+    entrypoint:
+    - sh
+    - /setup/recover_stale_kibana.sh
+    environment:
+    - OS_URL=http://opensearch:9200
+    image: curlimages/curl:8.10.1
+    networks:
+      default: null
+    restart: 'no'
+    volumes:
+    - bind:
+        create_host_path: true
+      read_only: true
+      source: ./opensearch
+      target: /setup
+      type: bind
+  opensearch-init:
+    container_name: lab-openresty-opensearch-init
+    depends_on:
+      opensearch:
+        condition: service_healthy
+        required: true
+    entrypoint:
+    - sh
+    - /setup/setup_templates.sh
+    environment:
+    - OS_URL=http://opensearch:9200
+    image: curlimages/curl:8.10.1
+    networks:
+      default: null
+    restart: 'no'
+    volumes:
+    - bind:
+        create_host_path: true
+      read_only: true
+      source: ./opensearch
+      target: /setup
+      type: bind
+  redis:
+    command:
+    - redis-server
+    - --appendonly
+    - 'no'
+    container_name: lab-openresty-redis
+    healthcheck:
+      interval: 2s
+      retries: 30
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      timeout: 2s
+    image: redis:7-alpine
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      protocol: tcp
+      published: '16379'
+      target: 6379
+      host_ip: 127.0.0.1
+    restart: unless-stopped
+  openresty:
+    build:
+      context: ./openresty
+    container_name: lab-openresty-gateway
+    depends_on:
+      mock:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+    - target: 9080
+      published: '9080'
+      protocol: tcp
+      host_ip: 127.0.0.1
+    restart: unless-stopped
+  dashboard-ui:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      opensearch-dashboards:
+        condition: service_healthy
+    ports:
+    - 127.0.0.1:5601:5601
+    volumes:
+    - ./opensearch/ui/default.conf:/etc/nginx/conf.d/default.conf:ro
+    - ./opensearch/ui:/usr/share/nginx/html/altprobe-theme:ro
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:5601/api/status
+      interval: 5s
+      timeout: 3s
+      retries: 30
+volumes:
+  opensearch-openresty-data:
+    name: lab_openresty_opensearch-openresty-data
+  trace-spool:
+    name: lab_openresty_incident-spool

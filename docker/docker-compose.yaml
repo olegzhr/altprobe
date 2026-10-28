@@ -5,7 +5,7 @@ services:
       args:
         ALTPROBE_VERSION: ${ALTPROBE_VERSION:-1.0.2}
         ALTPROBE_RELEASE_BASE_URL: ${ALTPROBE_RELEASE_BASE_URL:-https://github.com/olegzhr/altprobe/releases/download}
-        ALTPROBE_SHA256: ${ALTPROBE_SHA256:-d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb}
+        ALTPROBE_SHA256: ${ALTPROBE_SHA256:-9d4106796e7bf16bbd9b789aae7c3c36742c4b2a82f69a5dd94b11a1f5b2e25a}
     platform: linux/amd64
     image: altprobe/altprobe:latest
     container_name: altprobe
@@ -15,7 +15,6 @@ services:
       - ALTPROBE_HOST_NAME=my-server
       - ALTPROBE_PROJECT_ID=demo-project
       - ALTPROBE_LOG_DEBUG=true
-      - ALTPROBE_API_THRESHOLD=10
       - ALTPROBE_API_GUARD=/etc/altprobe/api_guard.yaml
       - ALTPROBE_RULESET_PATH=/etc/altprobe/coreruleset
       - ALTPROBE_SCORING_WEIGHTS=/etc/altprobe/scoring_weights.yaml
@@ -47,6 +46,10 @@ services:
       - SOURCES_REDIS_HOST=redis
       - SOURCES_REDIS_PORT=6379
       - SOURCES_PROXY_REDIS=log_proxy
+      - SOURCES_FALCO_LOG=${SOURCES_FALCO_LOG:-}
+      - SOURCES_FALCO_REDIS=${SOURCES_FALCO_REDIS:-}
+      - SOURCES_SURICATA_LOG=${SOURCES_SURICATA_LOG:-}
+      - SOURCES_SURICATA_REDIS=${SOURCES_SURICATA_REDIS:-}
       # Altprobe reads a log file instead of Redis when this is non-empty.
       - SOURCES_PROXY_LOG=
 

@@ -1,0 +1,26 @@
+{
+  "attributes": {
+    "title": "Direct AI connections - evidence",
+    "columns": [
+      "time",
+      "outbound_ai.domain",
+      "src_endpoint.ip",
+      "dst_endpoint.ip",
+      "process.name",
+      "process.pid",
+      "outbound_ai.namespace",
+      "outbound_ai.pod_name",
+      "outbound_ai.match_method"
+    ],
+    "sort": [
+      [
+        "time",
+        "desc"
+      ]
+    ],
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"index\": \"ocsf-6003-api-activity\", \"query\": {\"query\": \"outbound_ai.bypass:true\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

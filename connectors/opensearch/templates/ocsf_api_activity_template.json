@@ -164,22 +164,6 @@
             },
             "type_id": {
               "type": "long"
-            },
-            "location": {
-              "properties": {
-                "city": {
-                  "type": "keyword"
-                },
-                "country": {
-                  "type": "keyword"
-                },
-                "desc": {
-                  "type": "keyword"
-                },
-                "coordinates": {
-                  "type": "geo_point"
-                }
-              }
             }
           }
         },
@@ -199,22 +183,6 @@
             },
             "type_id": {
               "type": "long"
-            },
-            "location": {
-              "properties": {
-                "city": {
-                  "type": "keyword"
-                },
-                "country": {
-                  "type": "keyword"
-                },
-                "desc": {
-                  "type": "keyword"
-                },
-                "coordinates": {
-                  "type": "geo_point"
-                }
-              }
             }
           }
         },
@@ -613,6 +581,57 @@
                   }
                 }
               }
+            }
+          }
+        },
+        "outbound_ai": {
+          "properties": {
+            "bypass": {
+              "type": "boolean"
+            },
+            "domain": {
+              "type": "keyword"
+            },
+            "match_method": {
+              "type": "keyword"
+            },
+            "flow_id": {
+              "type": "keyword"
+            },
+            "namespace": {
+              "type": "keyword"
+            },
+            "pod_name": {
+              "type": "keyword"
+            },
+            "pod_id": {
+              "type": "keyword"
+            },
+            "container_id": {
+              "type": "keyword"
+            },
+            "container_name": {
+              "type": "keyword"
+            },
+            "provider_evidence": {
+              "type": "keyword"
+            },
+            "falco_rule": {
+              "type": "keyword"
+            },
+            "network_rule": {
+              "type": "keyword"
+            },
+            "runtime_time": {
+              "type": "date",
+              "format": "epoch_millis"
+            },
+            "network_time": {
+              "type": "date",
+              "format": "epoch_millis"
+            },
+            "delta_ms": {
+              "type": "long"
             }
           }
         }

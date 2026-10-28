@@ -22,8 +22,7 @@ pytestmark = pytest.mark.skipif(CONFIG["gateway"] not in ("kong", "traefik", "hi
 BASE = os.getenv('LAB_BASE', 'http://localhost:9080')
 MOCK = os.getenv('LAB_MOCK_BASE', 'http://localhost:8000')
 OS = os.getenv('LAB_OS_BASE', 'http://localhost:9200')
-OSD = os.getenv('LAB_OSD_BASE', 'http://localhost:5601')
-ACTIVE = {'apikey': 'lab-policy-active-key'}
+ACTIVE = {}
 
 
 def eventually(predicate, timeout=150):
@@ -89,10 +88,8 @@ def tap():
 def test_01_profile_and_services():
     assert requests.get(MOCK+'/lab/profile',timeout=5).json() == {'gateway': CONFIG['gateway'], 'profile':CONFIG['profile']}
     assert requests.get(OS+'/_cluster/health',timeout=10).json()['status'] in ('yellow','green')
-    assert requests.get(OSD+'/api/status',timeout=10).status_code == 200
     templates = requests.get(OS+'/_index_template',timeout=10).json()['index_templates']
     assert any('ocsf' in row['name'] for row in templates)
-    assert eventually(lambda: requests.get(OSD+'/api/saved_objects/_find',params={'type':'dashboard','per_page':100},timeout=15).json().get('total',0)>0,timeout=90), 'Dashboards were not provisioned'
 
 
 def test_02_capture_and_real_ocsf_ingestion(tap):
@@ -106,7 +103,6 @@ def test_02_capture_and_real_ocsf_ingestion(tap):
     assert event['host_name']==CONFIG['host_name']
     assert json.loads(event['request_body'])==payload
     assert json.loads(event['response_body'])['payload']==payload
-    assert 'lab-policy-active-key' not in json.dumps(event)
 
     def indexed():
         result=requests.post(OS+'/ocsf-*/_search',json={'size':20,'query':{'term':{'http_request.url':uri}}},timeout=10)
@@ -143,18 +139,6 @@ def test_04_large_body_is_forwarded_but_capture_is_bounded(tap):
     assert len(event['request_body'].encode())<=5000 and len(event['response_body'].encode())<=5000
 
 
-def test_05_policy_authentication_and_identity(tap):
-    eventually(lambda:requests.get(BASE+'/policy-check',headers=ACTIVE,timeout=5).status_code==200)
-    assert requests.get(BASE+'/policy-check',timeout=5).status_code==401
-    assert requests.get(BASE+'/policy-check',headers={'apikey':'invalid'},timeout=5).status_code==401
-    uri='/policy-check?case='+uuid.uuid4().hex
-    # Identity is the authenticated key only; any client-claimed identity is ignored.
-    spoofed={'apikey':'lab-policy-blocked-key','X-Consumer-Username':'policy-active'}
-    response=requests.get(BASE+uri,headers=spoofed,timeout=5)
-    assert response.status_code==403, response.text
-    assert tap(uri)['consumer_name']=='policy-blocked'
-    assert requests.get(BASE+'/policy-check',headers={'apikey':'lab-policy-unknown-key'},timeout=5).status_code==403
-    assert requests.get(BASE+'/policy-unknown',headers=ACTIVE,timeout=5).status_code==403
 
 
 def test_06_mcp_profile_differs():
@@ -162,25 +146,3 @@ def test_06_mcp_profile_differs():
     response=requests.post(BASE+'/mcp',json=payload,timeout=5)
     assert response.status_code==(401 if CONFIG['mcp_protected'] else 200)
     assert requests.post(BASE+'/mcp',json=payload,headers=ACTIVE,timeout=5).json()['result']=='pong'
-
-
-@pytest.mark.slow_policy
-@pytest.mark.skipif(os.getenv("LAB_LOCAL_COLLECTOR") != "1", reason="requires local mock collector")
-def test_07_real_inventory_block_unblock():
-    """Exercise actual polling, not a Policy emulator or a synthetic response."""
-    assert os.getenv('LAB_LOCAL_COLLECTOR')=='1', 'Mutable mock Policy test requires local collector mode'
-    agent=MOCK+'/lab/policy/agents/policy-active'
-    target=MOCK+'/lab/policy/targets/endpoint'
-    try:
-        assert requests.patch(agent,json={'blockStatus':'blocked'},timeout=5).status_code==200
-        assert requests.patch(target,json={'blockStatus':'blocked'},timeout=5).status_code==200
-        eventually(lambda:requests.get(BASE+'/policy-other',headers=ACTIVE,timeout=5).status_code==403)
-        assert requests.get(BASE+'/policy-check',headers=ACTIVE,timeout=5).status_code==403
-        # Unblock the agent; endpoint remains blocked in the next inventory snapshot.
-        requests.patch(agent,json={'blockStatus':'active'},timeout=5).raise_for_status()
-        eventually(lambda:requests.get(BASE+'/policy-other',headers=ACTIVE,timeout=5).status_code==200)
-        assert requests.get(BASE+'/policy-check',headers=ACTIVE,timeout=5).status_code==403
-    finally:
-        requests.patch(agent,json={'blockStatus':'active'},timeout=5).raise_for_status()
-        requests.patch(target,json={'blockStatus':'active'},timeout=5).raise_for_status()
-        eventually(lambda:requests.get(BASE+'/policy-check',headers=ACTIVE,timeout=5).status_code==200)

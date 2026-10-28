@@ -3,7 +3,7 @@ FROM ubuntu:jammy
 # Altprobe version to install. Override at build time with:
 #   --build-arg ALTPROBE_VERSION=1.0.2
 ARG ALTPROBE_VERSION=1.0.2
-ARG ALTPROBE_SHA256=d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb
+ARG ALTPROBE_SHA256=9d4106796e7bf16bbd9b789aae7c3c36742c4b2a82f69a5dd94b11a1f5b2e25a
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
 
 # Install runtime libraries from the verified package's Depends metadata.

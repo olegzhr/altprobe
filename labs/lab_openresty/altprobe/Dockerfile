@@ -1,15 +1,17 @@
 ARG BUILD_IMAGE=ubuntu:jammy
+
 FROM ${BUILD_IMAGE}
 USER root
 ARG ALTPROBE_VERSION=1.0.2
-ARG ALTPROBE_SHA256=d68fc81bce31321bf428444a4fa02868b0ea68e4e34b32c7b9a2e7fb8f91f3bb
+ARG ALTPROBE_SHA256=9d4106796e7bf16bbd9b789aae7c3c36742c4b2a82f69a5dd94b11a1f5b2e25a
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
+ARG ALTPROBE_PACKAGE_URL=
 
 # Install runtime libraries from the verified package's Depends metadata.
 # The published amd64 package targets Ubuntu 22.04 (Jammy).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget ca-certificates python3 \
- && wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}_amd64.deb" -O /tmp/altprobe.deb \
+ && wget -q "${ALTPROBE_PACKAGE_URL:-${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}_amd64.deb}" -O /tmp/altprobe.deb \
  && echo "${ALTPROBE_SHA256}  /tmp/altprobe.deb" | sha256sum -c - \
  && apt-get install -y --no-install-recommends /tmp/altprobe.deb \
  && ldconfig \
@@ -19,9 +21,10 @@ RUN apt-get update \
  && rm -f /tmp/altprobe.deb /tmp/altprobe-ldd.txt \
  && rm -rf /var/lib/apt/lists/*
 
-# Refuse an old package that lacks the TLS client settings this lab uses.
-RUN grep -q 'af_tls_verify:' /etc/altprobe/altprobe.yaml \
- && grep -q 'os_tls_verify:' /etc/altprobe/altprobe.yaml
+# Require the current internal/external OTLP collector and selectable OS streams.
+RUN grep -q 'trace_mode:' /etc/altprobe/altprobe.yaml \
+ && grep -q 'os_types:' /etc/altprobe/altprobe.yaml \
+ && grep -q 'trusted_peers:' /etc/altprobe/altprobe.yaml
 
 # Activate CRS defaults and omit the ModSecurity-3.0.6-incompatible rule file.
 RUN cp /etc/altprobe/coreruleset/crs-setup.conf.example /etc/altprobe/coreruleset/crs-setup.conf \

@@ -13,6 +13,19 @@ set -e
 OS_URL="${OS_URL:-http://opensearch:9200}"
 KIBANA_INDEX="${KIBANA_INDEX:-.kibana_1}"
 
+# Authentication and TLS for a security-enabled OpenSearch.
+#   OS_USER / OS_PWD     - Basic-auth credentials (empty = security plugin off)
+#   OS_INSECURE=true     - skip TLS certificate verification (self-signed cert)
+OS_USER="${OS_USER:-}"
+OS_PWD="${OS_PWD:-}"
+OS_INSECURE="${OS_INSECURE:-false}"
+
+# Wrap curl so every call carries the configured auth/TLS settings.
+curl() {
+  if [ "$OS_INSECURE" = "true" ]; then set -- -k "$@"; fi
+  if [ -n "$OS_USER" ]; then command curl -u "$OS_USER:$OS_PWD" "$@"; else command curl "$@"; fi
+}
+
 echo "[osd-recover] waiting for OpenSearch at $OS_URL ..."
 i=0
 while :; do

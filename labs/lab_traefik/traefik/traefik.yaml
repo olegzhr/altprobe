@@ -10,3 +10,9 @@ experimental:
       moduleName: github.com/altprobe/traefik-altprobe
 log:
   level: INFO
+tracing:
+  serviceName: traefik-native
+  sampleRate: 1.0
+  otlp:
+    http:
+      endpoint: http://127.0.0.1:4318/v1/traces

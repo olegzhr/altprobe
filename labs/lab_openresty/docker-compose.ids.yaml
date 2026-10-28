@@ -1,0 +1,30 @@
+# Optional Falco/Suricata replay; the image installs the collector package from GitHub Releases.
+services:
+  altprobe:
+    environment:
+      SOURCES_REDIS_HOST: redis
+      SOURCES_REDIS_PORT: '6379'
+      SOURCES_FALCO_REDIS: log_falco
+      SOURCES_SURICATA_REDIS: log_suri
+      SOURCES_FALCO_LOG: ''
+      SOURCES_SURICATA_LOG: ''
+      CORRELATOR_OUTBOUND_ENABLED: 'true'
+      CORRELATOR_OUTBOUND_AI_NAMESPACES: ai,ai-agents
+      CORRELATOR_OUTBOUND_AI_CONTAINERS: lab-ai-agent
+      CORRELATOR_OUTBOUND_PROXY_NAMESPACES: ai-gateway
+      CORRELATOR_OUTBOUND_PROXY_CONTAINERS: lab-ai-proxy
+  ids-replay:
+    image: python:3.12-alpine
+    profiles:
+    - ids-test
+    volumes:
+    - ../ids:/ids:ro
+    entrypoint:
+    - python
+    - /ids/replay.py
+    environment:
+      REDIS_HOST: redis
+      OS_URL: http://opensearch:9200
+    depends_on:
+      altprobe:
+        condition: service_started

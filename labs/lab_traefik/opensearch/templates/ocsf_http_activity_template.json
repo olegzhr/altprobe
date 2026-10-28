@@ -102,22 +102,6 @@
             },
             "type_id": {
               "type": "long"
-            },
-            "location": {
-              "properties": {
-                "city": {
-                  "type": "keyword"
-                },
-                "country": {
-                  "type": "keyword"
-                },
-                "desc": {
-                  "type": "keyword"
-                },
-                "coordinates": {
-                  "type": "geo_point"
-                }
-              }
             }
           }
         },
@@ -137,22 +121,6 @@
             },
             "type_id": {
               "type": "long"
-            },
-            "location": {
-              "properties": {
-                "city": {
-                  "type": "keyword"
-                },
-                "country": {
-                  "type": "keyword"
-                },
-                "desc": {
-                  "type": "keyword"
-                },
-                "coordinates": {
-                  "type": "geo_point"
-                }
-              }
             }
           }
         },
