@@ -3,15 +3,11 @@
 Altprobe is a free collector for AI, MCP, REST API and gateway traffic. It
 collects events from the gateways you already run, normalizes them to OCSF, and
 sends security events, OTEL traces and agent software vulnerability findings to
-OpenSearch.
+OpenSearch. Alertflex is optional. Add Alertflex for MCP/API inventory, traces, 
+incidents, AI explanations and access management.
 
-Alertflex is optional. Use Altprobe with OpenSearch for monitoring, or add
-Alertflex for MCP/API inventory, traces, incidents, AI explanations and access
-management.
-
-**Altprobe collects. Alertflex helps you understand.** Search events in
-OpenSearch; use Alertflex to investigate traces and incidents, get AI
-explanations and manage access.
+Search events in OpenSearch; use Alertflex to investigate traces and incidents, 
+get AI explanations and manage access.
 
 ## What Altprobe provides
 
