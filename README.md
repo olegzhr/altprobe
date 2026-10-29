@@ -21,10 +21,6 @@ get AI explanations and manage access.
   OTLP sources.
 - Six ready-to-run gateway labs with tests and sample traffic, plus 70+ IDS rules.
 
-Access management is separate from monitoring. When enabled, the gateway applies
-Altprobe Policy or a compatible OPA decision; access changes take effect when
-settings refresh.
-
 ## How it works
 
 ```mermaid
