@@ -33,25 +33,25 @@ docker compose -f labs/lab_deepseek_harness/docker-compose.yaml down
 | `opensearch` | `otel-v1-traces-*` + OCSF, `127.0.0.1:19200` |
 | `opensearch-dashboards` | UI, `127.0.0.1:5601` |
 
-## OTel
+## OTel: traces + logs одновременно
 
-Плагин LoongSuite строит GenAI-трейсы по OTel semconv и отправляет OTLP/HTTP:
+- **Traces** — плагин LoongSuite: `OTEL_SERVICE_NAME=deepseek-harness`,
+  `OTEL_EXPORTER_OTLP_ENDPOINT=http://altprobe:4318`, иерархия
+  `ENTRY → AGENT → STEP → LLM/TOOL`, документы в `otel-v1-traces-*`.
+- **Logs** — `run.sh` сохраняет `dsh --json` в `dsh-events.jsonl` и `stderr` в
+  `dsh-run.log`, а `otel_push.js` отправляет оба потока в `/v1/logs`
+  (`event.name` = тип события / `dsh.log`), документы в `otel-logs-*`.
+- Метрики плагин тоже шлёт на `/v1/metrics`; Altprobe их не принимает — это
+  ожидаемые ошибки экспортёра, на traces/logs не влияет.
 
-- `OTEL_SERVICE_NAME=deepseek-harness`
-- `OTEL_EXPORTER_OTLP_ENDPOINT=http://altprobe:4318`
-- иерархия спанов: `ENTRY` → `AGENT` → `STEP` → `LLM`/`TOOL`
-- метрики `gen_ai.client.token.usage`/`operation.duration` плагин тоже шлёт на
-  `/v1/metrics`; Altprobe их не принимает, это ожидаемые ошибки экспортёра.
-
-Проверка:
+Проверка (значения с реального прогона):
 
 ```bash
-curl -s 'http://127.0.0.1:19200/otel-v1-traces-*/_count'
-curl -s 'http://127.0.0.1:19200/otel-v1-traces-*/_search?size=3&pretty'
+curl -s 'http://127.0.0.1:19200/otel-v1-traces-*/_count'   # 21
+curl -s 'http://127.0.0.1:19200/otel-logs-*/_count'       # 4
 ```
 
-Ожидаемо: документы со спанами `invoke_agent deepseek-harness`,
-`chat deepseek-flash`, `react step`.
+В логе агента: `[lab] OTLP logs: 200 (11 records)`.
 
 ## Почему LoongSuite, а не официальный плагин
 

@@ -13,9 +13,11 @@ su -s /bin/bash dsh -c "HOME=/home/dsh DSH_HOME=$DSH_HOME dsh plugin --profile h
   > "$HOME/otel-install.log" 2>&1 || true
 tail -3 "$HOME/otel-install.log" 2>/dev/null || true
 
-echo "[lab] running dsh headless with OTel traces"
-su -s /bin/bash dsh -c "HOME=/home/dsh DSH_HOME=$DSH_HOME DEEPSEEK_API_KEY=mock DEEPSEEK_BASE_URL=http://mock:4010 OTEL_SERVICE_NAME=deepseek-harness OTEL_EXPORTER_OTLP_ENDPOINT=http://altprobe:4318 dsh --profile headless '$TASK'" \
-  2>&1 | tee "$HOME/dsh-run.log"
+echo "[lab] running dsh headless: LoongSuite traces + --json logs"
+su -s /bin/bash dsh -c "HOME=/home/dsh DSH_HOME=$DSH_HOME DEEPSEEK_API_KEY=mock DEEPSEEK_BASE_URL=http://mock:4010 OTEL_SERVICE_NAME=deepseek-harness OTEL_EXPORTER_OTLP_ENDPOINT=http://altprobe:4318 dsh --profile headless --json '$TASK'" \
+  > "$HOME/dsh-events.jsonl" 2> "$HOME/dsh-run.log" || true
+tail -5 "$HOME/dsh-run.log" 2>/dev/null || true
+node /opt/lab/otel_push.js "$HOME/dsh-events.jsonl" "$HOME/dsh-run.log" || true
 
 # Keep the container alive so the lab stays up for inspection.
 exec sleep infinity
