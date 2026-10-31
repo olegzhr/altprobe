@@ -12,7 +12,8 @@ wire_api = "responses"
 [otel]
 environment = "dev"
 log_user_prompt = false
-exporter = { otlp-http = { endpoint = "http://altprobe:4318/v1/logs", protocol = "json" } }
+exporter = { otlp-http = { endpoint = "http://altprobe:4318/v1/logs", protocol = "binary" } }
+
 
 
 
