@@ -10,7 +10,13 @@
       "process.pid",
       "outbound_ai.namespace",
       "outbound_ai.pod_name",
-      "outbound_ai.match_method"
+      "outbound_ai.match_method",
+      "outbound_ai.agent_name",
+      "outbound_ai.agent_session_id",
+      "outbound_ai.agent_tool",
+      "outbound_ai.agent_decision",
+      "outbound_ai.agent_command",
+      "outbound_ai.agent_match"
     ],
     "sort": [
       [

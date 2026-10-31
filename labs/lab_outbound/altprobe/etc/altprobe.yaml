@@ -50,25 +50,27 @@ altprobe:
 
 # Correlator configuration for correlation and detection
 correlator:
-  # Detection enabled: correlates events and emits findings
-  detection_enabled: true
-  # IP alias TTL (seconds): How long an IP->agent mapping lives
-  # Default: 30, Range: 5-300
-  alias_ttl: 30
-  # Alert cooldown (seconds): Repeat suppression for the same entity; higher risk
-  # or a new category in the escalation mask bypasses cooldown
-  # Prevents SIEM flooding
-  # Default: 30, Range: 5-600
-  alert_cooldown: 30
-  # Entity TTL (seconds): How long entity state persists after last event
-  # Longer = better for slow attacks, higher memory
-  # Default: 90, Range: 30-3600
-  entity_ttl: 90
-  # Cleanup interval (events): Run cleanup every N events
-  # Smaller = lower memory, higher CPU
-  # Default: 100, Range: 10-10000
-  cleanup_interval: 100
-  # Separate runtime/network correlation; no API-score accumulation.
+  # Inbound: proxy/API correlation parameters.
+  inbound:
+    # Detection enabled: correlates proxy events and emits findings
+    detection_enabled: true
+    # IP alias TTL (seconds): How long an IP->agent mapping lives
+    # Default: 30, Range: 5-300
+    alias_ttl: 30
+    # Alert cooldown (seconds): Repeat suppression for the same entity; higher risk
+    # or a new category in the escalation mask bypasses cooldown
+    # Prevents SIEM flooding
+    # Default: 30, Range: 5-600
+    alert_cooldown: 30
+    # Entity TTL (seconds): How long entity state persists after last event
+    # Longer = better for slow attacks, higher memory
+    # Default: 90, Range: 30-3600
+    entity_ttl: 90
+    # Cleanup interval (events): Run cleanup every N events
+    # Smaller = lower memory, higher CPU
+    # Default: 100, Range: 10-10000
+    cleanup_interval: 100
+  # Outbound: Falco runtime -> network correlation (includes coding-agent join).
   outbound:
     enabled: true
     window_ms: 2000          # event-time join; widen only for measured clock skew
@@ -121,23 +123,25 @@ policy:
     tls_cert: ""
     tls_key: ""
     tls_ca: ""              # standard APISIX opa does not configure client certs; normally leave empty
-  # Incident delivery to Alertflex remains asynchronous and independent of authorization.
-  incident_enabled: false
-  url: ""                  # defaults to sinks.af_url
-  spool_dir: "/var/lib/altprobe/incidents"
-  timeout_ms: 5000
-  max_pending: 512
-  allow_http: false          # development override for incident delivery only
 
 # Configuration for sending logs
 sinks:
   # Alertflex cloud service url
   af_url: ""                # example: "https://cs.alertflex.org/api/v1/"
   af_tls_verify: false       # HTTPS: verify certificate chain, expiry and DNS/IP SAN
-  # Permanently rejected log records, retained privately for operator review.
-  logs_rejected_dir: "/var/lib/altprobe/logs-rejected"
   af_tls_ca_file: ""         # optional PEM CA bundle; empty uses system trust store
   af_key: ""
+
+  alertflex:
+    # Incident delivery to Alertflex: asynchronous and independent of authorization.
+    incident_enabled: false
+    url: ""                  # defaults to sinks.af_url
+    spool_dir: "/var/lib/altprobe/incidents"
+    timeout_ms: 5000
+    max_pending: 512
+    allow_http: false         # development override for incident delivery only
+    # Permanently rejected log records, retained privately for operator review.
+    logs_rejected_dir: "/var/lib/altprobe/logs-rejected"
   # Immutable OTLP payloads are fsync'd before attempting delivery. Separate
   # private queues: incoming, alertflex (trigger matches), opensearch (all spans).
   # Mount this directory on a persistent volume when running in containers.
