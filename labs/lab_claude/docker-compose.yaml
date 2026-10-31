@@ -1,0 +1,234 @@
+# Реальная лаба: Falco + Suricata + Prempti + OpenSearch + Altprobe.
+# Запуск из корня репозитория altprobe:
+#   docker compose -f labs/lab_outbound/docker-compose.yaml up -d --build
+name: af-lab-claude
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    ports:
+      - 127.0.0.1:19200:9200
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|\"status\":\"yellow\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - 127.0.0.1:5601:5601
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:5601/api/status | grep -q 200"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  # OCSF index templates: правильные mapping'и для ocsf-1.1.0-* (idempotent).
+  opensearch-init:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./opensearch:/setup:ro
+    environment:
+      - OS_URL=http://opensearch:9200
+    entrypoint: ["sh", "/setup/setup_templates.sh"]
+    restart: "no"
+
+  # Saved objects: index patterns, visualizations and dashboards (idempotent).
+  opensearch-dashboards-init:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      opensearch-dashboards:
+        condition: service_healthy
+      opensearch-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./opensearch:/setup:ro
+    environment:
+      - OSD_URL=http://opensearch-dashboards:5601
+    entrypoint: ["sh", "/setup/setup_dashboards.sh"]
+    restart: "no"
+
+  # Claude Code + Prempti в одном контейнере: hook, правила и interceptor видят
+  # PID агента, поэтому agent.pid в событиях настоящий.
+  claude:
+    build:
+      context: ./claude
+      args:
+        CLAUDE_VERSION: ${CLAUDE_VERSION:-2.1.316}
+        PREMPTI_VERSION: ${PREMPTI_VERSION:-0.2.1}
+    container_name: lab-claude-agent
+    environment:
+      - HOME=/home/lab
+      - ANTHROPIC_BASE_URL=http://mock:4010
+      - ANTHROPIC_API_KEY=sk-ant-mock
+      - CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+      - CLAUDE_CODE_ENABLE_TELEMETRY=1
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=http/protobuf
+      - OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://altprobe:4318/v1/logs
+      - OTEL_SERVICE_NAME=claude-code
+    volumes:
+      - lab-home:/home/lab
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    pid: "host"
+    networks:
+      default:
+        ipv4_address: 172.28.0.10
+    command: ["/opt/lab/run.sh"]
+    depends_on:
+      mock:
+        condition: service_started
+      tls:
+        condition: service_started
+
+  mock:
+    image: python:3.12-alpine
+    command: ["python", "/lab/mock_anthropic.py", "--port", "4010"]
+    environment:
+      - "MOCK_TOOL_COMMAND=curl -k -s --connect-to api.openai.com:443:tls:443 https://api.openai.com/v1/models | head -c 80"
+    volumes:
+      - ./mock:/lab:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Локальный TLS-сервер с SNI api.openai.com: стабильная замена внешнему egress.
+  tls:
+    build:
+      context: ./tls
+    expose:
+      - "443"
+
+  # Suricata делит netns с claude и видит его TLS/HTTP трафик.
+  suricata:
+    image: jasonish/suricata:7.0
+    network_mode: "service:claude"
+    depends_on:
+      claude:
+        condition: service_started
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    volumes:
+      - suricata-logs:/var/log/suricata
+    command: ["-i", "eth0", "-v"]
+
+  # Настоящий Falco на хосте Docker (modern eBPF, BTF в WSL2 есть).
+  falco:
+    image: falcosecurity/falco:0.38.2
+    privileged: true
+    environment:
+      - HOST_ROOT=/host
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /dev:/host/dev:ro
+      - falco-logs:/var/log/falco
+      - ./falco/falco.yaml:/etc/falco/falco.yaml:ro
+      - ./falco/local_rules.yaml:/etc/falco/falco_rules.local.yaml:ro
+    entrypoint: ["/usr/bin/falco"]
+    command: ["-c", "/etc/falco/falco.yaml"]
+
+  shipper:
+    image: python:3.12-alpine
+    command: ["python", "/shipper/ship.py"]
+    volumes:
+      - ./shipper/ship.py:/shipper/ship.py:ro
+      - falco-logs:/var/log/falco:ro
+      - suricata-logs:/var/log/suricata:ro
+      - lab-home:/lab-home:ro
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LAB_HOST=lab-real
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  altprobe:
+    build:
+      context: ./altprobe
+      dockerfile: Dockerfile
+    environment:
+      - ALTPROBE_ASSET_NAME=lab-claude
+      - ALTPROBE_HOST_NAME=lab-claude
+      - ALTPROBE_PROJECT_ID=demo-project
+      - ALTPROBE_LOG_DEBUG=false
+      - SOURCES_REDIS_HOST=redis
+      - SOURCES_REDIS_PORT=6379
+      - SOURCES_FALCO_REDIS=log_falco
+      - SOURCES_SURICATA_REDIS=log_suri
+      - SOURCES_AGENT_REDIS=log_agent
+      - CORRELATOR_OUTBOUND_ENABLED=true
+      - CORRELATOR_OUTBOUND_SETTLE_MS=2500
+      - CORRELATOR_OUTBOUND_AI_NAMESPACES=
+      - CORRELATOR_OUTBOUND_AI_CONTAINERS=
+      - CORRELATOR_OUTBOUND_AI_PROCESSES=curl
+      - CORRELATOR_OUTBOUND_PROXY_CONTAINERS=
+      - CORRELATOR_INBOUND_DETECTION_ENABLED=true
+      - CORRELATOR_OUTBOUND_AGENT_WINDOW_MS=300000
+      - SINKS_OS_URL=http://opensearch:9200
+      - SINKS_OS_USER=admin
+      - SINKS_OS_PWD=admin
+      - SINKS_OS_TYPES=OCSF,OTEL
+      - TRACE_MODE=external
+      - SOURCES_OTEL_BIND_HOST=0.0.0.0
+      - SOURCES_OTEL_HTTP_PORT=4318
+      - SOURCES_OTEL_GRPC_PORT=4317
+      - SOURCES_OTEL_TRUSTED_PEERS=172.28.0.10
+      - SINKS_TRACE_SPOOL_DIR=/var/lib/altprobe/traces
+      - SINKS_AF_URL=
+      - SINKS_AF_KEY=
+      - POLICY_ENABLED=false
+    volumes:
+      - altprobe-data:/var/lib/altprobe
+    depends_on:
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      shipper:
+        condition: service_started
+
+volumes:
+  opensearch-data: {}
+  falco-logs: {}
+  suricata-logs: {}
+  lab-home: {}
+  altprobe-data: {}
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24

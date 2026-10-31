@@ -14,7 +14,11 @@ runtime lab:
 
 The outbound lab is not a gateway: it runs Claude Code + Prempti, Falco,
 Suricata and Altprobe to exercise the runtime → network and agent → runtime
-correlation path ([`lab_outbound`](lab_outbound/README-RU.md)).
+correlation path without OTLP ([`lab_outbound`](lab_outbound/README-RU.md)).
+
+[`lab_claude`](lab_claude/README-RU.md) is the same stack plus Claude Code OTel
+telemetry: `/v1/logs` is stored in `otel-logs-*` and `/v1/traces` in
+`otel-v1-traces-*`.
 
 Each lab includes a real gateway, local mock services, Altprobe, OpenSearch,
 dashboards, safe demo traffic, an SBOM fixture and an optional Falco/Suricata

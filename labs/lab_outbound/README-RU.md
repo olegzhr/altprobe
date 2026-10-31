@@ -83,8 +83,9 @@ docker run --rm --network af-prempti-real_default python:3.12-slim python -c "im
 - настоящий Falco пишет `connect`-события (`fd.sip`, `fd.sport`, `proc.pid/ppid`, `container.name=lab-real-claude`);
 - настоящая Suricata логирует TLS с `sni=api.openai.com`;
 - настоящий Prempti установлен в контейнере с Claude, hook зарегистрирован, события `source: coding_agent` пишутся в `~/.prempti/log/falco.log` и уходят в `log_agent`;
-- **OTEL-приёмник оставлен только для traces** (`POST /v1/traces`); OTLP logs и
-  metrics не поддерживаются. Для трейсов используется `POST /api/v1/traces/{asset}`
+- **OTEL-приёмник не включён**: лаба проверяет Falco/Suricata/Prempti и
+  коррелятор без OTLP. Для OTel-логов Claude используйте
+  [`lab_claude`](../lab_claude/README-RU.md); для трейсов — `POST /api/v1/traces/{asset}`
   в Alertflex (см. `sql/triggers-claude.sql` в `rain-alertflex`);
 - реальные findings `outbound_ai` (runtime → network) есть в `ocsf-1.1.0-6003-api_activity-*` (`match_method=tuple+time`, `delta_ms` сотни мс).
 

@@ -1,0 +1,210 @@
+%YAML 1.1
+---
+# Altprobe configuration file version 1.0.1
+
+# Main Altprobe settings
+altprobe:
+  asset_name: "altprobe"
+  host_name: "altprobe"
+  # Optional tenant/project identifier (env: ALTPROBE_PROJECT_ID).
+  # When set, it is appended to the OpenSearch index name AFTER the OCSF class,
+  # e.g. ocsf-1.1.0-6003-api_activity-<project_id>-2026-10-06, so index
+  # templates and dashboards keep matching. The collector also stamps
+  # project_id into the top-level "metadata" of every OCSF document sent to
+  # OpenSearch, so tenant isolation can be enforced with OpenSearch Security
+  # DLS on metadata.project_id (or per-tenant spaces/index patterns).
+  # Allowed characters: a-z, 0-9, '_' and '-' (uppercase is lowercased, other
+  # separators become '-'); empty = no suffix (current behavior).
+  project_id: ""
+  # log_debug: include Altprobe's own diagnostic logs (collector internals,
+  # config/inventory/queue processing). This is not OTEL trace collection and
+  # does not control proxy logging.
+  log_debug: false
+  # Trace source mode (env: TRACE_MODE): internal | external | off.
+  # internal: build spans from local proxy observations; no OTLP listener.
+  # external: receive gateway/proxy OTLP spans at sources.otel; no internal spans.
+  # off: no new collection or trigger matching; previously queued exports drain.
+  # Legacy trace_enabled / TRACE_ENABLED is honored only if trace_mode / TRACE_MODE
+  # is absent (true -> internal, false -> off).
+  trace_mode: internal
+  # Path to API Guard schema v2 rules (scoped compound/structured detection)
+  # Invalid rules retain the last valid snapshot or generated built-in fallback
+  api_guard: "/etc/altprobe/api_guard.yaml"
+  # Path to correlator scoring weights. If empty, compiled defaults are used.
+  scoring_weights: "/etc/altprobe/scoring_weights.yaml"
+  # Path to OWASP Core Rule Set (CRS)
+  ruleset_path: "/etc/altprobe/coreruleset"          # example: "/etc/altprobe/coreruleset" 
+
+  guard_llm:
+    enabled: false
+    url: "http://127.0.0.1:11434"
+    model: "hf.co/mradermacher/Qwen3Guard-Gen-0.6B-GGUF:Q4_K_M"
+    format: "qwen3guard" # qwen3guard: raw /api/generate; json: /api/chat
+    inspect_request: true
+    inspect_response: true
+    timeout_ms: 10000
+    max_body_bytes: 16384
+    queue_size: 128
+    tls_verify: true
+    tls_ca_file: ""
+
+# Correlator configuration for correlation and detection
+correlator:
+  # Inbound: proxy/API correlation parameters.
+  inbound:
+    # Detection enabled: correlates proxy events and emits findings
+    detection_enabled: true
+    # IP alias TTL (seconds): How long an IP->agent mapping lives
+    # Default: 30, Range: 5-300
+    alias_ttl: 30
+    # Alert cooldown (seconds): Repeat suppression for the same entity; higher risk
+    # or a new category in the escalation mask bypasses cooldown
+    # Prevents SIEM flooding
+    # Default: 30, Range: 5-600
+    alert_cooldown: 30
+    # Entity TTL (seconds): How long entity state persists after last event
+    # Longer = better for slow attacks, higher memory
+    # Default: 90, Range: 30-3600
+    entity_ttl: 90
+    # Cleanup interval (events): Run cleanup every N events
+    # Smaller = lower memory, higher CPU
+    # Default: 100, Range: 10-10000
+    cleanup_interval: 100
+  # Outbound: Falco runtime -> network correlation (includes coding-agent join).
+  outbound:
+    enabled: true
+    window_ms: 2000          # event-time join; widen only for measured clock skew
+    settle_ms: 2000          # allow either source to arrive first
+    max_events: 4096         # per-source in-memory bound
+    # Agent tool calls precede the syscall; this window is one-sided and longer.
+    agent_window_ms: 300000  # 5 min: npm install / pytest may run for minutes
+    agent_max_events: 1024   # per-source bound for agent events
+    ai_namespaces: ["ai", "ai-agents"]
+    ai_containers: []        # exact container names or IDs, for Docker/non-K8s
+    ai_processes: []         # opt-in exact host process names
+    proxy_namespaces: []     # trusted gateway workloads, excluded from bypass
+    proxy_containers: []     # exact trusted gateway container names or IDs
+    proxy_ips: []            # exact gateway destination IPs (IPv4/IPv6)
+    # Exact domain or its subdomain; configure private/enterprise providers here.
+    provider_domains: ["api.openai.com", "api.anthropic.com", "generativelanguage.googleapis.com", "api.mistral.ai", "openrouter.ai", "api.groq.com", "api.cohere.com", "api.together.xyz", "api.together.ai", "api.perplexity.ai", "api.deepseek.com", "api.x.ai", "api.fireworks.ai", "api.replicate.com"]
+
+# Local authorization through standard Envoy ext_authz / APISIX opa plugins.
+policy:
+  enabled: false
+  type_agent: "apisix"       # apisix | envoy | openresty | kong | traefik | higress
+  inventory_max_age_sec: 180 # missing/stale snapshots always deny (503)
+  unknown_agent: "deny"      # allow | deny; allow enables discovery but unbound identities can bypass agent blocks
+  unknown_endpoint: "allow"  # allow | deny; discovery status confirmed/excluded is not an access policy
+  identity_host: ""          # empty means altprobe.host_name; must equal host_id in proxy telemetry
+  identity_namespace: "gateway"
+  http_policy: "altprobe/allow" # APISIX/OpenResty policy; endpoint is /v1/data/altprobe/allow
+  sidecar-grpc:
+    enabled: false           # enable with type_agent: envoy
+    bind_host: "127.0.0.1"
+    port: 9191
+    workers: 4
+    max_requests: 4           # executing calls; must be <= workers
+    memory_quota_bytes: 67108864 # gRPC transport queue memory budget
+    max_body_bytes: 262144
+    request_timeout_ms: 2000
+    trusted_peers: ["127.0.0.1", "::1"] # actual TCP peers of authorization calls, NOT forwarded client IPs
+    tls_cert: ""
+    tls_key: ""
+    tls_ca: ""              # optional CA to require/verify client certificates
+  sidecar-http:
+    enabled: false           # enable with type_agent: apisix
+    bind_host: "127.0.0.1"
+    port: 8181
+    workers: 4
+    max_requests: 256
+    max_body_bytes: 262144
+    request_timeout_ms: 2000
+    trusted_peers: ["127.0.0.1", "::1"]
+    tls_cert: ""
+    tls_key: ""
+    tls_ca: ""              # standard APISIX opa does not configure client certs; normally leave empty
+
+# Configuration for sending logs
+sinks:
+  # Alertflex cloud service url
+  af_url: ""                # example: "https://cs.alertflex.org/api/v1/"
+  af_tls_verify: false       # HTTPS: verify certificate chain, expiry and DNS/IP SAN
+  af_tls_ca_file: ""         # optional PEM CA bundle; empty uses system trust store
+  af_key: ""
+
+  alertflex:
+    # Incident delivery to Alertflex: asynchronous and independent of authorization.
+    incident_enabled: false
+    url: ""                  # defaults to sinks.af_url
+    spool_dir: "/var/lib/altprobe/incidents"
+    timeout_ms: 5000
+    max_pending: 512
+    allow_http: false         # development override for incident delivery only
+    # Permanently rejected log records, retained privately for operator review.
+    logs_rejected_dir: "/var/lib/altprobe/logs-rejected"
+  # Immutable OTLP payloads are fsync'd before attempting delivery. Separate
+  # private queues: incoming, alertflex (trigger matches), opensearch (all spans).
+  # Mount this directory on a persistent volume when running in containers.
+  trace_spool_dir: "/var/lib/altprobe/traces" # SINKS_TRACE_SPOOL_DIR
+  trace_max_pending: 4096                 # per queue, includes .rejected
+  trace_max_bytes: 268435456              # per queue, includes .rejected
+  trace_timeout_ms: 5000
+  
+  # OpenSearch
+  os_url: ""                # example: "https://192.168.1.10:9200"
+  os_tls_verify: false       # HTTPS: verify certificate chain, expiry and DNS/IP SAN
+  os_tls_ca_file: ""         # optional PEM CA bundle; empty uses system trust store
+  os_user: "admin"
+  os_pwd: ""
+  # Select INFORMATION TYPES; these are independent and may be combined.
+  # OCSF: findings (2002, 2004, 6003) and IDS DNS/network/TLS (4001, 4005, 4007).
+  # HTTP: HTTP OCSF activity (4002), preserving endpoint.osPipeline from Alertflex.
+  # OTEL: every collected span, including spans not matching any trigger.
+  # Endpoint pipeline applies ONLY to HTTP OCSF; never to findings or OTEL.
+  # Env: SINKS_OS_TYPES=OCSF,HTTP,OTEL ; [] disables all three streams.
+  os_types: [OCSF, HTTP, OTEL]
+  
+# Sources configurations
+sources:
+  # External traces only (altprobe.trace_mode: external). Standard OTLP traces:
+  # HTTP POST /v1/traces (JSON or protobuf; identity/gzip), gRPC TraceService/Export.
+  # Ports set to 0 disable that transport. No metrics/logs receiver is exposed.
+  # Exporters are scoped to this Altprobe's configured asset/project.
+  otel:
+    bind_host: "127.0.0.1"  # SOURCES_OTEL_BIND_HOST; use 0.0.0.0 in a container
+    http_port: 4318          # SOURCES_OTEL_HTTP_PORT
+    grpc_port: 4317          # SOURCES_OTEL_GRPC_PORT
+    workers: 4              # SOURCES_OTEL_WORKERS
+    max_requests: 16         # SOURCES_OTEL_MAX_REQUESTS
+    max_body_bytes: 4194304  # SOURCES_OTEL_MAX_BODY_BYTES, also after gzip
+    request_timeout_ms: 5000 # SOURCES_OTEL_REQUEST_TIMEOUT_MS
+    trusted_peers: ["127.0.0.1", "::1"] # exact exporter IPs; SOURCES_OTEL_TRUSTED_PEERS CSV
+    bearer_token: ""        # optional receiver credential; SOURCES_OTEL_BEARER_TOKEN
+    tls_cert: ""            # SOURCES_OTEL_TLS_CERT
+    tls_key: ""             # SOURCES_OTEL_TLS_KEY
+    tls_ca: ""              # optional mTLS client CA; SOURCES_OTEL_TLS_CA
+  # Redis interface configuration
+  redis_host: ""            # example: "192.168.1.20"
+  redis_port: 6379
+  
+  # Altprobe supports two methods for reading logs:
+  # 1. Directly from application log files
+  # 2. From Redis list using LPOP command
+  # Falco Host IDS (runtime host/container security) log configuration
+  falco_log: ""             # example: "/var/log/falco.json"
+  falco_redis: ""           # example: "log_falco"
+
+  # Suricata Network IDS log configuration
+  suricata_log: ""          # example: "/var/log/suricata/eve.json"
+  suricata_redis: ""        # example: "log_suri"
+
+  # Prempti coding-agent tool calls (Falco source "coding_agent")
+  agent_log: ""             # example: "/var/log/prempti/alerts.json"
+  agent_redis: ""           # example: "log_agent"
+
+  # If both xxx_log and xxx_redis are empty, sensor is disabled
+  
+  # Proxy log configuration (APISIX, Envoy, OpenResty)
+  proxy_log: ""             # example: "/var/log/nginx/access.log"
+  proxy_redis: ""           # example: "log_proxy"
+
