@@ -1,0 +1,18 @@
+﻿model = "gpt-5-codex"
+model_provider = "mock"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
+[model_providers.mock]
+name = "mock"
+base_url = "http://mock:4010/v1"
+env_key = "OPENAI_API_KEY"
+wire_api = "responses"
+
+[otel]
+environment = "dev"
+log_user_prompt = false
+exporter = { otlp-http = { endpoint = "http://altprobe:4318/v1/logs", protocol = "json" } }
+
+
+

@@ -1,0 +1,129 @@
+{
+  "index_patterns": [
+    "otel-logs-*"
+  ],
+  "priority": 120,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "resourceLogs": {
+          "type": "object",
+          "properties": {
+            "resource": {
+              "type": "object",
+              "properties": {
+                "attributes": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "keyword"
+                    },
+                    "value": {
+                      "type": "object",
+                      "properties": {
+                        "stringValue": {
+                          "type": "keyword",
+                          "ignore_above": 4096
+                        },
+                        "intValue": {
+                          "type": "long"
+                        },
+                        "doubleValue": {
+                          "type": "double"
+                        },
+                        "boolValue": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "scopeLogs": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "type": "object",
+                  "enabled": false
+                },
+                "logRecords": {
+                  "type": "object",
+                  "properties": {
+                    "timeUnixNano": {
+                      "type": "long"
+                    },
+                    "observedTimeUnixNano": {
+                      "type": "long"
+                    },
+                    "severityNumber": {
+                      "type": "integer"
+                    },
+                    "severityText": {
+                      "type": "keyword"
+                    },
+                    "traceId": {
+                      "type": "keyword"
+                    },
+                    "spanId": {
+                      "type": "keyword"
+                    },
+                    "body": {
+                      "type": "object",
+                      "properties": {
+                        "stringValue": {
+                          "type": "keyword",
+                          "ignore_above": 4096
+                        },
+                        "intValue": {
+                          "type": "long"
+                        },
+                        "doubleValue": {
+                          "type": "double"
+                        },
+                        "boolValue": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "attributes": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "keyword"
+                        },
+                        "value": {
+                          "type": "object",
+                          "properties": {
+                            "stringValue": {
+                              "type": "keyword",
+                              "ignore_above": 4096
+                            },
+                            "intValue": {
+                              "type": "long"
+                            },
+                            "doubleValue": {
+                              "type": "double"
+                            },
+                            "boolValue": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
