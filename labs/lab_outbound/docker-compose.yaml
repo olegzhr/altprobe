@@ -1,6 +1,6 @@
 # Реальная лаба: Falco + Suricata + Prempti + OpenSearch + Altprobe.
-# Запуск из корня prempti-altprobe:
-#   docker compose -f labs/lab_real/docker-compose.yaml up -d --build
+# Запуск из корня репозитория altprobe:
+#   docker compose -f labs/lab_outbound/docker-compose.yaml up -d --build
 name: af-prempti-real
 
 services:
@@ -193,15 +193,9 @@ services:
       - SINKS_OS_URL=http://opensearch:9200
       - SINKS_OS_USER=admin
       - SINKS_OS_PWD=admin
-      - SINKS_OS_TYPES=OCSF,OTEL
+      - SINKS_OS_TYPES=OCSF
       - SINKS_AF_URL=
       - SINKS_AF_KEY=
-      - TRACE_MODE=external
-      - SOURCES_OTEL_BIND_HOST=0.0.0.0
-      - SOURCES_OTEL_HTTP_PORT=4318
-      - SOURCES_OTEL_GRPC_PORT=4317
-      - SOURCES_OTEL_TRUSTED_PEERS=172.28.0.10
-      - SINKS_TRACE_SPOOL_DIR=/var/lib/altprobe/traces
       - POLICY_ENABLED=false
     volumes:
       - altprobe-data:/var/lib/altprobe
