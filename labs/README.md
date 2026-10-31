@@ -16,18 +16,6 @@ The outbound lab is not a gateway: it runs Claude Code + Prempti, Falco,
 Suricata and Altprobe to exercise the runtime → network and agent → runtime
 correlation path without OTLP ([`lab_outbound`](lab_outbound/README-RU.md)).
 
-[`lab_claude`](lab_claude/README-RU.md) is the same stack plus Claude Code OTel
-telemetry: `/v1/logs` is stored in `otel-logs-*` and `/v1/traces` in
-`otel-v1-traces-*`.
-
-[`lab_deepseek_harness`](lab_deepseek_harness/README-RU.md) runs the real
-`dsh --profile headless` agent, exports its `--json` events as OTLP logs into
-`otel-logs-*`, and has no Falco/Suricata/Prempti.
-
-[`lab_codex`](lab_codex/README-RU.md) runs the real `codex exec` against a mock
-Responses API and a minimal OTLP receiver; see its README for the current
-`codex exec` OTel export limitation.
-
 Each lab includes a real gateway, local mock services, Altprobe, OpenSearch,
 dashboards, safe demo traffic, an SBOM fixture and an optional Falco/Suricata
 overlay. **Run one lab at a time**; all labs share host ports.

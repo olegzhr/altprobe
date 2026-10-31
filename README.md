@@ -79,9 +79,7 @@ test categories.
 
 The outbound runtime lab (Claude Code + Prempti + Falco + Suricata) is
 [`labs/lab_outbound`](labs/lab_outbound/README-RU.md); it uses the same release
-package and runs one container set at a time with the gateway labs. The variant
-with Claude Code OTel logs (`otel-logs-*`) is
-[`labs/lab_claude`](labs/lab_claude/README-RU.md).
+package and runs one container set at a time with the gateway labs.
 
 ## Dashboards
 
