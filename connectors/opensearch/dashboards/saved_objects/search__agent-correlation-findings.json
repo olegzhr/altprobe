@@ -1,11 +1,18 @@
 {
   "attributes": {
-    "title": "Agent Correlation findings (600301)",
-    "description": "OCSF 600301 'Agent Correlation' findings emitted by altprobe's correlator (scoreAPI()/emitFinding()).",
+    "title": "Agent-correlated AI connections",
+    "description": "OCSF 6003 findings where a coding-agent tool call was joined to the process that opened the AI connection (outbound_ai.agent_*).",
     "columns": [
-      "metadata.correlation_uid",
-      "type_uid",
-      "severity",
+      "time",
+      "outbound_ai.agent_name",
+      "outbound_ai.agent_session_id",
+      "outbound_ai.agent_tool",
+      "outbound_ai.agent_decision",
+      "outbound_ai.agent_command",
+      "outbound_ai.agent_match",
+      "outbound_ai.domain",
+      "outbound_ai.agent_pid",
+      "process.pid",
       "message"
     ],
     "sort": [
@@ -15,7 +22,7 @@
       ]
     ],
     "kibanaSavedObjectMeta": {
-      "searchSourceJSON": "{\"query\":{\"query\":\"type_uid:600301\",\"language\":\"kuery\"},\"filter\":[],\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\"}"
+      "searchSourceJSON": "{\"index\": \"ocsf-6003-api-activity\", \"query\": {\"query\": \"outbound_ai.agent_name:*\", \"language\": \"kuery\"}, \"filter\": []}"
     }
   },
   "references": [
