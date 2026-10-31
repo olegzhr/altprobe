@@ -1,0 +1,41 @@
+%YAML 1.1
+---
+
+# Production-oriented SBOM + vulnerability example.
+#
+# The scanner is disabled by default. Set scan_interval to the required scan
+# period (minutes) after adjusting the paths and preparing the scanner
+# databases:
+#
+#   trivy image --download-db-only
+#   grype db update
+#
+# Trivy publishes its own CycloneDX document. Syft produces an SBOM and Grype
+# enriches the result with vulnerabilities in CycloneDX format. Both outputs
+# are sent to Alertflex as POST /sbom/{asset}; Alertflex extracts components
+# and the vulnerabilities array.
+scan_interval: 0
+
+pipeline:
+  # Trivy: filesystem scan of the deployed application tree.
+  - service_name: "payments-trivy"
+    scan_command: "trivy fs --format cyclonedx --scanners vuln --output /var/log/altprobe/payments-trivy.cdx.json /opt/payments"
+    scan_output: "/var/log/altprobe/payments-trivy.cdx.json"
+
+  # Syft + Grype: SBOM inventory plus vulnerability matches for the same tree.
+  # The Grype output is the final CycloneDX document that Alertflex ingests.
+  # GRYPE_DB_AUTO_UPDATE=false requires a prepared local database; remove it if
+  # the collector is allowed to update the database during the scan.
+  - service_name: "payments-syft-grype"
+    scan_command: "SYFT_CHECK_FOR_APP_UPDATE=false syft dir:/opt/payments -o cyclonedx-json=/var/log/altprobe/payments-syft.cdx.json && GRYPE_DB_AUTO_UPDATE=false GRYPE_CHECK_FOR_APP_UPDATE=false grype sbom:/var/log/altprobe/payments-syft.cdx.json -o cyclonedx-json > /var/log/altprobe/payments-syft-grype.cdx.json"
+    scan_output: "/var/log/altprobe/payments-syft-grype.cdx.json"
+
+# Image variant:
+#
+#  - service_name: "payments-image-trivy"
+#    scan_command: "trivy image --format cyclonedx --scanners vuln --output /var/log/altprobe/payments-image-trivy.cdx.json payments:latest"
+#    scan_output: "/var/log/altprobe/payments-image-trivy.cdx.json"
+#
+#  - service_name: "payments-image-syft-grype"
+#    scan_command: "SYFT_CHECK_FOR_APP_UPDATE=false syft registry:payments:latest -o cyclonedx-json=/var/log/altprobe/payments-image-syft.cdx.json && GRYPE_DB_AUTO_UPDATE=false GRYPE_CHECK_FOR_APP_UPDATE=false grype sbom:/var/log/altprobe/payments-image-syft.cdx.json -o cyclonedx-json > /var/log/altprobe/payments-image-syft-grype.cdx.json"
+#    scan_output: "/var/log/altprobe/payments-image-syft-grype.cdx.json"

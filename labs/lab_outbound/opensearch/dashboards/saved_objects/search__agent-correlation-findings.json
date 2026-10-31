@@ -1,0 +1,28 @@
+{
+  "attributes": {
+    "title": "Agent Correlation findings (600301)",
+    "description": "OCSF 600301 'Agent Correlation' findings emitted by altprobe's correlator (scoreAPI()/emitFinding()).",
+    "columns": [
+      "metadata.correlation_uid",
+      "type_uid",
+      "severity",
+      "message"
+    ],
+    "sort": [
+      [
+        "time",
+        "desc"
+      ]
+    ],
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\":{\"query\":\"type_uid:600301\",\"language\":\"kuery\"},\"filter\":[],\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\"}"
+    }
+  },
+  "references": [
+    {
+      "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+      "type": "index-pattern",
+      "id": "ocsf-6003-api-activity"
+    }
+  ]
+}
