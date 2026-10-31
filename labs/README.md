@@ -21,7 +21,8 @@ telemetry: `/v1/logs` is stored in `otel-logs-*` and `/v1/traces` in
 `otel-v1-traces-*`.
 
 [`lab_deepseek_harness`](lab_deepseek_harness/README-RU.md) runs the real
-`dsh --profile headless` agent against an Anthropic-compatible mock (no OTel).
+`dsh --profile headless` agent, exports its `--json` events as OTLP logs into
+`otel-logs-*`, and has no Falco/Suricata/Prempti.
 
 Each lab includes a real gateway, local mock services, Altprobe, OpenSearch,
 dashboards, safe demo traffic, an SBOM fixture and an optional Falco/Suricata
