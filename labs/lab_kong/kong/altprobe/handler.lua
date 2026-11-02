@@ -26,6 +26,7 @@ function Handler:access(conf)
   kong.service.request.clear_header("apikey")
   local consumer = kong.client.get_consumer()
   ctx.consumer = consumer and consumer.username or "-"
+
 end
 
 function Handler:header_filter(conf)
@@ -53,7 +54,10 @@ function Handler:log(conf)
   local ctx = kong.ctx.plugin
   local function h(name) return ngx.var["http_" .. name] or "-" end
   local decoded = json.decode(ctx.request_body or "")
+  local origin = conf.gateway_origin_id
+  if not origin or origin == "" then origin = "kong:" .. ngx.var.hostname .. ":" .. conf.host_name end
   local record = {
+    gateway_origin_id = origin,
     host_name = conf.host_name, consumer_name = ctx.consumer or "-",
     request_uri = ngx.var.request_uri, request_method = ngx.req.get_method(),
     request_id = ngx.var.request_id, http_version = ngx.var.server_protocol,

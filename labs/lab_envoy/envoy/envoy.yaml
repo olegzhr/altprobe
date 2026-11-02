@@ -16,6 +16,7 @@ static_resources:
         typed_config:
           '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
           stat_prefix: ingress_http
+          generate_request_id: true
           route_config:
             name: local_route
             virtual_hosts:
@@ -75,6 +76,7 @@ static_resources:
               path: /var/log/envoy/access.log
               log_format:
                 json_format:
+                  gateway_origin_id: envoy-lab
                   host_name: envoy-lab
                   request_id: '%REQ(X-REQUEST-ID)%'
                   server_port: '%DOWNSTREAM_LOCAL_PORT%'

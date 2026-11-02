@@ -44,7 +44,7 @@ static_resources:
                       filename: /etc/envoy/altprobe.wasm
                 configuration:
                   '@type': type.googleapis.com/google.protobuf.StringValue
-                  value: '{"host_name": "altprobe-higress-lab", "max_body_size": 5000, "collector_cluster": "telemetry",
+                  value: '{"gateway_origin_id": "higress-lab-1", "host_name": "altprobe-higress-lab", "max_body_size": 5000, "collector_cluster": "telemetry",
                     "timeout_ms": 2000}'
           - name: envoy.filters.http.router
             typed_config:

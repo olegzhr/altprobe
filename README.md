@@ -14,20 +14,19 @@ get AI explanations and manage access.
 - Gateway traffic analysis for LLM, MCP and API calls, with prebuilt Altprobe
   rules and OWASP CRS; Qwen3Guard is optional.
 - Direct AI egress detection by correlating Suricata network events with Falco
-  process and container events, including coding-agent tool calls from Prempti.
+  process and container events.
 - SBOM-based software composition analysis with Trivy or Syft + Grype.
 - Security events in OCSF, with field mappings for OpenSearch Security Analytics.
 - All collected OTEL traces in OTLP/JSON, from built-in collection or external
   OTLP sources.
-- Six gateway labs with tests and sample traffic, plus an outbound runtime lab
-  (Claude Code, Prempti, Falco, Suricata) and 70+ IDS rules.
+- Six gateway labs with tests, sample traffic and 70+ IDS rules.
 
 ## How it works
 
 ```mermaid
 flowchart LR
     GW["AI agents / MCP / API<br/>through your gateway"] --> AP["Altprobe<br/>collect + correlate + OCSF"]
-    IDS["Falco + Prempti + Suricata"] --> AP
+    IDS["Falco + Suricata"] --> AP
     SBOM["SBOM: Trivy or Syft + Grype"] --> AP
     AP --> OS["OpenSearch<br/>events, traces, dashboards"]
     AP -.-> AF["Alertflex (optional)<br/>inventory, traces, incidents, access"]
@@ -76,10 +75,6 @@ LAB_GATEWAY=apisix python3 run_tests.py smoke
 Run one lab at a time; the labs share host ports. See [`labs/README.md`](labs/README.md)
 for the other gateways and [`labs/tests/README.md`](labs/tests/README.md) for all
 test categories.
-
-The outbound runtime lab (Claude Code + Prempti + Falco + Suricata) is
-[`labs/lab_outbound`](labs/lab_outbound/README-RU.md); it uses the same release
-package and runs one container set at a time with the gateway labs.
 
 ## Dashboards
 

@@ -1,7 +1,8 @@
-// Higress proxy-wasm filter. Policy uses the APISIX OPA envelope; telemetry uses its log schema.
+// Higress proxy-wasm filter: HTTP telemetry for the Altprobe collector.
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -12,11 +13,9 @@ import (
 )
 
 type config struct {
+	GatewayOriginID  string            `json:"gateway_origin_id"`
 	HostName         string            `json:"host_name"`
 	MaxBodySize      int               `json:"max_body_size"`
-	PolicyCluster    string            `json:"policy_cluster"`
-	PolicyPath       string            `json:"policy_path"`
-	PolicyPaths      []string          `json:"policy_paths"`
 	Credentials      map[string]string `json:"credentials"`
 	CollectorCluster string            `json:"collector_cluster"`
 	TimeoutMS        uint32            `json:"timeout_ms"`
@@ -32,6 +31,7 @@ type stream struct {
 	headers                           map[string]string
 	responseHeaders                   map[string]string
 	subject, uri, method, remote      string
+	requestID                         string
 	request, response                 []byte
 	requestSize, responseSize, status int
 	start                             time.Time
@@ -40,19 +40,28 @@ type stream struct {
 func main()                                             { proxywasm.SetVMContext(&vm{}) }
 func (*vm) NewPluginContext(uint32) types.PluginContext { return &plugin{} }
 func (p *plugin) OnPluginStart(int) types.OnPluginStartStatus {
-	p.config = config{HostName: "higress", MaxBodySize: 5000, PolicyCluster: "altprobe_policy", PolicyPath: "/v1/data/altprobe/allow", CollectorCluster: "telemetry", TimeoutMS: 2000}
+	p.config = config{HostName: "higress", MaxBodySize: 5000, CollectorCluster: "telemetry", TimeoutMS: 2000}
 	raw, err := proxywasm.GetPluginConfiguration()
 	if err != nil || json.Unmarshal(raw, &p.config) != nil || p.config.MaxBodySize < 1 || p.config.MaxBodySize > 32768 || p.config.TimeoutMS == 0 {
 		proxywasm.LogCritical("altprobe: invalid config")
 		return types.OnPluginStartStatusFailed
 	}
-	if len(p.config.PolicyPaths) > 0 && (len(p.config.Credentials) == 0 || p.config.PolicyCluster == "" || p.config.PolicyPath == "") {
+	if p.config.GatewayOriginID == "" {
+		node, err := proxywasm.GetProperty([]string{"node", "id"})
+		if err != nil || len(node) == 0 {
+			proxywasm.LogCritical("altprobe: gateway_origin_id or node.id required")
+			return types.OnPluginStartStatusFailed
+		}
+		p.config.GatewayOriginID = "higress:" + string(node) + ":" + p.config.HostName
+	}
+	if len(p.config.GatewayOriginID) > 255 {
 		return types.OnPluginStartStatusFailed
 	}
 	return types.OnPluginStartStatusOK
 }
-func (p *plugin) NewHttpContext(uint32) types.HttpContext {
-	return &stream{config: p.config, start: time.Now(), status: 200}
+func (p *plugin) NewHttpContext(id uint32) types.HttpContext {
+	now := time.Now()
+	return &stream{config: p.config, start: now, status: 200, requestID: strconv.FormatInt(now.UnixNano(), 16) + "-" + strconv.FormatUint(uint64(id), 16)}
 }
 func scrub(headers [][2]string) map[string]string {
 	out := make(map[string]string)
@@ -77,6 +86,10 @@ func (s *stream) deny(status uint32, reason string) {
 	}
 }
 func (s *stream) OnHttpRequestHeaders(int, bool) types.Action {
+	// Connection IDs disambiguate concurrent VM workers sharing one origin.
+	if connection, err := proxywasm.GetProperty([]string{"connection_id"}); err == nil {
+		s.requestID += "-" + hex.EncodeToString(connection)
+	}
 	headers, _ := proxywasm.GetHttpRequestHeaders()
 	s.headers = scrub(headers)
 	s.uri = s.headers[":path"]
@@ -95,69 +108,7 @@ func (s *stream) OnHttpRequestHeaders(int, bool) types.Action {
 		s.subject = s.config.Credentials[key]
 	}
 	_ = proxywasm.RemoveHttpRequestHeader("apikey")
-	path := strings.SplitN(s.uri, "?", 2)[0]
-	protected := false
-	for _, p := range s.config.PolicyPaths {
-		if path == p {
-			protected = true
-			break
-		}
-	}
-	if !protected {
-		return types.ActionContinue
-	}
-	if s.subject == "" {
-		s.deny(401, "authentication_required")
-		return types.ActionPause
-	}
-	input := map[string]interface{}{"input": map[string]interface{}{
-		"type": "http", "consumer": map[string]string{"username": s.subject},
-		"request": map[string]interface{}{"method": s.method, "path": s.uri, "headers": s.headers},
-		"var":     map[string]string{"remote_addr": s.remote},
-	}}
-	body, _ := json.Marshal(input)
-	_, err := proxywasm.DispatchHttpCall(s.config.PolicyCluster, [][2]string{
-		{":method", "POST"}, {":path", s.config.PolicyPath}, {":authority", "altprobe-policy"}, {"content-type", "application/json"},
-	}, body, nil, s.config.TimeoutMS, func(_ int, size int, _ int) {
-		headers, e := proxywasm.GetHttpCallResponseHeaders()
-		status := ""
-		for _, h := range headers {
-			if h[0] == ":status" {
-				status = h[1]
-			}
-		}
-		if e != nil || status != "200" || size > 65536 {
-			s.deny(503, "policy_unavailable")
-			return
-		}
-		raw, e := proxywasm.GetHttpCallResponseBody(0, size)
-		var doc struct {
-			Result struct {
-				Allow  *bool  `json:"allow"`
-				Reason string `json:"reason"`
-				Status uint32 `json:"status_code"`
-			} `json:"result"`
-		}
-		if e != nil || json.Unmarshal(raw, &doc) != nil || doc.Result.Allow == nil {
-			s.deny(503, "policy_unavailable")
-			return
-		}
-		if !*doc.Result.Allow {
-			code := doc.Result.Status
-			if code < 400 || code > 599 {
-				code = 403
-			}
-			s.deny(code, doc.Result.Reason)
-			return
-		}
-		if proxywasm.ResumeHttpRequest() != nil {
-			proxywasm.LogError("altprobe: resume failed")
-		}
-	})
-	if err != nil {
-		s.deny(503, "policy_unavailable")
-	}
-	return types.ActionPause
+	return types.ActionContinue
 }
 func appendBounded(previous, chunk []byte, limit int) []byte {
 	n := limit - len(previous)
@@ -205,7 +156,7 @@ func (s *stream) OnHttpResponseBody(size int, _ bool) types.Action {
 	}
 	return types.ActionContinue
 }
-func (s *stream) OnHttpStreamDone() {
+func (s *stream) record() map[string]interface{} {
 	headers, _ := json.Marshal(s.headers)
 	responseHeaders, _ := json.Marshal(s.responseHeaders)
 	var rpc struct {
@@ -217,8 +168,9 @@ func (s *stream) OnHttpStreamDone() {
 		size = length
 	}
 	record := map[string]interface{}{
-		"host_name": s.config.HostName, "consumer_name": s.subject, "request_uri": s.uri, "request_method": s.method,
-		"request_id": s.headers["x-request-id"], "http_version": "HTTP/1.1", "remote_addr": s.remote, "server_port": 9080,
+		"gateway_origin_id": s.config.GatewayOriginID,
+		"host_name":         s.config.HostName, "consumer_name": s.subject, "request_uri": s.uri, "request_method": s.method,
+		"request_id": s.requestID, "http_version": "HTTP/1.1", "remote_addr": s.remote, "server_port": 9080,
 		"remote_user": s.subject, "time_local": s.start.Format("02/Jan/2006:15:04:05 -0700"), "duration": time.Since(s.start).Seconds(),
 		"status": s.status, "body_bytes_sent": s.responseSize, "request_body": string(s.request), "response_body": string(s.response),
 		"request_body_original_size": size, "request_body_missing": size > 0 && s.requestSize == 0,
@@ -229,7 +181,11 @@ func (s *stream) OnHttpStreamDone() {
 		"http_accept_language": s.headers["accept-language"], "http_accept_encoding": s.headers["accept-encoding"],
 		"http_connection": s.headers["connection"],
 	}
-	raw, err := json.Marshal(record)
+	return record
+}
+
+func (s *stream) OnHttpStreamDone() {
+	raw, err := json.Marshal(s.record())
 	if err != nil {
 		proxywasm.LogError("altprobe: telemetry encoding failed")
 		return

@@ -8,6 +8,7 @@ Configuration is JSON in the Wasm filter's `StringValue`:
 ```json
 {
   "host_name": "my-higress",
+  "gateway_origin_id": "higress-gateway-1",
   "max_body_size": 5000,
   "policy_cluster": "altprobe_policy",
   "policy_path": "/v1/data/altprobe/allow",
