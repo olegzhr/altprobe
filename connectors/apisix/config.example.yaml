@@ -13,4 +13,5 @@ plugin_attr:
     redis_host: 127.0.0.1                               # Redis Altprobe reads from
     redis_port: 6379
     redis_key: log_proxy                                # altprobe SOURCES_PROXY_REDIS
+    gateway_origin_id: apisix-gateway-1                  # stable, unique gateway instance ID
     log_file_path: /usr/local/apisix/logs/proxy-json.log

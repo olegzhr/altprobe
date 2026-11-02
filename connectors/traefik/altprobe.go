@@ -14,20 +14,20 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
 
 type Config struct {
-	RedisAddress string
-	RedisKey     string
-	HostName     string
-	MaxBodySize  int
-	TimeoutMS    int
-	QueueSize    int
-	PolicyURL    string
-	PolicyPaths  []string
-	Credentials  map[string]string
+	RedisAddress    string
+	RedisKey        string
+	HostName        string
+	GatewayOriginID string
+	MaxBodySize     int
+	TimeoutMS       int
+	QueueSize       int
+	Credentials     map[string]string
 }
 
 func CreateConfig() *Config {
@@ -45,17 +45,17 @@ func New(ctx context.Context, next http.Handler, c *Config, name string) (http.H
 	if c.MaxBodySize < 1 || c.MaxBodySize > 32768 || c.TimeoutMS < 1 || c.QueueSize < 1 || c.QueueSize > 65536 {
 		return nil, fmt.Errorf("invalid Altprobe body, timeout or queue limits")
 	}
-	if len(c.PolicyPaths) > 0 {
-		u, err := url.Parse(c.PolicyURL)
-		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-			return nil, fmt.Errorf("invalid policy URL")
-		}
-		if len(c.Credentials) == 0 {
-			return nil, fmt.Errorf("policy requires server-side credentials")
-		}
-	}
 	config := *c
-	config.PolicyPaths = append([]string(nil), c.PolicyPaths...)
+	if config.GatewayOriginID == "" {
+		host, err := os.Hostname()
+		if err != nil || host == "" {
+			return nil, fmt.Errorf("gateway origin requires hostname or GatewayOriginID")
+		}
+		config.GatewayOriginID = "traefik:" + host + ":" + config.HostName + ":" + name
+	}
+	if len(config.GatewayOriginID) > 255 {
+		return nil, fmt.Errorf("gateway origin exceeds 255 bytes")
+	}
 	config.Credentials = make(map[string]string)
 	for k, v := range c.Credentials {
 		config.Credentials[k] = v
@@ -162,56 +162,6 @@ func identifier() string {
 	return hex.EncodeToString(b)
 }
 
-func (m *middleware) authorize(r *http.Request, subject string) (int, string) {
-	if subject == "" {
-		return 401, "authentication_required"
-	}
-	// The APISIX envelope deliberately authorizes the surface without guessing a body operation.
-	// OPA distinguishes single header values from repeated headers.
-	headers := map[string]interface{}{}
-	for name, values := range clean(r.Header) {
-		if len(values) == 1 {
-			headers[name] = values[0]
-		} else {
-			headers[name] = values
-		}
-	}
-	input := map[string]interface{}{"input": map[string]interface{}{
-		"type": "http", "consumer": map[string]string{"username": subject},
-		"request": map[string]interface{}{"method": r.Method, "path": r.URL.RequestURI(), "headers": headers},
-		"var":     map[string]string{"remote_addr": remoteIP(r.RemoteAddr)},
-	}}
-	body, _ := json.Marshal(input)
-	request, err := http.NewRequestWithContext(r.Context(), "POST", m.config.PolicyURL, bytes.NewReader(body))
-	if err != nil {
-		return 503, "policy_unavailable"
-	}
-	request.Header.Set("Content-Type", "application/json")
-	response, err := m.client.Do(request)
-	if err != nil {
-		return 503, "policy_unavailable"
-	}
-	defer response.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(response.Body, 65537))
-	var doc struct {
-		Result struct {
-			Allow  *bool  `json:"allow"`
-			Reason string `json:"reason"`
-			Status int    `json:"status_code"`
-		} `json:"result"`
-	}
-	if err != nil || len(raw) > 65536 || response.StatusCode != 200 || json.Unmarshal(raw, &doc) != nil || doc.Result.Allow == nil {
-		return 503, "policy_unavailable"
-	}
-	if !*doc.Result.Allow {
-		status := doc.Result.Status
-		if status < 400 || status > 599 {
-			status = 403
-		}
-		return status, doc.Result.Reason
-	}
-	return 0, ""
-}
 
 func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
@@ -244,7 +194,8 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			size = int(originalLength)
 		}
 		record := map[string]interface{}{
-			"host_name": m.config.HostName, "consumer_name": subject, "request_id": identifier(),
+			"gateway_origin_id": m.config.GatewayOriginID,
+			"host_name":         m.config.HostName, "consumer_name": subject, "request_id": identifier(),
 			"request_uri": originalURI, "request_method": originalMethod, "http_version": r.Proto,
 			"remote_addr": remoteIP(r.RemoteAddr), "remote_user": subject, "server_port": 9080,
 			"time_local": start.Format("02/Jan/2006:15:04:05 -0700"), "duration": time.Since(start).Seconds(),
@@ -271,17 +222,6 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Print("altprobe: telemetry queue full; event dropped")
 		}
 	}()
-	for _, path := range m.config.PolicyPaths {
-		if r.URL.Path == path {
-			if code, reason := m.authorize(r, subject); code != 0 {
-				response.Header().Set("Content-Type", "application/json")
-				response.WriteHeader(code)
-				_ = json.NewEncoder(response).Encode(map[string]string{"reason": reason})
-				return
-			}
-			break
-		}
-	}
 	// Do not forward lab authentication secrets to upstream services.
 	r.Header.Del("Apikey")
 	m.next.ServeHTTP(response, r)

@@ -45,6 +45,7 @@ local ctx = ngx.ctx
 -- Identity is the authenticated gateway consumer when present, otherwise the
 -- observed source IP. mcp_session_id is protocol metadata, not identity.
 local record = {
+    gateway_origin_id = os.getenv("ALTPROBE_GATEWAY_ORIGIN_ID") or ("openresty:" .. ngx.var.hostname),
     host_name = HOST_NAME,
     mcp_session_id = field("http_mcp_session_id"),
     mcp_method = ctx.mcp_method or "-",

@@ -24,6 +24,7 @@ http:
           RedisAddress: redis:6379
           RedisKey: log_proxy
           HostName: my-traefik
+          GatewayOriginID: traefik-gateway-1
           MaxBodySize: 5000
           PolicyURL: http://127.0.0.1:8181/v1/data/altprobe/allow
           PolicyPaths: [/mcp]

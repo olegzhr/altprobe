@@ -1,7 +1,6 @@
 # Labs
 
-Six self-contained gateway labs for Altprobe and OpenSearch, plus an outbound
-runtime lab:
+Six self-contained gateway labs for Altprobe and OpenSearch:
 
 | Gateway | Lab | Native OTEL |
 |---|---|---|
@@ -11,10 +10,6 @@ runtime lab:
 | Kong OSS | [`lab_kong`](lab_kong/README.md) | HTTP |
 | Traefik | [`lab_traefik`](lab_traefik/README.md) | HTTP |
 | Higress | [`lab_higress`](lab_higress/README.md) | gRPC |
-
-The outbound lab is not a gateway: it runs Claude Code + Prempti, Falco,
-Suricata and Altprobe to exercise the runtime → network and agent → runtime
-correlation path without OTLP ([`lab_outbound`](lab_outbound/README-RU.md)).
 
 Each lab includes a real gateway, local mock services, Altprobe, OpenSearch,
 dashboards, safe demo traffic, an SBOM fixture and an optional Falco/Suricata

@@ -13,17 +13,21 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 )
 
 type Config struct {
-	RedisAddress string
-	RedisKey     string
-	HostName     string
-	MaxBodySize  int
-	TimeoutMS    int
-	QueueSize    int
+	RedisAddress    string
+	RedisKey        string
+	HostName        string
+	GatewayOriginID string
+	MaxBodySize     int
+	TimeoutMS       int
+	QueueSize       int
+	Credentials     map[string]string
 }
 
 func CreateConfig() *Config {
@@ -42,6 +46,20 @@ func New(ctx context.Context, next http.Handler, c *Config, name string) (http.H
 		return nil, fmt.Errorf("invalid Altprobe body, timeout or queue limits")
 	}
 	config := *c
+	if config.GatewayOriginID == "" {
+		host, err := os.Hostname()
+		if err != nil || host == "" {
+			return nil, fmt.Errorf("gateway origin requires hostname or GatewayOriginID")
+		}
+		config.GatewayOriginID = "traefik:" + host + ":" + config.HostName + ":" + name
+	}
+	if len(config.GatewayOriginID) > 255 {
+		return nil, fmt.Errorf("gateway origin exceeds 255 bytes")
+	}
+	config.Credentials = make(map[string]string)
+	for k, v := range c.Credentials {
+		config.Credentials[k] = v
+	}
 	m := &middleware{next: next, config: config, client: &http.Client{Timeout: time.Duration(c.TimeoutMS) * time.Millisecond,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, queue: make(chan []byte, c.QueueSize)}
 	go m.deliver(ctx)
@@ -144,12 +162,16 @@ func identifier() string {
 	return hex.EncodeToString(b)
 }
 
+
 func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	originalURI := r.URL.RequestURI()
 	originalMethod := r.Method
 	headers := r.Header.Clone()
 	subject := ""
+	if values := r.Header.Values("Apikey"); len(values) == 1 {
+		subject = m.config.Credentials[values[0]]
+	}
 	request := capture{limit: m.config.MaxBodySize}
 	originalLength := r.ContentLength
 	if r.Body != nil {
@@ -172,7 +194,8 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			size = int(originalLength)
 		}
 		record := map[string]interface{}{
-			"host_name": m.config.HostName, "consumer_name": subject, "request_id": identifier(),
+			"gateway_origin_id": m.config.GatewayOriginID,
+			"host_name":         m.config.HostName, "consumer_name": subject, "request_id": identifier(),
 			"request_uri": originalURI, "request_method": originalMethod, "http_version": r.Proto,
 			"remote_addr": remoteIP(r.RemoteAddr), "remote_user": subject, "server_port": 9080,
 			"time_local": start.Format("02/Jan/2006:15:04:05 -0700"), "duration": time.Since(start).Seconds(),

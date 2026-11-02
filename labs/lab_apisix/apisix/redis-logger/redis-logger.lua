@@ -14,6 +14,7 @@ local schema = {
         redis_database = { type = "integer", default = 0 },
         redis_key = { type = "string", default = "log_proxy" },
         log_file_path = { type = "string", default = "/usr/local/apisix/logs/proxy-json.log" },
+        gateway_origin_id = { type = "string", default = "", maxLength = 255 },
         host_name = { type = "string", default = "127.0.0.1" },
         timeout = { type = "integer", default = 1000 },
         max_body_size = { type = "integer", default = 5000 }
@@ -161,7 +162,10 @@ function _M.log(conf, ctx)
     -- source address when no consumer authenticated the request.
     local mcp_session_id = ngx.var.http_mcp_session_id or "-"
 
+    local origin = conf.gateway_origin_id
+    if not origin or origin == "" then origin = "apisix:" .. ngx.var.hostname .. ":" .. conf.host_name end
     local log_data = {
+        gateway_origin_id = origin,
         host_name = conf.host_name,
         mcp_session_id = mcp_session_id,
         mcp_method = ctx.mcp_method or "-",

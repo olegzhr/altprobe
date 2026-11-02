@@ -2,6 +2,7 @@ local json = require "cjson.safe"
 local ctx = ngx.ctx
 local function field(name) return ngx.var[name] or "" end
 local record = {
+    gateway_origin_id = os.getenv("ALTPROBE_GATEWAY_ORIGIN_ID") or ("openresty:" .. ngx.var.hostname),
     host_name = "altprobe-openresty-lab", consumer_name = ctx.consumer_name or "",
     request_uri = field("request_uri"), request_method = field("request_method"),
     request_id = field("request_id"), remote_addr = field("remote_addr"),
