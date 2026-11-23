@@ -10,7 +10,8 @@
 </div>
 
 Altprobe is an open-source security collector for AI agents, MCP and APIs.
-It combines **in-band event correlation**, an **embedded WAF** and **asynchronous
+It collects and correlates events from the sources, normalizes them to OCSF, and sends them to SIEM
+Also it combines **in-band event correlation**, an **embedded WAF** and **asynchronous
 LLM Guardrails**.
 
 - **In-band correlator.** Scores HTTP, MCP and API activity using application
