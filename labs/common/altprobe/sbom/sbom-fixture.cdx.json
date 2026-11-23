@@ -1,0 +1,80 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "bom-ref": "root",
+      "type": "application",
+      "name": "altprobe-sbom-fixture",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:pypi/django@2.2.0",
+      "type": "library",
+      "name": "Django",
+      "version": "2.2.0",
+      "purl": "pkg:pypi/django@2.2.0"
+    },
+    {
+      "bom-ref": "pkg:npm/lodash@4.17.4",
+      "type": "library",
+      "name": "lodash",
+      "version": "4.17.4",
+      "purl": "pkg:npm/lodash@4.17.4"
+    },
+    {
+      "bom-ref": "pkg:pypi/requests@2.19.0",
+      "type": "library",
+      "name": "requests",
+      "version": "2.19.0",
+      "purl": "pkg:pypi/requests@2.19.0"
+    },
+    {
+      "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+      "type": "library",
+      "name": "log4j-core",
+      "version": "2.14.1",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "id": "CVE-2019-19844",
+      "source": { "name": "NVD" },
+      "ratings": [{ "severity": "CRITICAL" }],
+      "description": "Django account hijack via password reset.",
+      "affects": [{ "ref": "pkg:pypi/django@2.2.0" }]
+    },
+    {
+      "id": "CVE-2019-10744",
+      "source": { "name": "NVD" },
+      "ratings": [{ "severity": "HIGH" }],
+      "description": "lodash prototype pollution.",
+      "affects": [{ "ref": "pkg:npm/lodash@4.17.4" }]
+    },
+    {
+      "id": "CVE-2018-18074",
+      "source": { "name": "NVD" },
+      "ratings": [{ "severity": "HIGH" }],
+      "description": "requests credential leak on redirect.",
+      "affects": [{ "ref": "pkg:pypi/requests@2.19.0" }]
+    },
+    {
+      "id": "CVE-2021-44228",
+      "source": { "name": "NVD" },
+      "ratings": [{ "severity": "CRITICAL" }],
+      "description": "Log4Shell remote code execution.",
+      "affects": [{ "ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" }]
+    },
+    {
+      "id": "CVE-2021-45046",
+      "source": { "name": "NVD" },
+      "ratings": [{ "severity": "MEDIUM" }],
+      "description": "Log4j denial of service.",
+      "affects": [{ "ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" }]
+    }
+  ]
+}
