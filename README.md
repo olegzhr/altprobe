@@ -30,9 +30,6 @@ Splunk and Graylog can receive OCSF 1.8.0 events and OTLP traces.
 ```text
 altprobe/
   src/                  C++ collector, configuration, shared code and tests
-  src/scripts/build.sh   local build, test and packaging helper
-  scripts/ci/           release guards, package verification and publishing
-  .github/workflows/    GitHub Actions build, test and release
   connectors/           gateway telemetry and OpenSearch integration
   labs/                 self-contained gateway, IDS and agent labs
   docker/               development builder and release-based runtime image
