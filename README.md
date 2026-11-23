@@ -4,7 +4,7 @@
 
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![AI Assisted](https://img.shields.io/badge/AI-Assisted-blueviolet)
-[![Live Demo](https://img.shields.io/badge/Live-Demo-blue)](https://alertflex.org)
+![Test Labs](https://img.shields.io/badge/Test-Labs-blue)
 
 
 </div>
