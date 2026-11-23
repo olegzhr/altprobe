@@ -2,9 +2,9 @@
 
 # Altprobe 1.0.2
 
-![Status](https://shields.io)
-![AI Assisted](https://shields.io)
-[![Live Demo](https://shields.io)](https://alertflex.org)
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+![AI Assisted](https://img.shields.io/badge/AI-Assisted-blueviolet)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-blue)](https://alertflex.org)
 
 
 </div>
