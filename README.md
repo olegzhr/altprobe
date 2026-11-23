@@ -2,9 +2,9 @@
 
 # Altprobe 1.0.2
 
-![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+![License](https://img.shields.io/badge/Apache-2.0-brightgreen)
 ![AI Assisted](https://img.shields.io/badge/AI-Assisted-blueviolet)
-![Test Labs](https://img.shields.io/badge/Test-Labs-blue)
+![Live Labs](https://img.shields.io/badge/Live-Labs-blue)
 
 
 </div>
@@ -51,10 +51,11 @@ flowchart LR
     G[AI/API Gateway] -->|HTTP log records| A[Altprobe collector]
     N[Suricata IDS] -->|network events| A[Altprobe collector]
     H[OpenShell Sandbox] -->|system events| A[Altprobe collector]
-    S[SBOM / OTLP traces] -->|system events| A[Altprobe collector]
+    OTLP[OTLP Collector] -->|traces| A[Altprobe collector]
+    SBOM[SBOM Pipeline] -->|cyclonedx| A[Altprobe collector]
     A -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
     L -->|Asynchronous verdicts| A
-    A --> O[OpenSearch / Splunk / Graylog]
+    A -->|OCSF| O[OpenSearch / Splunk / Graylog]
     A -->|Inventory / Incidents| C[Alertflex]
 ```
 
