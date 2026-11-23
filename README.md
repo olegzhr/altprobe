@@ -9,27 +9,23 @@
 
 </div>
 
-Altprobe is an open-source **collector and correlator** for AI, MCP, API and
-gateway traffic. It ingests telemetry from the gateways, network sensors, agent
-sandboxes and scanners you already run, normalizes every event into **OCSF
-1.8.0** and delivers it to the SIEM you already have. Two detection layers are
-built in: **Guardrails** for LLM traffic and a **prebuilt WAF** based on the
-OWASP Core Rule Set (CRS).
+Altprobe is an open-source security collector for AI agents, MCP and APIs.
+It combines **in-band event correlation**, an **embedded WAF** and **asynchronous
+LLM Guardrails**.
 
-- **Collector** — file, Redis and OTLP inputs for gateway logs, Suricata EVE,
-  OpenShell OCSF, Trivy SBOM and AI traces.
-- **Correlator** — joins observations across sources into scored findings and
-  incidents, maps them to MITRE ATLAS and writes Alertflex incidents for
-  HIGH/CRITICAL results.
-- **Guardrails** — `llm_guard` client for Ollama (Qwen3Guard) and NVIDIA NeMo
-  Guardrails, plus the API Guard rule engine for MCP/A2A and API semantics.
-- **Prebuilt WAF** — an embedded ModSecurity engine with the bundled OWASP CRS
-  4.29.0 ruleset, activated through a ruleset configuration, so web attacks are
-  detected without a separate WAF installation. API Guard adds the MCP/A2A and
-  AI-endpoint rules that generic CRS does not cover.
-- **OCSF 1.8.0 everywhere** — one event model for every source, with daily
-  `ocsf-1.8.0-<class>-*` indexes in OpenSearch, and the same records delivered to
-  Splunk HEC, Graylog GELF and Alertflex.
+- **In-band correlator.** Scores HTTP, MCP and API activity using application
+  events, API Guard findings, WAF detections and Guardrails verdicts.
+- **[Embedded WAF](#prebuilt-waf).** ModSecurity and OWASP CRS inspect captured
+  HTTP requests and responses and emit detection findings.
+- **[Asynchronous LLM Guardrails](#guardrails).** The optional `llm_guard`
+  integration queues captured LLM content for Qwen3Guard via Ollama or NVIDIA
+  NeMo Guardrails. Gateway requests proceed while Altprobe records verdicts as
+  OCSF 6003 evidence.
+
+Altprobe also exports [out-of-band telemetry](#out-of-band-visibility)
+directly to its configured log destinations. This includes sandbox runtime
+events from OpenShell and network observations from Suricata. OpenSearch,
+Splunk and Graylog can receive OCSF 1.8.0 events and OTLP traces.
 
 ```text
 altprobe/
@@ -54,44 +50,68 @@ The collector also exports to OpenSearch, Splunk HEC and Graylog GELF.
 
 ```mermaid
 flowchart LR
-    G[Gateway logs / Redis log lists] --> A[Altprobe collector]
-    S[Security sources / SBOM] --> A
-    A --> O[OpenSearch / Splunk / Graylog]
-    A --> C[Alertflex inventory and incidents]
+    G[API gateway] -->|Gateway log records| A[Altprobe collector]
+    N[Suricata network events] --> E[Altprobe out-of-band export]
+    H[OpenShell sandbox events] --> E
+    E --> O[OpenSearch / Splunk / Graylog]
+    S[SBOM / OTLP traces] --> A
+    A -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
+    L -->|Asynchronous verdicts| A
+    A -->|HTTP and detection signals| R[In-band correlator]
+    A --> O
+    R --> O
+    A -->|Inventory| C[Alertflex]
+    R -->|Incidents| C
     G -. request authorization .-> P[ctrlprobe, separate process]
 ```
 
 ## AI infrastructure monitoring
 
-Altprobe covers the telemetry surface of an AI deployment rather than a single
-gateway:
+Altprobe combines gateway, network, sandbox and application telemetry.
 
 | Capability | What Altprobe observes |
 |---|---|
 | AI gateway traffic | APISIX, Envoy/Agent Router, Kong, Traefik and Higress request/response metadata, HTTP activity, MCP profile |
 | MCP and A2A actions | Tool calls, agent-to-agent calls, credential and data-transfer patterns through API Guard |
-| LLM content | Captured request/response bodies assessed by Guardrails (Qwen3Guard through Ollama, or NeMo Guardrails) as OCSF 6003 evidence |
-| Model provider egress | TLS SNI and HTTP host evidence from Suricata, including direct connections to AI providers |
-| Agent sandbox | OpenShell native OCSF including network correlation for sandboxed agents |
+| LLM content | Captured request and response bodies assessed asynchronously via Ollama (Qwen3Guard) or NeMo Guardrails, with verdicts recorded as OCSF 6003 evidence |
+| Model provider egress | DNS, TLS SNI, HTTP host and network flow evidence from Suricata, including direct connections to AI providers |
+| Agent sandbox | Native OCSF events for process activity, application lifecycle, authentication and policy outcomes, when emitted by the sandbox or workload |
 | Agent supply chain | Trivy CycloneDX results as OCSF 2002 vulnerability findings per image and asset |
 | Distributed traces | OTLP traces over gRPC/HTTP from AI services, with a durable spool |
-| Cross-source decisions | Correlator scoring, MITRE ATLAS mapping and Alertflex incidents |
+| In-band correlation | Risk scoring for application-layer activity, MITRE ATLAS mapping and optional Alertflex incident delivery |
+
+### Out-of-band visibility
+
+- **Sandbox runtime events.** The OpenShell integration forwards native OCSF
+  from the sandbox and instrumented workloads. Depending on what the source
+  emits, records can show process activity, authentication, application
+  lifecycle events and policy outcomes such as denied connections.
+- **Network observations.** Suricata EVE provides DNS, TLS SNI, HTTP host and
+  flow metadata for activity such as a service contacting a model provider
+  directly.
+
+Altprobe exports both sources directly to the SIEM. The in-band correlator
+processes HTTP and its application-layer detection signals. When a Suricata IDS
+alert includes an HTTP observation, that observation can enter the HTTP
+inspection pipeline.
+
+[Suricata lab](labs/lab_suricata/README.md) · [OpenShell lab](labs/lab_openshell/README.md)
 
 ## Sources and SIEM destinations
 
-Every source is normalized into OCSF 1.8.0 and delivered to all enabled log
-sinks. Sinks are independent: enable any combination of OpenSearch, Splunk,
-Graylog and Alertflex, and filter the OCSF, HTTP and OTEL streams per sink with
-`*_types`.
+Altprobe normalizes security events to OCSF 1.8.0 and exports traces as
+OTLP/JSON. OpenSearch, Splunk and Graylog can each select their own OCSF,
+HTTP and OTEL streams with `*_types`. The optional Alertflex integration
+receives inventory, incidents and triggered traces.
 
 | Source | Input | OCSF 1.8.0 output | OpenSearch | Splunk HEC | Graylog GELF | Alertflex | Lab |
 |---|---|---|---|---|---|---|---|
 | APISIX, Kong, Traefik, Envoy, Higress | Gateway logs, file or Redis list (`proxy_log` / `proxy_redis`) | 4002 HTTP Activity | yes | yes | yes | incidents | `lab_apisix`, `lab_kong`, `lab_traefik`, `lab_envoy`, `lab_higress` |
 | Prebuilt WAF (ModSecurity + OWASP CRS) | CRS verdicts for proxied requests and responses | 2004 Detection Finding | yes | yes | yes | incidents | gateway labs |
 | API Guard (MCP/A2A semantics) | Parsed request metadata and bodies | 6003 API Activity | yes | yes | yes | incidents | gateway labs |
-| Correlator | Findings joined across all sources | 6003 API Activity | yes | yes | yes | incidents | all labs |
+| In-band correlator | HTTP, MCP and API events with application-layer detection signals | 6003 API Activity | yes | yes | yes | incidents | gateway labs |
 | Suricata | EVE JSON, file or Redis (`suricata_log` / `suricata_redis`) | 4001 DNS, 4002 HTTP, 4005 flow, 4007 TLS, 2004 alerts | yes | yes | yes | incidents | `lab_suricata` |
-| OpenShell | Native OCSF JSONL, file or Redis | original OCSF classes | yes | yes | yes | incidents | `lab_openshell` |
+| OpenShell | Native OCSF JSONL, file or Redis | original OCSF classes | yes | yes | yes | — | `lab_openshell` |
 | Trivy SBOM | CycloneDX scan output | 2002 Vulnerability Finding | yes | yes | yes | incidents | `lab_sbom` |
 | Guardrails (Ollama / NeMo) | Captured request/response bodies | 6003 API Activity | yes | yes | yes | incidents | `lab_nemo` |
 | OTLP traces | gRPC 4317 / HTTP 4318 from AI services | OTLP/JSON spans | yes | yes | yes | traces | — |
@@ -127,8 +147,8 @@ consumes these events:
 - **Endpoint policy control** — per-endpoint `allow` / `approve` / `block`
   decisions, consumer keys, key rotation and token quotas, delivered to ctrlprobe
   as a versioned policy snapshot and applied synchronously at the gateway.
-- **Risk and response** — correlation across all connected sources, MITRE ATLAS
-  mapping, incidents with audit, and automatic block on risk thresholds.
+- **Risk and response** — scored in-band findings, MITRE ATLAS mapping,
+  incidents with audit, and automatic block on risk thresholds.
 
 Altprobe produces the evidence for these decisions: OCSF 1.8.0 records with
 consumer and asset identity, API Guard MCP/A2A findings, CRS findings, SBOM
@@ -166,7 +186,9 @@ evidence that feeds the correlator.
 
 ### Guardrails
 
-`llm_guard` inspects captured LLM request and response bodies:
+`llm_guard` queues captured LLM request and response bodies for asynchronous
+inspection. The gateway continues handling traffic while the collector waits
+for a verdict. Configure either provider:
 
 - `provider: ollama` with a Qwen3Guard GGUF model, formats `qwen3guard`, `json`
   or `binary_verdict`;
@@ -178,6 +200,11 @@ evidence that feeds the correlator.
 
 Verdicts are recorded as OCSF 6003 detection evidence alongside local API Guard
 findings.
+
+The inspection queue is bounded. Configure its capacity with
+`altprobe.llm_guard.queue_size` or `LLM_GUARD_QUEUE_SIZE` (128 by default).
+When the queue is full, Altprobe drops new inspection jobs and reports
+queue saturation in its log.
 
 ## Screenshots
 
@@ -317,3 +344,4 @@ Offline regressions, without laboratory services:
 python3 connectors/shipper_altprobe/test_shipper.py
 python3 labs/tests/test_source_runs.py
 ```
+
