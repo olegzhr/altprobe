@@ -1,52 +1,36 @@
-FROM ubuntu:jammy
+# Runtime image built from the published Altprobe release package.
+#
+# The binary is never compiled from this repository: the image installs
+# `altprobe_<version>_amd64.deb` from the Altprobe GitHub release, verifies the
+# asset from the selected release snapshot and its checksums, and records the exact package and
+# binary digests in /usr/local/share/altprobe/release-receipt.json.
+#
+#   docker build -f docker/Dockerfile -t altprobe:release .
+FROM ubuntu:22.04
 
-# Altprobe version to install. Override at build time with:
-#   --build-arg ALTPROBE_VERSION=1.0.2
+ENV DEBIAN_FRONTEND=noninteractive
 ARG ALTPROBE_VERSION=1.0.2
 ARG ALTPROBE_RELEASE_BASE_URL=https://github.com/olegzhr/altprobe/releases/download
+ARG ALTPROBE_PACKAGE_SHA256
 
-# Install runtime libraries from the verified package's Depends metadata.
-# The published amd64 package targets Ubuntu 22.04 (Jammy).
-RUN apt-get update \
- && apt-get install -y --no-install-recommends wget ca-certificates \
- && wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}_amd64.deb" -O /tmp/altprobe_${ALTPROBE_VERSION}_amd64.deb \
- && wget -q "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/SHA256SUMS" -O /tmp/SHA256SUMS \
- && (cd /tmp && grep " altprobe_${ALTPROBE_VERSION}_amd64.deb$" SHA256SUMS | sha256sum -c -) \
- && apt-get install -y --no-install-recommends /tmp/altprobe_${ALTPROBE_VERSION}_amd64.deb \
- && ldconfig \
- && ldd /usr/local/bin/altprobe > /tmp/altprobe-ldd.txt \
- && cat /tmp/altprobe-ldd.txt \
- && ! grep -q 'not found' /tmp/altprobe-ldd.txt \
- && rm -f /tmp/altprobe_${ALTPROBE_VERSION}_amd64.deb /tmp/altprobe-ldd.txt \
- && rm -rf /var/lib/apt/lists/*
+COPY labs/common/altprobe/release_metadata.py /usr/local/lib/altprobe_release_metadata.py
 
-# Activate the bundled OWASP CRS so ModSecurity starts: the package ships only
-# crs-setup.conf.example, and REQUEST-922-MULTIPART-ATTACK.conf is incompatible
-# with ModSecurity 3.0.6. Allowed content types and anomaly thresholds mirror
-# the lab images.
-RUN cp /etc/altprobe/coreruleset/crs-setup.conf.example /etc/altprobe/coreruleset/crs-setup.conf \
- && rm -f /etc/altprobe/coreruleset/rules/REQUEST-922-MULTIPART-ATTACK.conf \
- && cat >> /etc/altprobe/coreruleset/crs-setup.conf <<'EOF'
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl python3 \
+    && python3 /usr/local/lib/altprobe_release_metadata.py \
+        --version "$ALTPROBE_VERSION" --base-url "$ALTPROBE_RELEASE_BASE_URL" \
+        --download-dir /tmp/altprobe-release --expected-sha256 "$ALTPROBE_PACKAGE_SHA256" \
+    && apt-get install -y --no-install-recommends "/tmp/altprobe-release/altprobe_${ALTPROBE_VERSION}_amd64.deb" \
+    && ldconfig \
+    && ldd /usr/local/bin/altprobe > /tmp/altprobe-ldd.txt \
+    && ! grep -q 'not found' /tmp/altprobe-ldd.txt \
+    && python3 /usr/local/lib/altprobe_release_metadata.py \
+        --version "$ALTPROBE_VERSION" --base-url "$ALTPROBE_RELEASE_BASE_URL" \
+        --package "/tmp/altprobe-release/altprobe_${ALTPROBE_VERSION}_amd64.deb" --sums /tmp/altprobe-release/SHA256SUMS \
+        --binary /usr/local/bin/altprobe \
+        --receipt /usr/local/share/altprobe/release-receipt.json \
+    && rm -rf /tmp/altprobe-release /tmp/altprobe-ldd.txt \
+    && rm -rf /var/lib/apt/lists/*
 
-# ---- Activated defaults ----
-SecAction \
-    "id:900998,\
-    phase:1,\
-    nolog,\
-    pass,\
-    t:none,\
-    setvar:tx.allowed_request_content_type=|application/x-www-form-urlencoded| |multipart/form-data| |text/xml| |application/xml| |application/soap+xml| |application/json|,\
-    setvar:tx.critical_anomaly_score=5,\
-    setvar:tx.error_anomaly_score=4,\
-    setvar:tx.warning_anomaly_score=3,\
-    setvar:tx.notice_anomaly_score=2,\
-    setvar:tx.inbound_anomaly_score_threshold=5,\
-    setvar:tx.outbound_anomaly_score_threshold=4,\
-    setvar:tx.paranoia_level=1"
-EOF
-
-COPY entrypoint.sh /usr/local/bin/
-RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
- && chmod +x /usr/local/bin/entrypoint.sh
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/altprobe"]
+CMD ["docker"]

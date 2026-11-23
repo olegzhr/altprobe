@@ -1,0 +1,27 @@
+{
+  "revision": 3,
+  "files": {
+    "api_guard.cpp": "a8558578cbb94e898d024bd721ed8511a51c62360196e30bb1bf1f1a1d53e03f",
+    "api_guard.h": "135ddd74d08294030acb2a34fdd8bbd5cc6a22f9623ab5b6c87bcd94c9f16ee3",
+    "api_guard_rules.inc": "750d81dd40902da0cd6968fc0fe1cc95be303ded14a66887b2b400f05bf53e00",
+    "base64.h": "c3d2458946e2a0a4e207b5b97b79f17f875b3c9dd2fa83ea788cfe4daed78c8f",
+    "bounded_json.h": "000931eac8eec2d6c14cf62d390a4ef238158d4820fff2f641d558bb7d9038bf",
+    "CMakeLists.txt": "a9bcbb8a42cddf1001aceeee113edc3b8bd03dbdf50e35d503fc5af27bc53de5",
+    "detection.h": "196778af4ab39c98d944faa99ece672b51a6dfacfa82a347d7b331adb02b377b",
+    "diagnostic.h": "4a0856a4092c8a5637d333002af28674808cb9d4a3fa114e595bffc06143846f",
+    "gateway_identity.h": "290c441634ecfd11559e3b99f7202fe278473b875d6939a67af826fbcf2b368f",
+    "http.h": "d6194894f87492f3e68df023a6e15faa86260feadd6e900da20a3e1c15801d52",
+    "http_io.h": "53e22de42502ba003a9b640f99aa4361a44645385bd1f1a5027574ac2f3e66a3",
+    "identity.cpp": "be4b70a72e1a1ce595babdd3f1494a4e4596c8e5b4f6b986085fff0d35c8b9c1",
+    "inventory_decode.cpp": "57d107bf2796b48aecc77fe2e8d85f5c8ce2266406972bf5404a6303101e17b4",
+    "inventory_decode.h": "ce9d7e6d88bf7b3c1ef89ff7be6b9a2788ada3ff03b9ad0cb0a4667f779a36f6",
+    "inventory_types.h": "a6dba92926fca11721e313a541e4db0f939281dafbd19b17ae9dae256a82de95",
+    "json_wire.h": "719851ada8dfff3bee339885f9982ec8d1aa6b5033788557f4f4fa51b60f2343",
+    "listener_transport.cpp": "2ad375eed3f699713af2d79513090376fb90cccf80501083d988050419f42dea",
+    "listener_transport.h": "b9d1d852f322009ef8124c08564bf25e5337b4e2451d4aa2df05ce04c3602ceb",
+    "request_classifier.cpp": "b963ae1f8ff6d37ee8925d42b025d4ac8cab431058eb6f418838c51a6008aaa5",
+    "request_classifier.h": "2aafa37cea032d4081f56be5c0806642feb1de8cd377faba7ab4a3f60cd05d82",
+    "signal_names.cpp": "cc6560949894eeb9632c86e262f08043d1b2faab80175713cdef644ce68f0fc5",
+    "tls_client.h": "ebfe5f4f8d5124f7f88884c96824a2fcb8c2da1acfb69316bdf8621b68fe5aae"
+  }
+}

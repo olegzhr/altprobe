@@ -10,6 +10,7 @@ local schema = {
         output_type = { type = "string", default = "redis", enum = { "redis", "file" } },
         redis_host = { type = "string", default = "127.0.0.1" },
         redis_port = { type = "integer", default = 6379 },
+        redis_username = { type = "string", default = "" },
         redis_password = { type = "string", default = "" },
         redis_database = { type = "integer", default = 0 },
         redis_key = { type = "string", default = "log_proxy" },
@@ -111,21 +112,54 @@ local function send_to_redis(premature, conf, payload)
     local red = redis:new()
     red:set_timeout(conf.timeout)
 
-    local ok, err = red:connect(conf.redis_host, conf.redis_port)
+    local authenticated = conf.redis_password and conf.redis_password ~= ""
+    local database = conf.redis_database or 0
+    local isolated = authenticated or database ~= 0
+    local pool = (isolated and "altprobe-isolated:" or "altprobe-default:") ..
+        conf.redis_host .. ":" .. conf.redis_port
+    local ok, err = red:connect(conf.redis_host, conf.redis_port, {pool = pool})
     if not ok then
         return
     end
 
-    if conf.redis_password and conf.redis_password ~= "" then
-        red:auth(conf.redis_password)
+    if conf.redis_username and conf.redis_username ~= "" and not authenticated then
+        core.log.error("redis-logger: Redis username requires a password")
+        red:close()
+        return
+    end
+    if authenticated then
+        if conf.redis_username and conf.redis_username ~= "" then
+            ok, err = red:auth(conf.redis_username, conf.redis_password)
+        else
+            ok, err = red:auth(conf.redis_password)
+        end
+        if not ok then
+            core.log.error("redis-logger: Redis authentication failed")
+            red:close()
+            return
+        end
     end
 
-    if conf.redis_database then
-        red:select(conf.redis_database)
+    if database ~= 0 then
+        ok, err = red:select(database)
+        if not ok then
+            core.log.error("redis-logger: Redis database selection failed")
+            red:close()
+            return
+        end
     end
 
-    red:rpush(conf.redis_key, payload)
-    red:set_keepalive(10000, 100)
+    ok, err = red:rpush(conf.redis_key, payload)
+    if not ok then
+        core.log.error("redis-logger: Redis queue write failed")
+        red:close()
+        return
+    end
+    if isolated then
+        red:close()
+    else
+        red:set_keepalive(10000, 100)
+    end
 end
 
 local function send_to_file(premature, conf, payload)
@@ -163,7 +197,12 @@ function _M.log(conf, ctx)
     local log_data = {
         gateway_origin_id = origin,
         host_name = conf.host_name,
-        consumer_name = ctx.consumer_name or "-",
+        consumer_id = ctx.altprobe_consumer_id,
+        consumer_name = ctx.altprobe_consumer_name or ctx.consumer_name or "-",
+        authenticated_consumer_name = (ctx.consumer and ctx.consumer.username) or ctx.consumer_name or "-",
+        agent_key_authenticated = ctx.altprobe_agent_identity ~= nil,
+        agent_identity_gateway = ctx.altprobe_agent_identity and ctx.altprobe_agent_identity.gateway or "",
+        agent_identity_principal = ctx.altprobe_agent_identity and ctx.altprobe_agent_identity.principal or "",
         mcp_session_id = ngx.var.http_mcp_session_id or "-",
         mcp_method = ctx.mcp_method or "-",
         request_uri = ngx.var.request_uri or "-",
