@@ -50,19 +50,12 @@ The collector also exports to OpenSearch, Splunk HEC and Graylog GELF.
 
 ```mermaid
 flowchart LR
-    G[API gateway] -->|Gateway log records| A[Altprobe collector]
-    N[Suricata network events] --> E[Altprobe out-of-band export]
-    H[OpenShell sandbox events] --> E
-    E --> O[OpenSearch / Splunk / Graylog]
-    S[SBOM / OTLP traces] --> A
-    A -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
-    L -->|Asynchronous verdicts| A
-    A -->|HTTP and detection signals| R[In-band correlator]
-    A --> O
-    R --> O
+    G[AI/API Gateway] -->|HTTP log records| A[Altprobe collector]
+    N[Suricata IDS] -->|network events| A[Altprobe collector]
+    H[OpenShell Sandbox] -->|system events| A[Altprobe collector]
+    S[SBOM / OTLP traces] -->|system events| A[Altprobe collector]
+    A --> O[OpenSearch / Splunk / Graylog]
     A -->|Inventory| C[Alertflex]
-    R -->|Incidents| C
-    G -. request authorization .-> P[ctrlprobe, separate process]
 ```
 
 ## AI infrastructure monitoring
