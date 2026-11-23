@@ -53,7 +53,7 @@ flowchart LR
     H[OpenShell Sandbox] -->|system events| A[Altprobe collector / correlator]
     OTLP[OpenTelemetry] -->|OTLP traces| A[Altprobe collector / correlator]
     SBOM[SBOM Pipeline] -->|CycloneDX| A[Altprobe collector / correlator]
-    A -->|Captured LLM / MCP content| L[Ollama / NVIDIA NeMo Guardrails]
+    A -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
     L -->|Asynchronous verdicts| A
     A -->|OCSF| O[OpenSearch / Splunk / Graylog]
     A -->|Inventory / Incidents| C[Alertflex]
