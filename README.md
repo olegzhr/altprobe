@@ -56,7 +56,7 @@ flowchart LR
     A -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
     L -->|Asynchronous verdicts| A
     A -->|OCSF| O[OpenSearch / Splunk / Graylog]
-    A -->|Inventory / Incidents| C[Alertflex]
+    A -->|Inventory| C[Alertflex]
 ```
 
 ## AI infrastructure monitoring
