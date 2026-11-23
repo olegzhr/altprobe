@@ -48,12 +48,12 @@ The collector also exports to OpenSearch, Splunk HEC and Graylog GELF.
 
 ```mermaid
 flowchart LR
-    G[AI/API Gateway] -->|HTTP log records| A[Altprobe collector]
-    N[Suricata IDS] -->|network events| A[Altprobe collector]
-    H[OpenShell Sandbox] -->|system events| A[Altprobe collector]
-    OTLP[OpenTelemetry] -->|OTLP traces| A[Altprobe collector]
-    SBOM[SBOM Pipeline] -->|CycloneDX| A[Altprobe collector]
-    A -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
+    G[AI/API Gateway] -->|HTTP log records| A[Altprobe collector / correlator]
+    N[Suricata IDS] -->|network events| A[Altprobe collector / correlator]
+    H[OpenShell Sandbox] -->|system events| A[Altprobe collector / correlator]
+    OTLP[OpenTelemetry] -->|OTLP traces| A[Altprobe collector / correlator]
+    SBOM[SBOM Pipeline] -->|CycloneDX| A[Altprobe collector / correlator]
+    A -->|Captured LLM / MCP content| L[Ollama / NVIDIA NeMo Guardrails]
     L -->|Asynchronous verdicts| A
     A -->|OCSF| O[OpenSearch / Splunk / Graylog]
     A -->|Inventory / Incidents| C[Alertflex]
