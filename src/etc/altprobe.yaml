@@ -99,7 +99,7 @@ sinks:
   # log and incident delivery.
   af_key: ""                           # SINKS_AF_KEY
   # Verify the Alertflex server certificate chain, expiry and DNS/IP SAN.
-  # The code default is false; keep true for HTTPS deployments.
+  # HTTPS certificate verification defaults to true for all sinks.
   af_tls_verify: true                  # SINKS_AF_TLS_VERIFY
   # PEM CA bundle; empty uses the system trust store.
   af_tls_ca_file: ""                   # SINKS_AF_TLS_CA_FILE
@@ -108,7 +108,7 @@ sinks:
   os_url: ""                           # SINKS_OS_URL, e.g. https://host:9200
   os_user: "admin"                     # SINKS_OS_USER
   os_pwd: ""                           # SINKS_OS_PWD
-  # Same certificate checks as for Alertflex; code default is false.
+  # Set false only for this sink to disable certificate verification.
   os_tls_verify: true                  # SINKS_OS_TLS_VERIFY
   os_tls_ca_file: ""                   # SINKS_OS_TLS_CA_FILE
   # Exported data types, independent and combinable:
@@ -125,7 +125,6 @@ sinks:
   splunk_token: ""                     # SINKS_SPLUNK_TOKEN
   splunk_index: "altprobe"             # SINKS_SPLUNK_INDEX
   splunk_types: [OCSF, HTTP, OTEL]     # SINKS_SPLUNK_TYPES
-  # Code default is false; keep true for HTTPS HEC endpoints.
   splunk_tls_verify: true              # SINKS_SPLUNK_TLS_VERIFY
   splunk_tls_ca_file: ""               # SINKS_SPLUNK_TLS_CA_FILE
 
@@ -136,14 +135,13 @@ sinks:
   # _stream, _altprobe_source, _project_id and _pipeline as additional fields.
   graylog_url: ""                      # SINKS_GRAYLOG_URL
   graylog_types: [OCSF, HTTP, OTEL]    # SINKS_GRAYLOG_TYPES
-  # Code default is false; keep true for HTTPS GELF inputs behind a proxy.
   graylog_tls_verify: true             # SINKS_GRAYLOG_TLS_VERIFY
   graylog_tls_ca_file: ""              # SINKS_GRAYLOG_TLS_CA_FILE
 
   # Trace delivery queue: immutable payloads are fsync'd before sending and
-  # retried from disk. Separate queues exist for Alertflex, OpenSearch and
-  # incoming external spans. The directory must be private and owned by the
-  # service user; keep it on a persistent volume.
+  # retried from disk. Alertflex, OpenSearch, Splunk, Graylog and incoming
+  # external spans each have a queue. Use a private directory owned by the
+  # service user on a persistent volume.
   trace_spool_dir: "/var/lib/altprobe/traces"  # SINKS_TRACE_SPOOL_DIR
   # Per queue, including .rejected entries (1..65536).
   trace_max_pending: 4096              # SINKS_TRACE_MAX_PENDING
