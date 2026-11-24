@@ -36,6 +36,8 @@ altprobe/
   ids-rules/            Suricata rules
 ```
 
+## AI infrastructure monitoring
+
 ```mermaid
 flowchart LR
     G[AI/API Gateway] -->|HTTP log records| A[Altprobe collector / correlator]
@@ -48,9 +50,6 @@ flowchart LR
     A -->|OCSF| O[OpenSearch / Splunk / Graylog]
     A -->|Inventory| C[Alertflex]
 ```
-
-## AI infrastructure monitoring
-
 Altprobe combines gateway, network, sandbox and application telemetry.
 
 | Capability | What Altprobe observes |
