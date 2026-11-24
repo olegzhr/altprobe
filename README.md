@@ -109,21 +109,7 @@ Alertflex-triggered traces.
 Altprobe collects, normalizes and correlates; it does not decide. If you need to
 act on what Altprobe sees — find shadow AI, follow MCP drift and control endpoints
 with policy — consider [Alertflex](https://alertflex.org), the decision layer that
-consumes these events:
-
-- **Shadow AI discovery** — AI providers, gateways, MCP servers and agents that
-  appear in traffic or traces but are absent from the approved inventory, shown
-  with the asset, project and consumer that produced the connection.
-- **MCP drift** — changes in MCP servers, tools and tool descriptions compared
-  with the approved baseline, so a mutated tool schema or a new server does not
-  silently inherit trust. API Guard findings and gateway observations are the
-  evidence.
-- **Endpoint policy control** — per-endpoint `allow` / `approve` / `block`
-  decisions, consumer keys, key rotation and token quotas, delivered to ctrlprobe
-  as a versioned policy snapshot and applied synchronously at the gateway.
-- **Risk and response** — scored in-band findings, MITRE ATLAS mapping,
-  incidents with audit, and automatic block on risk thresholds.
-
+consumes these events.
 Altprobe produces the evidence for these decisions: OCSF 1.8.0 records with
 consumer and asset identity, API Guard MCP/A2A findings, CRS findings, SBOM
 findings and traces. Set `sinks.af_url` and `af_key` to send inventory and API
