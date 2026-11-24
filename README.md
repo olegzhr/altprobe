@@ -30,20 +30,11 @@ Splunk and Graylog can receive OCSF 1.8.0 events and OTLP traces.
 ```text
 altprobe/
   src/                  C++ collector, configuration, shared code and tests
-  connectors/           gateway telemetry and OpenSearch integration
+  connectors/           integrations for gateway telemetry and OpenSearch dashboards
   labs/                 self-contained gateway, IDS and agent labs
   docker/               development builder and release-based runtime image
   ids-rules/            Suricata rules
 ```
-
-This repository contains the collector and its integrations. See
-[Build from source](docs/build.md) for native builds, tests and Debian packaging.
-`bash src/scripts/build.sh` configures, compiles and runs CTest locally; the
-same verification runs in GitHub Actions on hosted runners.
-Alertflex is an optional destination for inventory, incidents and endpoint policy
-decisions — see
-[Alertflex: shadow AI, MCP drift and endpoint policy](#alertflex-shadow-ai-mcp-drift-and-endpoint-policy).
-The collector also exports to OpenSearch, Splunk HEC and Graylog GELF.
 
 ```mermaid
 flowchart LR
