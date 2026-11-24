@@ -27,15 +27,6 @@ directly to its configured log destinations. This includes sandbox runtime
 events from OpenShell and network observations from Suricata. OpenSearch,
 Splunk and Graylog can receive OCSF 1.8.0 events and OTLP traces.
 
-```text
-altprobe/
-  src/                  C++ collector, configuration, shared code and tests
-  connectors/           integrations for gateway telemetry and OpenSearch dashboards
-  labs/                 self-contained gateway, IDS and agent labs
-  docker/               development builder and release-based runtime image
-  ids-rules/            Suricata rules
-```
-
 ## AI infrastructure monitoring
 
 ```mermaid
