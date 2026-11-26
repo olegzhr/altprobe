@@ -15,10 +15,6 @@
 
 #include "http_io.h"
 #include "tls_client.h"
-/*
- *   Copyright 2021 Oleg Zharkov
- */
-
 #include "sinks.h"
 #include "base64.h"
 #include "helpers.h"

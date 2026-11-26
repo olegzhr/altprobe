@@ -132,8 +132,7 @@ collector starts with CRS disabled and logs the reason.
 
 Requests and responses are inspected in the collector process; verdicts are
 emitted as OCSF 2004 Detection Findings, and the CRS verdict takes priority over
-any other rule attribution. An offline package build can bundle a local CRS
-archive with `ALTPROBE_CRS_ARCHIVE` and `ALTPROBE_CRS_ARCHIVE_SHA256`.
+any other rule attribution.
 
 ### API Guard
 
