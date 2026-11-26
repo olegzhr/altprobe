@@ -1,9 +1,14 @@
 """Verify the published Altprobe package and record its release provenance.
 
-The labs never compile Altprobe from source. Every image installs
-``altprobe_<version>_amd64.deb`` from the GitHub release and records the exact
-package digest, so a running container can be traced back to the immutable
+The labs never compile Altprobe from source. Every image downloads the canonical
+release assets (``altprobe_<version>_amd64.deb`` and ``SHA256SUMS``) from the
+GitHub release, verifies every file against ``SHA256SUMS``, and records the
+exact package digest. A running container can therefore be traced back to the
 release asset instead of a mutable checkout.
+
+Asset names are stable across publications, so a plain URL works:
+
+    https://github.com/olegzhr/altprobe/releases/download/v1.0.2/altprobe_1.0.2_amd64.deb
 """
 from __future__ import annotations
 
@@ -19,6 +24,10 @@ from pathlib import Path
 
 PRODUCT_VERSION = '1.0.2'
 RECEIPT_SCHEMA = 1
+SAFE_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]*')
+SUMS_LINE = re.compile(r'([0-9a-fA-F]{64})\s+\*?(?:\./)?(.+)')
+# Temporary compatibility with SHA-256-qualified snapshots published before the
+# switch to canonical asset names; removed once no such release remains.
 POINTER = re.compile(r'<!-- altprobe-release: ([0-9a-f]{64}-altprobe-release\.json) -->')
 GITHUB_BASE = re.compile(r'https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/releases/download')
 
@@ -28,6 +37,11 @@ def package_name(version: str) -> str:
     if version != PRODUCT_VERSION:
         raise ValueError(f'Unsupported Altprobe version {version!r}; expected {PRODUCT_VERSION}')
     return f'altprobe_{version}_amd64.deb'
+
+
+def release_file_names(version: str) -> set:
+    """Return the files that a complete release publication must provide."""
+    return {package_name(version), 'build-provenance.json', 'LICENSE', 'NOTICE'}
 
 
 def sha256(path: Path) -> str:
@@ -40,14 +54,30 @@ def sha256(path: Path) -> str:
 
 def checksum(sums_text: str, filename: str) -> str:
     """Return the single SHA256SUMS entry for ``filename``."""
-    entries = []
-    for line in sums_text.splitlines():
-        match = re.fullmatch(r'([0-9a-fA-F]{64})\s+\*?(?:\./)?(.+)', line.strip())
-        if match and match.group(2) == filename:
-            entries.append(match.group(1).lower())
+    entries = [digest for name, digest in parse_sums(sums_text).items() if name == filename]
     if len(entries) != 1:
         raise ValueError(f'Expected exactly one SHA256SUMS entry for {filename}')
     return entries[0]
+
+
+def parse_sums(sums_text: str) -> dict:
+    """Parse SHA256SUMS into ``{name: digest}`` while rejecting unsafe names."""
+    entries = {}
+    for line in sums_text.splitlines():
+        if not line.strip():
+            continue
+        match = SUMS_LINE.fullmatch(line.strip())
+        if not match:
+            raise ValueError('Malformed SHA256SUMS line')
+        digest, name = match.group(1).lower(), match.group(2)
+        if not SAFE_NAME.fullmatch(name):
+            raise ValueError('Unsafe file name in SHA256SUMS: ' + name)
+        if name in entries:
+            raise ValueError('Duplicate SHA256SUMS entry: ' + name)
+        entries[name] = digest
+    if not entries:
+        raise ValueError('Empty SHA256SUMS')
+    return entries
 
 
 def verify_package(package: Path, sums: Path, version: str) -> str:
@@ -79,65 +109,88 @@ def fetch(url: str, timeout: float) -> bytes:
     return data
 
 
-def release_files(base_url: str, version: str, timeout: float = 30) -> dict:
-    name = package_name(version)
+def _canonical_entries(base_url: str, version: str, timeout: float = 30) -> dict:
+    base = release_url(base_url, version)
+    sums = parse_sums(fetch(f'{base}/SHA256SUMS', timeout).decode('utf-8'))
+    expected = release_file_names(version)
+    missing = expected - set(sums)
+    unexpected = set(sums) - expected
+    if missing:
+        raise ValueError('Release SHA256SUMS is missing: ' + ', '.join(sorted(missing)))
+    if unexpected:
+        raise ValueError('Release SHA256SUMS lists unexpected files: ' + ', '.join(sorted(unexpected)))
+    return {name: {'asset': name, 'sha256': digest} for name, digest in sums.items()}
+
+
+def _legacy_entries(base_url: str, version: str, timeout: float) -> dict:
+    """Read a SHA-256-qualified snapshot published by an older workflow.
+
+    Temporary compatibility path: the current release may still only contain
+    ``<sha256>-<name>`` assets plus a manifest pointer in the release body. New
+    publications use canonical names, so this path disappears on its own.
+    """
     base = release_url(base_url, version)
     github = GITHUB_BASE.fullmatch(base.removesuffix('/v' + version))
-    manifest_name = None
-    if github:
-        release = json.loads(fetch(f'https://api.github.com/repos/{github[1]}/releases/tags/v{version}', timeout))
-        markers = POINTER.findall(release.get('body') or '')
-        if len(markers) > 1:
-            raise ValueError('More than one Altprobe release pointer')
-        if markers:
-            manifest_name = markers[0]
-            raw = fetch(f'{base}/{manifest_name}', timeout)
-            if hashlib.sha256(raw).hexdigest() != manifest_name.split('-', 1)[0]:
-                raise ValueError('Release manifest checksum mismatch')
-    else:
-        try:
-            raw = fetch(f'{base}/altprobe-release.json', timeout)
-            manifest_name = 'altprobe-release.json'
-        except urllib.error.HTTPError as error:
-            if error.code != 404:
-                raise
-        except urllib.error.URLError as error:
-            if not isinstance(error.reason, FileNotFoundError):
-                raise
-    if manifest_name is None:
-        digest = checksum(fetch(f'{base}/SHA256SUMS', timeout).decode('utf-8'), name)
-        return {name: {'asset': name, 'sha256': digest}}
+    if not github:
+        raise ValueError('Release has no canonical SHA256SUMS')
+    release = json.loads(fetch(f'https://api.github.com/repos/{github[1]}/releases/tags/v{version}', timeout))
+    markers = POINTER.findall(release.get('body') or '')
+    if len(markers) > 1:
+        raise ValueError('More than one Altprobe release pointer')
+    if not markers:
+        raise ValueError('Release has no canonical SHA256SUMS and no snapshot manifest')
+    raw = fetch(f'{base}/{markers[0]}', timeout)
+    if hashlib.sha256(raw).hexdigest() != markers[0].split('-', 1)[0]:
+        raise ValueError('Release manifest checksum mismatch')
     manifest = json.loads(raw)
     files = manifest.get('files', {})
-    expected = {name, 'build-provenance.json', 'LICENSE', 'NOTICE', 'SHA256SUMS'}
-    if manifest.get('schema') != 1 or manifest.get('version') != version or set(files) != expected:
+    if manifest.get('schema') != 1 or manifest.get('version') != version:
         raise ValueError('Invalid release manifest')
+    expected = release_file_names(version) | {'SHA256SUMS'}
+    if set(files) != expected:
+        raise ValueError('Invalid release manifest file set')
+    entries = {}
     for filename, entry in files.items():
         digest = entry.get('sha256', '')
         if not re.fullmatch(r'[0-9a-f]{64}', digest) or entry.get('asset') != f'{digest}-{filename}':
             raise ValueError('Invalid release artifact in manifest: ' + filename)
-    return files
+        if filename in release_file_names(version):
+            entries[filename] = {'asset': entry['asset'], 'sha256': digest}
+    return entries
+
+
+def _release_entries(base_url: str, version: str, timeout: float = 30) -> dict:
+    try:
+        return _canonical_entries(base_url, version, timeout)
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        return _legacy_entries(base_url, version, timeout)
+
+
+def release_files(base_url: str, version: str, timeout: float = 30) -> dict:
+    """Return ``{name: {'asset': asset, 'sha256': digest}}`` for a release."""
+    return _release_entries(base_url, version, timeout)
 
 
 def download_release(base_url: str, version: str, directory: Path, expected: str = '') -> None:
-    files = release_files(base_url, version)
+    entries = _release_entries(base_url, version)
     name = package_name(version)
-    if expected and files[name]['sha256'] != expected:
+    if expected and entries[name]['sha256'] != expected:
         raise ValueError('Release package differs from the selected digest')
     base = release_url(base_url, version)
     directory.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.altprobe-download-', dir=directory) as staging:
         staging = Path(staging)
-        for filename, entry in files.items():
+        for filename, entry in entries.items():
             target = staging / filename
             with urllib.request.urlopen(f'{base}/{entry["asset"]}', timeout=30) as response, target.open('wb') as out:
                 shutil.copyfileobj(response, out)
             if sha256(target) != entry['sha256']:
                 raise ValueError('Release artifact checksum mismatch: ' + filename)
-        sums = staging / 'SHA256SUMS'
-        if not sums.exists():
-            sums.write_text(f'{files[name]["sha256"]}  {name}\n', encoding='utf-8')
-        verify_package(staging / name, sums, version)
+        (staging / 'SHA256SUMS').write_text(
+            ''.join(f'{entries[filename]["sha256"]}  {filename}\n' for filename in sorted(entries)), encoding='utf-8')
+        verify_package(staging / name, staging / 'SHA256SUMS', version)
         for target in staging.iterdir():
             target.replace(directory / target.name)
 
@@ -176,7 +229,7 @@ def main() -> int:
         download_release(args.base_url, args.version, args.download_dir, args.expected_sha256)
         return 0
     if args.print_package_sha256:
-        print(release_files(args.base_url, args.version)[package_name(args.version)]['sha256'])
+        print(_release_entries(args.base_url, args.version)[package_name(args.version)]['sha256'])
         return 0
     if not args.package or not args.sums:
         parser.error('--package and --sums are required for local verification')

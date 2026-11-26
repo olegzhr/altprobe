@@ -1,10 +1,10 @@
 # Single Altprobe image definition shared by every lab.
 #
 # The image installs the published `altprobe_<version>_amd64.deb` from the
-# Altprobe GitHub release and verifies the selected snapshot and `SHA256SUMS`. It
-# never compiles this repository and never copies a local binary, so a lab run
-# always proves something about the published package. The exact package and
-# installed binary digests are recorded in
+# Altprobe GitHub release and verifies every asset against the release
+# `SHA256SUMS`. It never compiles this repository and never copies a local
+# binary, so a lab run always proves something about the published package. The
+# exact package and installed binary digests are recorded in
 # /usr/local/share/altprobe/release-receipt.json.
 #
 # Gateway labs enable OWASP CRS; source labs do not need it.
@@ -29,7 +29,7 @@ ARG TRIVY_SHA256=c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3
 
 COPY labs/common/altprobe/release_metadata.py /usr/local/lib/altprobe_release_metadata.py
 
-# Download and verify the immutable release asset, then install it with its
+# Download and verify the release assets, then install the package with its
 # declared runtime dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl python3 tar \

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 LABS = Path(__file__).resolve().parents[1]
@@ -29,16 +30,45 @@ OTHER = 'b' * 64
 
 
 class ReleaseMetadataTests(unittest.TestCase):
-    def test_github_manifest_is_selected_once(self):
-        files = {name: {'asset': DIGEST + '-' + name, 'sha256': DIGEST}
-                 for name in (release_metadata.package_name('1.0.2'), 'build-provenance.json', 'LICENSE', 'NOTICE', 'SHA256SUMS')}
+    def test_release_resolves_canonical_sha256sums(self):
+        names = sorted(release_metadata.release_file_names('1.0.2'))
+        sums = ''.join(f'{DIGEST}  {name}\n' for name in names)
+        with patch.object(release_metadata, 'fetch', side_effect=[sums.encode()]) as fetch:
+            files = release_metadata.release_files(support.RELEASE_BASE_URL, '1.0.2')
+        self.assertEqual(sorted(files), names)
+        for name, entry in files.items():
+            self.assertEqual(entry['asset'], name)
+            self.assertEqual(entry['sha256'], DIGEST)
+        self.assertTrue(fetch.call_args.args[0].endswith('/SHA256SUMS'))
+
+    def test_incomplete_or_unsafe_sha256sums_is_rejected(self):
+        with patch.object(release_metadata, 'fetch',
+                          side_effect=[(DIGEST + '  LICENSE\n').encode()]):
+            with self.assertRaisesRegex(ValueError, 'missing'):
+                release_metadata.release_files(support.RELEASE_BASE_URL, '1.0.2')
+        extra = ''.join(f'{DIGEST}  {name}\n' for name in sorted(
+            release_metadata.release_file_names('1.0.2') | {'crs.tar.gz'}))
+        with patch.object(release_metadata, 'fetch', side_effect=[extra.encode()]):
+            with self.assertRaisesRegex(ValueError, 'unexpected'):
+                release_metadata.release_files(support.RELEASE_BASE_URL, '1.0.2')
+        unsafe = (DIGEST + '  ../altprobe_1.0.2_amd64.deb\n')
+        with patch.object(release_metadata, 'fetch', side_effect=[unsafe.encode()]):
+            with self.assertRaisesRegex(ValueError, 'Unsafe'):
+                release_metadata.release_files(support.RELEASE_BASE_URL, '1.0.2')
+
+    def test_legacy_snapshot_manifest_remains_readable(self):
+        names = release_metadata.release_file_names('1.0.2')
+        files = {filename: {'asset': DIGEST + '-' + filename, 'sha256': DIGEST}
+                 for filename in names | {'SHA256SUMS'}}
         manifest = json.dumps({'schema': 1, 'version': '1.0.2', 'files': files}).encode()
         pointer = hashlib.sha256(manifest).hexdigest() + '-altprobe-release.json'
-        with patch.object(release_metadata, 'fetch', side_effect=[
-            json.dumps({'body': '<!-- altprobe-release: ' + pointer + ' -->'}).encode(), manifest,
-        ]) as fetch:
-            self.assertEqual(release_metadata.release_files(support.RELEASE_BASE_URL, '1.0.2'), files)
-            self.assertTrue(fetch.call_args.args[0].endswith(pointer))
+        missing = urllib.error.HTTPError('https://example/v1.0.2/SHA256SUMS', 404, 'Not Found', None, None)
+        release = json.dumps({'body': '<!-- altprobe-release: ' + pointer + ' -->'}).encode()
+        with patch.object(release_metadata, 'fetch',
+                          side_effect=[missing, release, manifest]) as fetch:
+            result = release_metadata.release_files(support.RELEASE_BASE_URL, '1.0.2')
+        self.assertEqual(result, {filename: files[filename] for filename in names})
+        self.assertTrue(fetch.call_args.args[0].endswith(pointer))
 
     def test_mirror_download_checks_every_artifact_before_replacing_local_files(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -46,22 +76,20 @@ class ReleaseMetadataTests(unittest.TestCase):
             release = root / 'v1.0.2'
             release.mkdir()
             name = release_metadata.package_name('1.0.2')
-            payloads = {filename: filename.encode() for filename in (name, 'build-provenance.json', 'LICENSE', 'NOTICE')}
-            payloads['SHA256SUMS'] = ''.join(f'{hashlib.sha256(data).hexdigest()}  {filename}\n'
-                                             for filename, data in sorted(payloads.items())).encode()
-            files = {}
+            payloads = {filename: filename.encode() for filename in release_metadata.release_file_names('1.0.2')}
+            (release / 'SHA256SUMS').write_text(''.join(
+                f'{hashlib.sha256(data).hexdigest()}  {filename}\n'
+                for filename, data in sorted(payloads.items())), encoding='utf-8')
             for filename, data in payloads.items():
-                digest = hashlib.sha256(data).hexdigest()
-                asset = digest + '-' + filename
-                files[filename] = {'asset': asset, 'sha256': digest}
-                (release / asset).write_bytes(data)
-            (release / 'altprobe-release.json').write_text(json.dumps({'schema': 1, 'version': '1.0.2', 'files': files}))
+                (release / filename).write_bytes(data)
             dest = root / 'download'
-            release_metadata.download_release(root.as_uri(), '1.0.2', dest, files[name]['sha256'])
+            release_metadata.download_release(root.as_uri(), '1.0.2', dest,
+                                              hashlib.sha256(payloads[name]).hexdigest())
             self.assertEqual((dest / name).read_bytes(), payloads[name])
+            self.assertTrue((dest / 'SHA256SUMS').is_file())
             with self.assertRaisesRegex(ValueError, 'selected digest'):
                 release_metadata.download_release(root.as_uri(), '1.0.2', dest, OTHER)
-            (release / files['NOTICE']['asset']).write_bytes(b'CORRUPT')
+            (release / 'NOTICE').write_bytes(b'CORRUPT')
             with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
                 release_metadata.download_release(root.as_uri(), '1.0.2', dest)
             self.assertEqual((dest / name).read_bytes(), payloads[name])

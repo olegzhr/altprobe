@@ -93,11 +93,21 @@ Publishing the `v1.0.2` release assets runs in the `publish-release` job after a
 push to a protected `master`/`main`. It requires a merged pull request for the
 pushed commit, verifies the protected branch through the GitHub API, compares
 `build-provenance.json` with the workflow commit and the package checksum, and
-uploads the files under SHA-256-qualified names. After GitHub confirms their
-digests and sizes, one API update selects the new manifest in the release
-notes. Existing release snapshots stay downloadable while readers verify the
-exact files they selected. The workflow uses `GITHUB_TOKEN` (`contents: write`).
-Pull-request and manual runs never publish; they only attach artifacts.
+then replaces the canonical release assets: `altprobe_1.0.2_amd64.deb`,
+`SHA256SUMS`, `build-provenance.json`, `LICENSE` and `NOTICE`. Each upload is
+verified by digest and size before it takes the canonical name, so a plain
+download URL always resolves to the current verified package:
+
+```bash
+base=https://github.com/olegzhr/altprobe/releases/download/v1.0.2
+curl -fsSLO "$base/altprobe_1.0.2_amd64.deb"
+curl -fsSLO "$base/SHA256SUMS"
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+The release body records the published package SHA-256 and commit. The workflow
+uses `GITHUB_TOKEN` (`contents: write`). Pull-request and manual runs never
+publish; they only attach artifacts.
 
 The build records the checkout commit and exact source and package digests.
 Published-release image builds use `docker/Dockerfile` and verify the package

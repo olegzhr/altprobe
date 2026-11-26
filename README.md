@@ -166,14 +166,24 @@ queue saturation in its log.
 
 The collector is distributed as `altprobe_1.0.2_amd64.deb` in the
 [v1.0.2 GitHub release](https://github.com/olegzhr/altprobe/releases/tag/v1.0.2).
-Download the selected release snapshot and verify its checksums before installing.
+Asset names are stable, so a plain download URL always works; verify the file
+against `SHA256SUMS` before installing:
 
 ```bash
-base=https://github.com/olegzhr/altprobe/releases/download
-python3 labs/common/altprobe/release_metadata.py --base-url "$base" \
-  --version 1.0.2 --download-dir .
-sha256sum -c SHA256SUMS
+base=https://github.com/olegzhr/altprobe/releases/download/v1.0.2
+curl -fsSLO "$base/altprobe_1.0.2_amd64.deb"
+curl -fsSLO "$base/SHA256SUMS"
+sha256sum -c SHA256SUMS --ignore-missing
 sudo apt-get install -y ./altprobe_1.0.2_amd64.deb
+```
+
+The same files can be fetched through the helper, which verifies every asset and
+writes the digest into the image receipt:
+
+```bash
+python3 labs/common/altprobe/release_metadata.py \
+  --base-url https://github.com/olegzhr/altprobe/releases/download \
+  --version 1.0.2 --download-dir .
 ```
 
 The container image is built from the same verified package:

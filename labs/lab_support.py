@@ -42,7 +42,7 @@ def input_digest(lab: Path) -> str:
 
 
 def release_package_digest(timeout: float = 30) -> str:
-    """Resolve the selected release snapshot and return its package digest."""
+    """Resolve the current release assets and return the package digest."""
     files = release_metadata.release_files(RELEASE_BASE_URL, RELEASE_VERSION, timeout)
     return files[release_metadata.package_name(RELEASE_VERSION)]['sha256']
 

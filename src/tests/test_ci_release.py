@@ -1,6 +1,5 @@
 import hashlib
 import importlib.util
-import json
 from urllib.parse import parse_qs, urlparse
 from pathlib import Path
 import tempfile
@@ -81,32 +80,59 @@ class ReleaseGuards(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             publisher.merged_request(Client(), context(GITHUB_SHA='HEAD'))
 
-    def test_failed_upload_keeps_the_previous_snapshot(self):
-        with tempfile.TemporaryDirectory() as folder:
-            dist = self.release_files(Path(folder))
-            client = self.SnapshotClient(fail_at=3)
-            with self.assertRaisesRegex(RuntimeError, 'Upload failed'):
-                publisher.publish_snapshot(client, client.release, dist)
-            self.assertEqual(client.body, client.original_body)
-            self.assertEqual(client.updates, 0)
-            self.assertIn('previous-package', client.assets)
+    def test_run_identifier_is_required(self):
+        self.assertEqual(publisher.run_id({'GITHUB_RUN_ID': '12', 'GITHUB_RUN_ATTEMPT': '3'}), '12-3')
+        with self.assertRaises(RuntimeError):
+            publisher.run_id({'GITHUB_RUN_ID': 'abc'})
 
-    def test_pointer_switches_only_after_all_assets_exist_and_retries_are_idempotent(self):
+
+class ReleasePublication(unittest.TestCase):
+    def test_canonical_assets_are_replaced_and_notes_written_once(self):
         with tempfile.TemporaryDirectory() as folder:
             dist = self.release_files(Path(folder))
-            client = self.SnapshotClient()
-            publisher.publish_snapshot(client, client.release, dist)
+            client = self.AssetClient()
+            publisher.publish_assets(client, client.release, dist, '1-1', 'f' * 40)
+            self.assertEqual(sorted(client.assets), sorted(publisher.RELEASE_FILES))
+            for name in publisher.RELEASE_FILES:
+                self.assertEqual(client.assets[name]['data'], (dist / name).read_bytes())
             self.assertEqual(client.updates, 1)
-            self.assertTrue(client.body.startswith('Release notes'))
-            self.assertIn('previous-package', client.assets)
-            manifest, = publisher.POINTER.findall(client.body)
-            self.assertEqual(len(client.assets) - 1, len(publisher.RELEASE_FILES) + 1)
-            snapshot = json.loads(client.assets[manifest]['data'])
-            for name, entry in snapshot['files'].items():
-                self.assertEqual(client.assets[entry['asset']]['data'], (dist / name).read_bytes())
-            publisher.publish_snapshot(client, client.release, dist)
-            self.assertEqual(client.uploads, len(publisher.RELEASE_FILES) + 1)
+            self.assertIn('sha256:', client.body)
+            self.assertNotIn('altprobe-release.json', client.body)
+            uploads = client.uploads
+            publisher.publish_assets(client, client.release, dist, '1-2', 'f' * 40)
+            self.assertEqual(client.uploads, uploads)
             self.assertEqual(client.updates, 1)
+
+    def test_previous_asset_is_renamed_and_deleted_after_success(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dist = self.release_files(Path(folder))
+            client = self.AssetClient()
+            client.seed_asset('LICENSE', b'old license')
+            publisher.publish_assets(client, client.release, dist, '7-1', 'f' * 40)
+            self.assertEqual(client.assets['LICENSE']['data'], (dist / 'LICENSE').read_bytes())
+            self.assertIn(('LICENSE', 'LICENSE.previous-7-1'), client.renames)
+            self.assertIn('LICENSE.previous-7-1', client.deleted)
+
+    def test_failed_upload_keeps_previous_assets_and_notes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dist = self.release_files(Path(folder))
+            client = self.AssetClient(fail_at=3)
+            client.seed_asset('LICENSE', b'old license')
+            with self.assertRaisesRegex(RuntimeError, 'Upload failed'):
+                publisher.publish_assets(client, client.release, dist, '1-1', 'f' * 40)
+            self.assertEqual(client.assets['LICENSE']['data'], b'old license')
+            self.assertEqual(client.body, 'Release notes')
+            self.assertEqual(client.updates, 0)
+
+    def test_sha256sums_mismatch_is_rejected_before_any_upload(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dist = self.release_files(Path(folder))
+            (dist / 'SHA256SUMS').write_text('0' * 64 + '  LICENSE\n', encoding='utf-8')
+            client = self.AssetClient()
+            with self.assertRaisesRegex(RuntimeError, 'SHA256SUMS differs'):
+                publisher.publish_assets(client, client.release, dist, '1-1', 'f' * 40)
+            self.assertEqual(client.uploads, 0)
+            self.assertEqual(client.updates, 0)
 
     @staticmethod
     def release_files(dist):
@@ -118,15 +144,27 @@ class ReleaseGuards(unittest.TestCase):
             for name in files), encoding='utf-8')
         return dist
 
-    class SnapshotClient:
+    class AssetClient:
         release = {'id': 1, 'upload_url': 'https://uploads.github.com/test{?name}'}
-        original_body = 'Release notes\n\n<!-- altprobe-release: ' + 'a' * 64 + '-altprobe-release.json -->'
 
         def __init__(self, fail_at=None):
             self.fail_at = fail_at
-            self.assets = {'previous-package': {'name': 'previous-package'}}
-            self.body = self.original_body
+            self.assets = {}
+            self.body = 'Release notes'
             self.uploads = self.updates = 0
+            self.next_id = 100
+            self.renames = []
+            self.deleted = set()
+
+        def seed_asset(self, name, content):
+            self.assets[name] = {
+                'id': self.next_id, 'name': name, 'size': len(content), 'data': content,
+                'digest': 'sha256:' + hashlib.sha256(content).hexdigest()}
+            self.next_id += 1
+
+        def asset_by_id(self, url):
+            asset_id = int(url.rstrip('/').rsplit('/', 1)[1])
+            return next(asset for asset in self.assets.values() if asset['id'] == asset_id)
 
         def request(self, method, url, **kwargs):
             if method == 'GET':
@@ -137,17 +175,28 @@ class ReleaseGuards(unittest.TestCase):
                     raise RuntimeError('Upload failed')
                 name = parse_qs(urlparse(url).query)['name'][0]
                 data = kwargs['binary']
-                self.assets[name] = {'name': name, 'size': len(data), 'data': data,
-                                     'digest': 'sha256:' + hashlib.sha256(data).hexdigest()}
-                return self.assets[name]
+                asset = {'id': self.next_id, 'name': name, 'size': len(data), 'data': data,
+                         'digest': 'sha256:' + hashlib.sha256(data).hexdigest()}
+                self.next_id += 1
+                self.assets[name] = asset
+                return asset
             if method == 'PATCH':
-                body = kwargs['data']['body']
-                name, = publisher.POINTER.findall(body)
-                for artifact in json.loads(self.assets[name]['data'])['files'].values():
-                    assert artifact['asset'] in self.assets
-                self.body = body
-                self.updates += 1
-                return {'body': body}
+                if 'body' in kwargs['data']:
+                    self.body = kwargs['data']['body']
+                    self.updates += 1
+                    return {'body': self.body}
+                asset = self.asset_by_id(url)
+                new_name = kwargs['data']['name']
+                self.renames.append((asset['name'], new_name))
+                del self.assets[asset['name']]
+                asset['name'] = new_name
+                self.assets[new_name] = asset
+                return {'name': new_name}
+            if method == 'DELETE':
+                asset = self.asset_by_id(url)
+                del self.assets[asset['name']]
+                self.deleted.add(asset['name'])
+                return None
             raise AssertionError('Unexpected API call')
 
 
