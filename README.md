@@ -1,6 +1,6 @@
 <div align="center">
 
-# Altprobe 1.0.2
+# Altprobe
 
 ![License](https://img.shields.io/badge/Apache-2.0-brightgreen)
 ![AI Assisted](https://img.shields.io/badge/AI-Assisted-blueviolet)
@@ -205,10 +205,6 @@ against the release `SHA256SUMS`.
 | [`lab_suricata`](labs/lab_suricata/README.md) | Suricata TLS/DNS/flow and OCSF telemetry |
 | [`lab_nemo`](labs/lab_nemo/README.md) | NeMo Guardrails with LangChain, APISIX and a mock LLM |
 | [`lab_openshell`](labs/lab_openshell/README.md) | NVIDIA OpenShell OCSF telemetry |
-
-Five gateway labs share [`labs/tests`](labs/tests/README.md). The source labs
-NeMo, SBOM and Suricata use the run-scoped runner below; OpenShell additionally
-requires its CLI, gateway and a Linux kernel with Landlock support.
 
 ## Configuration
 
