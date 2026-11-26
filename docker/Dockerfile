@@ -1,8 +1,8 @@
 # Runtime image built from the published Altprobe release package.
 #
 # The binary is never compiled from this repository: the image installs
-# `altprobe_<version>_amd64.deb` from the Altprobe GitHub release, verifies the
-# asset from the selected release snapshot and its checksums, and records the exact package and
+# `altprobe_<version>_amd64.deb` from the Altprobe GitHub release, verifies every
+# asset against the release `SHA256SUMS`, and records the exact package and
 # binary digests in /usr/local/share/altprobe/release-receipt.json.
 #
 #   docker build -f docker/Dockerfile -t altprobe:release .

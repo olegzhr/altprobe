@@ -1,4 +1,12 @@
-"""Upload verified artifacts after a successful merge; never print credentials."""
+"""Publish the verified release assets under their canonical asset names.
+
+The release keeps stable file names (``altprobe_1.0.2_amd64.deb``,
+``SHA256SUMS``, ``build-provenance.json``, ``LICENSE``, ``NOTICE``), so a plain
+download URL always works and no manifest indirection is needed. A new
+publication replaces the content of those assets atomically per file: the new
+upload is verified first, the old asset is renamed aside, the new one takes the
+canonical name, and only then is the old asset deleted.
+"""
 from pathlib import Path
 import hashlib
 import json
@@ -12,6 +20,8 @@ API = 'https://api.github.com'
 REPOSITORY = 'olegzhr/altprobe'
 TAG = 'v1.0.2'
 TARGET_BRANCHES = ('main', 'master')
+RELEASE_FILES = ('altprobe_1.0.2_amd64.deb', 'build-provenance.json', 'LICENSE', 'NOTICE', 'SHA256SUMS')
+NOTE = re.compile(r'<!-- altprobe-release: [^>]*-->\n?')
 
 
 class GitHub:
@@ -53,49 +63,73 @@ def list_assets(client, release):
         page += 1
 
 
-def ensure_asset(client, release, assets, name, content):
+def replace_asset(client, release, assets, name, content, run_id):
+    """Give ``name`` exactly ``content``; return True when something changed."""
     digest = 'sha256:' + hashlib.sha256(content).hexdigest()
-    asset = assets.get(name)
-    if asset and asset.get('state') == 'starter':
-        client.request('DELETE', f'{API}/repos/{REPOSITORY}/releases/assets/{asset["id"]}')
-        asset = None
-    if not asset:
-        upload = release['upload_url'].split('{', 1)[0]
-        asset = client.request('POST', upload + '?name=' + urllib.parse.quote(name, safe=''), binary=content)
-    if asset.get('digest') != digest or asset.get('size') != len(content):
-        raise RuntimeError('Published artifact digest/size mismatch: ' + name)
+    existing = assets.get(name)
+    if existing and existing.get('digest') == digest and existing.get('size') == len(content):
+        return False
+
+    assets_url = f'{API}/repos/{REPOSITORY}/releases/assets/'
+    upload = release['upload_url'].split('{', 1)[0]
+    temporary = f'{name}.upload-{run_id}'
+    stale = assets.get(temporary)
+    if stale:
+        client.request('DELETE', assets_url + str(stale['id']))
+        assets.pop(temporary, None)
+
+    uploaded = client.request('POST', upload + '?name=' + urllib.parse.quote(temporary, safe=''), binary=content)
+    uploaded_url = assets_url + str(uploaded['id'])
+    if uploaded.get('size') != len(content) or uploaded.get('digest') != digest:
+        client.request('DELETE', uploaded_url)
+        raise RuntimeError('Uploaded artifact digest/size mismatch: ' + name)
+
+    old_url = None
+    if existing:
+        old_url = assets_url + str(existing['id'])
+        client.request('PATCH', old_url, data={'name': name + '.previous-' + run_id})
+    try:
+        client.request('PATCH', uploaded_url, data={'name': name})
+    except Exception:
+        if old_url:
+            client.request('PATCH', old_url, data={'name': name})
+        client.request('DELETE', uploaded_url)
+        raise
+    if old_url:
+        client.request('DELETE', old_url)
+        assets.pop(name, None)
+    uploaded['name'] = name
+    assets[name] = uploaded
+    return True
 
 
-RELEASE_FILES = ('altprobe_1.0.2_amd64.deb', 'build-provenance.json', 'LICENSE', 'NOTICE', 'SHA256SUMS')
-POINTER = re.compile(r'<!-- altprobe-release: ([0-9a-f]{64}-altprobe-release\.json) -->')
+def write_release_note(client, release, package_sha256, commit=''):
+    """Describe the current publication in the release body; idempotent."""
+    release_url = f'{API}/repos/{REPOSITORY}/releases/{release["id"]}'
+    body = client.request('GET', release_url).get('body') or ''
+    marker = f'<!-- altprobe-release: sha256:{package_sha256} -->'
+    if marker in body:
+        return False
+    cleaned = NOTE.sub('', body).rstrip()
+    details = [f'`{RELEASE_FILES[0]}` sha256 `{package_sha256}`']
+    if commit:
+        details.append(f'commit `{commit[:12]}`')
+    note = marker + '\n' + 'Release assets use stable names: ' + ', '.join(details) + '. Verify with `SHA256SUMS`.'
+    updated = (cleaned + '\n\n' if cleaned else '') + note + '\n'
+    client.request('PATCH', release_url, data={'body': updated})
+    return True
 
 
-def publish_snapshot(client, release, dist):
+def publish_assets(client, release, dist, run_id, commit=''):
     local = {name: (dist / name).read_bytes() for name in RELEASE_FILES}
     hashes = {name: hashlib.sha256(content).hexdigest() for name, content in local.items()}
     expected_sums = [f'{hashes[name]}  {name}' for name in sorted(hashes.keys() - {'SHA256SUMS'})]
     if local['SHA256SUMS'].decode('utf-8').splitlines() != expected_sums:
         raise RuntimeError('SHA256SUMS differs from the verified release files')
-    files = {name: {'asset': f'{digest}-{name}', 'sha256': digest} for name, digest in hashes.items()}
     assets = list_assets(client, release)
-    for name, entry in files.items():
-        ensure_asset(client, release, assets, entry['asset'], local[name])
-    manifest = (json.dumps({'schema': 1, 'version': '1.0.2', 'files': files}, sort_keys=True) + '\n').encode('utf-8')
-    manifest_name = hashlib.sha256(manifest).hexdigest() + '-altprobe-release.json'
-    ensure_asset(client, release, assets, manifest_name, manifest)
-
-    # The release body is the only mutable pointer. A reader that saw the old
-    # pointer can still fetch every referenced asset after a new publication.
-    release_url = f'{API}/repos/{REPOSITORY}/releases/{release["id"]}'
-    body = client.request('GET', release_url).get('body') or ''
-    existing = POINTER.findall(body)
-    if len(existing) > 1:
-        raise RuntimeError('More than one Altprobe release pointer')
-    if existing == [manifest_name]:
-        return
-    marker = f'<!-- altprobe-release: {manifest_name} -->'
-    updated = POINTER.sub(lambda _: marker, body) if existing else body.rstrip() + '\n\n' + marker
-    client.request('PATCH', release_url, data={'body': updated})
+    for name in RELEASE_FILES:
+        replace_asset(client, release, assets, name, local[name], run_id)
+    write_release_note(client, release, hashes[RELEASE_FILES[0]], commit)
 
 
 def validate_context(env):
@@ -126,6 +160,13 @@ def merged_request(client, env):
                  if pull.get('merged_at') and pull.get('base', {}).get('ref') == env['GITHUB_REF_NAME']), None)
 
 
+def run_id(env):
+    value = env.get('GITHUB_RUN_ID', '') + '-' + env.get('GITHUB_RUN_ATTEMPT', '1')
+    if not re.fullmatch(r'[0-9]+-[0-9]+', value):
+        raise RuntimeError('Invalid workflow run identifier')
+    return value
+
+
 def main():
     validate_context(os.environ)
     token = os.environ.get('GITHUB_TOKEN', '')
@@ -149,7 +190,7 @@ def main():
     release = client.request('GET', f'{API}/repos/{REPOSITORY}/releases/tags/{TAG}')
     if release['tag_name'] != TAG or release.get('immutable'):
         raise RuntimeError('Release tag mismatch or immutable release')
-    publish_snapshot(client, release, root / 'dist')
+    publish_assets(client, release, root / 'dist', run_id(os.environ), os.environ['GITHUB_SHA'])
     print('Release updated: ' + release['html_url'])
 
 
