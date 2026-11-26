@@ -26,3 +26,12 @@ sources:
 `max_body` caps captured bodies (4096 request / 8192 response). The filter does
 not trust client identity headers; identity comes from an authenticated
 principal when the deployment supplies one, otherwise from `remote_addr`.
+
+## Lab and content inspection
+
+Use the [Envoy lab](../../labs/lab_envoy/README.md) and the
+[integration catalog](../README.md). Native OTLP uses a separate collector in TRACE_MODE=external; access logs use internal mode.
+Optional Ollama/NeMo inspection is configured on Altprobe through `LLM_GUARD_*`;
+it consumes the captured request/response bodies and writes OCSF assessments.
+Capture limits remain significant: incomplete or oversized bodies must not be
+interpreted as a successful content check.

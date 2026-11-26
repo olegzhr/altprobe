@@ -1,0 +1,17 @@
+{
+  "index_patterns": ["ocsf-1.8.0-*"],
+  "priority": 20,
+  "template": {
+    "settings": {"number_of_shards": 1, "number_of_replicas": 0},
+    "mappings": {
+      "properties": {
+        "time": {"type": "date", "format": "epoch_millis"},
+        "class_uid": {"type": "long"},
+        "severity_id": {"type": "long"},
+        "action_id": {"type": "long"},
+        "activity_id": {"type": "long"},
+        "type_uid": {"type": "long"}
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+
+apisix:
+  node_listen:
+    - 9080
+
+plugins:
+  - redis-logger
+
+plugin_attr:
+  redis-logger:
+    output_type: redis
+    redis_host: redis
+    redis_port: 6379
+    redis_key: log_proxy
+    log_file_path: /usr/local/apisix/logs/proxy-json.log

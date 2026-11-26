@@ -1,0 +1,221 @@
+# Altprobe 1.0.2 configuration.
+#
+# `altprobe start` and `altprobe run` read this file from
+# /etc/altprobe/altprobe.yaml. `altprobe docker` ignores it and reads the same
+# settings from environment variables (given next to each parameter).
+#
+# Every supported parameter is listed below with the shipped value.
+# Empty addresses disable the corresponding source, sink or integration.
+# Rules, weights and scan tasks live in separate files:
+# etc/api_guard.yaml, etc/scoring_weights.yaml, etc/sbom.yaml, etc/coreruleset/.
+
+altprobe:
+  gateway_type: apisix  # ALTPROBE_GATEWAY_TYPE; telemetry identity namespace
+  # Asset name reported to Alertflex and compared with inventory records.
+  asset_name: "altprobe"                    # ALTPROBE_ASSET_NAME
+  # Stable probe identity used for agent bindings, correlation and identity
+  # checks. Keep it unchanged across restarts; renaming may require updating
+  # bindings in Alertflex.
+  host_name: "altprobe"                     # ALTPROBE_HOST_NAME
+  # Alertflex project scope. When set, it is appended to OpenSearch index names
+  # after the OCSF class (ocsf-...-<project_id>-<date>) and stamped into OCSF
+  # metadata for tenant isolation. Normalized to lowercase [a-z0-9_-],
+  # truncated to 48 characters; empty means no suffix.
+  project_id: ""                            # ALTPROBE_PROJECT_ID
+  # Verbose collector diagnostics on stdout (configuration, inventory, queues).
+  # This is not HTTP logging and not trace collection; secrets are never printed.
+  log_debug: false                          # ALTPROBE_LOG_DEBUG
+  # Trace collection mode:
+  #   internal - build spans from local proxy observations; no OTLP listener
+  #   external - receive OTLP spans on sources.otel; no internally built spans
+  #   off      - stop new collection and matching; already queued exports drain
+  # The legacy altprobe.trace_enabled flag is read only when trace_mode is
+  # absent, so prefer this key.
+  trace_mode: internal                      # TRACE_MODE
+  # API Guard rules (schema v2). A missing or invalid file keeps the last valid
+  # snapshot, or the built-in generated fallback at first start.
+  api_guard: "/etc/altprobe/api_guard.yaml" # ALTPROBE_API_GUARD
+  # Correlator scoring weights. Empty means compiled-in default weights.
+  scoring_weights: "/etc/altprobe/scoring_weights.yaml"  # ALTPROBE_SCORING_WEIGHTS
+  # OWASP Core Rule Set directory for the optional ModSecurity checks.
+  # Empty disables the CRS/WAF part; API Guard keeps working.
+  ruleset_path: "/etc/altprobe/coreruleset" # ALTPROBE_RULESET_PATH
+
+  # Optional LLM guard content inspection shared by all sensors.
+  # The former guard_llm / GUARD_LLM_* names were renamed to llm_guard /
+  # LLM_GUARD_*; update existing deployments.
+  # provider=ollama inspects with a local model; provider=nemo submits the
+  # captured body to a NeMo Guardrails API server (/v1/chat/completions) and
+  # uses its input rails as evidence. Verdicts never replace API Guard rules.
+  llm_guard:
+    enabled: false                     # LLM_GUARD_ENABLED
+    provider: "ollama"                 # LLM_GUARD_PROVIDER (ollama|nemo)
+    # Ollama or NeMo Guardrails endpoint: http(s)://host[:port][/base-path].
+    # Ollama examples (use the native API root, not /v1):
+    #   Docker Desktop host:  http://host.docker.internal:11434
+    #   Docker bridge host:   http://172.17.0.1:11434
+    #   Ollama sidecar:       http://ollama:11434
+    #   Bare-metal install:   http://127.0.0.1:11434
+    url: "http://host.docker.internal:11434"  # LLM_GUARD_URL
+    # Ollama model name; required when enabled.
+    model: "hf.co/mradermacher/Qwen3Guard-Gen-0.6B-GGUF:Q4_K_M"  # LLM_GUARD_MODEL
+    # NeMo Guardrails config_id; required for provider=nemo.
+    config_id: ""                      # LLM_GUARD_CONFIG_ID
+    # qwen3guard - raw /api/generate with the Qwen3Guard prompt template;
+    # json - /api/chat JSON verdict; binary_verdict - jailbreak classifier that
+    # supports request inspection only (inspect_response must stay false).
+    # Ignored when provider=nemo.
+    format: "qwen3guard"               # LLM_GUARD_FORMAT
+    inspect_request: true              # LLM_GUARD_INSPECT_REQUEST
+    inspect_response: true             # LLM_GUARD_INSPECT_RESPONSE
+    # Timeout per model call, 100..120000 ms.
+    timeout_ms: 10000                  # LLM_GUARD_TIMEOUT_MS
+    # Max bytes of a request or response sent to the model, 64..32768.
+    max_body_bytes: 16384              # LLM_GUARD_MAX_BODY_BYTES
+    # Bounded asynchronous queue, 1..512; excess jobs are dropped.
+    queue_size: 128                    # LLM_GUARD_QUEUE_SIZE
+    tls_verify: true                   # LLM_GUARD_TLS_VERIFY
+    tls_ca_file: ""                    # LLM_GUARD_TLS_CA_FILE (empty = system CA)
+
+# Correlation and detection. These settings never grant or deny access; access
+# decisions are made by ctrlprobe, not by the collector.
+correlator:
+  detection_enabled: true              # CORRELATOR_DETECTION_ENABLED
+  # Seconds an observed IP-to-agent alias stays valid (default 30).
+  alias_ttl: 30                        # CORRELATOR_ALIAS_TTL
+  # Seconds between repeated findings for the same entity (default 30).
+  # A higher risk score or a new category in the escalation mask bypasses it.
+  alert_cooldown: 30                   # CORRELATOR_ALERT_COOLDOWN
+  # Event-time window in seconds for evidence considered together (90).
+  # Older observations expire even while the same entity stays active.
+  entity_ttl: 90                       # CORRELATOR_ENTITY_TTL
+  # Run state cleanup every N processed events (default 100).
+  cleanup_interval: 100                # CORRELATOR_CLEANUP_INTERVAL
+
+sinks:
+  # Alertflex collector API base, for example https://alertflex.example/api/v1/
+  af_url: ""                           # SINKS_AF_URL
+  # Project collector key (not an agent key). Empty disables all Alertflex
+  # log and incident delivery.
+  af_key: ""                           # SINKS_AF_KEY
+  # Verify the Alertflex server certificate chain, expiry and DNS/IP SAN.
+  # HTTPS certificate verification defaults to true for all sinks.
+  af_tls_verify: true                  # SINKS_AF_TLS_VERIFY
+  # PEM CA bundle; empty uses the system trust store.
+  af_tls_ca_file: ""                   # SINKS_AF_TLS_CA_FILE
+
+  # OpenSearch.
+  os_url: ""                           # SINKS_OS_URL, e.g. https://host:9200
+  os_user: "admin"                     # SINKS_OS_USER
+  os_pwd: ""                           # SINKS_OS_PWD
+  # Set false only for this sink to disable certificate verification.
+  os_tls_verify: true                  # SINKS_OS_TLS_VERIFY
+  os_tls_ca_file: ""                   # SINKS_OS_TLS_CA_FILE
+  # Exported data types, independent and combinable:
+  #   OCSF - findings (2002, 2004, 6003) and IDS DNS/network/TLS (4001, 4005, 4007)
+  #   HTTP - HTTP activity (4002) honoring endpoint.osPipeline from Alertflex
+  #   OTEL - every collected span, including spans without a trigger match
+  # [] disables all three streams. The endpoint pipeline applies only to HTTP.
+  os_types: [OCSF, HTTP, OTEL]         # SINKS_OS_TYPES
+
+  # Splunk HTTP Event Collector, independent of OpenSearch.
+  # URL example: https://splunk.example:8088/services/collector/event
+  splunk_url: ""                       # SINKS_SPLUNK_URL
+  # HEC token, not an Alertflex key.
+  splunk_token: ""                     # SINKS_SPLUNK_TOKEN
+  splunk_index: "altprobe"             # SINKS_SPLUNK_INDEX
+  splunk_types: [OCSF, HTTP, OTEL]     # SINKS_SPLUNK_TYPES
+  splunk_tls_verify: true              # SINKS_SPLUNK_TLS_VERIFY
+  splunk_tls_ca_file: ""               # SINKS_SPLUNK_TLS_CA_FILE
+
+  # Graylog GELF HTTP input, independent of OpenSearch and Splunk.
+  # URL example: http://graylog.example:12201/gelf (default port 12201,
+  # default path /gelf). One GELF 1.1 document per event: the raw OCSF or
+  # OTLP/JSON record is carried in full_message, with _ocsf_class_uid,
+  # _stream, _altprobe_source, _project_id and _pipeline as additional fields.
+  graylog_url: ""                      # SINKS_GRAYLOG_URL
+  graylog_types: [OCSF, HTTP, OTEL]    # SINKS_GRAYLOG_TYPES
+  graylog_tls_verify: true             # SINKS_GRAYLOG_TLS_VERIFY
+  graylog_tls_ca_file: ""              # SINKS_GRAYLOG_TLS_CA_FILE
+
+  # Trace delivery queue: immutable payloads are fsync'd before sending and
+  # retried from disk. Alertflex, OpenSearch, Splunk, Graylog and incoming
+  # external spans each have a queue. Use a private directory owned by the
+  # service user on a persistent volume.
+  trace_spool_dir: "/var/lib/altprobe/traces"  # SINKS_TRACE_SPOOL_DIR
+  # Per queue, including .rejected entries (1..65536).
+  trace_max_pending: 4096              # SINKS_TRACE_MAX_PENDING
+  # Per queue, including .rejected entries (1 MiB..2 GiB).
+  trace_max_bytes: 268435456           # SINKS_TRACE_MAX_BYTES
+  # Delivery timeout per attempt (100..60000 ms).
+  trace_timeout_ms: 5000               # SINKS_TRACE_TIMEOUT_MS
+
+  # Alertflex-specific delivery settings.
+  alertflex:
+    # Export HIGH/CRITICAL findings as Alertflex incidents, independently of
+    # access control. Requires af_key and a project_id.
+    incident_enabled: false            # SINKS_ALERTFLEX_INCIDENT_ENABLED
+    # Incident API base; empty falls back to sinks.af_url.
+    url: ""                            # SINKS_ALERTFLEX_URL
+    # Disk spool for incident retries; must be private and owned by the
+    # service user. Keep it on a persistent volume (SINKS_ALERTFLEX_SPOOL_DIR).
+    spool_dir: "/var/lib/altprobe/incidents"  # SINKS_ALERTFLEX_SPOOL_DIR
+    # Delivery timeout per attempt (100..60000 ms).
+    timeout_ms: 5000                   # SINKS_ALERTFLEX_TIMEOUT_MS
+    # Max queued incidents (1..4096).
+    max_pending: 512                   # SINKS_ALERTFLEX_MAX_PENDING
+    # Development override: allow plain HTTP for incident delivery only.
+    allow_http: false                  # SINKS_ALERTFLEX_ALLOW_HTTP
+    # Permanently rejected records kept for operator review; must be private.
+    logs_rejected_dir: "/var/lib/altprobe/logs-rejected"  # SINKS_ALERTFLEX_LOGS_REJECTED_DIR
+
+# Inputs. For every sensor choose a file OR a Redis list; when both are empty
+# the sensor is disabled. Redis keys are consumed with LPOP, so each record is
+# delivered to one consumer.
+sources:
+  # Shared Redis endpoint; a source also needs a non-empty key to be enabled.
+  redis_host: ""                       # SOURCES_REDIS_HOST
+  redis_port: 6379                     # SOURCES_REDIS_PORT
+  redis_username: ""                   # SOURCES_REDIS_USERNAME (optional ACL username)
+  redis_password: ""                   # SOURCES_REDIS_PASSWORD
+  redis_database: 0                    # SOURCES_REDIS_DATABASE
+
+  # Proxy gateway logs (APISIX, Envoy, Kong, Traefik, Higress).
+  proxy_log: ""                        # SOURCES_PROXY_LOG, e.g. /var/log/nginx/access.log
+  proxy_redis: ""                      # SOURCES_PROXY_REDIS, e.g. log_proxy
+
+  # Suricata EVE JSON (DNS, TLS, flows and HTTP).
+  suricata_log: ""                     # SOURCES_SURICATA_LOG, e.g. /var/log/suricata/eve.json
+  suricata_redis: ""                   # SOURCES_SURICATA_REDIS, e.g. log_suri
+  # Alertflex agent identity for this source: agents.rec_id / client_name.
+  suricata_consumer_id: ""             # SOURCES_SURICATA_CONSUMER_ID
+  suricata_consumer_name: ""           # SOURCES_SURICATA_CONSUMER_NAME
+
+  # OpenShell OCSF JSONL (stdout files or OCSF-JSON stderr).
+  openshell_log: ""                    # SOURCES_OPENSHELL_LOG
+  openshell_redis: ""                  # SOURCES_OPENSHELL_REDIS
+  # Alertflex agent identity for this source: agents.rec_id / client_name.
+  openshell_consumer_id: ""            # SOURCES_OPENSHELL_CONSUMER_ID
+  openshell_consumer_name: ""          # SOURCES_OPENSHELL_CONSUMER_NAME
+
+  # OTLP trace receiver, active only with trace_mode: external.
+  # Its limits and addresses are validated at startup even when the receiver is
+  # not active. HTTP POST /v1/traces (JSON or protobuf, gzip) and the gRPC
+  # TraceService are exposed; metrics and logs are not accepted. A port set to
+  # 0 disables that transport.
+  otel:
+    bind_host: "127.0.0.1"             # SOURCES_OTEL_BIND_HOST (0.0.0.0 in a container)
+    http_port: 4318                    # SOURCES_OTEL_HTTP_PORT
+    grpc_port: 4317                    # SOURCES_OTEL_GRPC_PORT
+    workers: 4                         # SOURCES_OTEL_WORKERS
+    max_requests: 16                   # SOURCES_OTEL_MAX_REQUESTS
+    max_body_bytes: 4194304            # SOURCES_OTEL_MAX_BODY_BYTES (also after gzip)
+    request_timeout_ms: 5000           # SOURCES_OTEL_REQUEST_TIMEOUT_MS
+    # Exact exporter addresses; required when external traces are enabled.
+    trusted_peers: ["127.0.0.1", "::1"]  # SOURCES_OTEL_TRUSTED_PEERS
+    # Optional receiver credential expected in the Authorization header.
+    bearer_token: ""                   # SOURCES_OTEL_BEARER_TOKEN
+    # Server TLS; tls_ca enables mutual TLS with client certificates.
+    tls_cert: ""                       # SOURCES_OTEL_TLS_CERT
+    tls_key: ""                        # SOURCES_OTEL_TLS_KEY
+    tls_ca: ""                         # SOURCES_OTEL_TLS_CA

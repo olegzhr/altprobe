@@ -8,6 +8,7 @@ import uvicorn
 from services.mcp.transports.http import mcp_router
 from services.test_api.transports.http import test_api_router
 from services.inventory_mock.http import inventory_router
+from services.gateway_lab import gateway_lab_router
 
 
 def create_app() -> FastAPI:
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(mcp_router)
     app.include_router(test_api_router)
     app.include_router(inventory_router)
+    app.include_router(gateway_lab_router)
 
     return app
 

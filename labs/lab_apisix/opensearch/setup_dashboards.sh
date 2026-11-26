@@ -4,7 +4,7 @@
 # Idempotent: each call uses overwrite=true, so reruns overwrite the same
 # objects rather than creating duplicates.
 #
-# Includes gateway/API findings plus Falco and Suricata DNS, TLS, IP flows
+# Includes gateway/API findings plus Suricata DNS, TLS and IP flows
 # and dedicated direct-AI correlation. No MaxMind or geographic maps.
 set -e
 

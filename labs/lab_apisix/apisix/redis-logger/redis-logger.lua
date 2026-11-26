@@ -10,6 +10,7 @@ local schema = {
         output_type = { type = "string", default = "redis", enum = { "redis", "file" } },
         redis_host = { type = "string", default = "127.0.0.1" },
         redis_port = { type = "integer", default = 6379 },
+        redis_username = { type = "string", default = "" },
         redis_password = { type = "string", default = "" },
         redis_database = { type = "integer", default = 0 },
         redis_key = { type = "string", default = "log_proxy" },
@@ -65,7 +66,13 @@ end
 
 function _M.access(conf, ctx)
     ngx.req.read_body()
-    ctx.request_body = ngx.req.get_body_data() or ""
+    local max_body_size = conf.max_body_size or 5000
+    local raw_body = ngx.req.get_body_data() or ""
+    ctx.request_body = string.sub(raw_body, 1, max_body_size)
+    ctx.request_size = tonumber(ngx.var.http_content_length) or #raw_body
+    ctx.request_truncated = ctx.request_size > #ctx.request_body
+    ctx.response_size = 0
+    ctx.response_truncated = false
     ctx.req_headers = safe_encode(redacted_headers(core.request.headers(ctx))) or "{}"
     ctx.resp_body = ""
 
@@ -98,9 +105,11 @@ function _M.body_filter(conf, ctx)
     if chunk then
         local prev = ctx.resp_body or ""
         local max_body_size = conf.max_body_size or 5000
+        ctx.response_size = (ctx.response_size or 0) + #chunk
         if #prev < max_body_size then
             ctx.resp_body = prev .. string.sub(chunk, 1, max_body_size - #prev)
         end
+        ctx.response_truncated = (ctx.response_size or 0) > #ctx.resp_body
     end
 end
 
@@ -112,21 +121,54 @@ local function send_to_redis(premature, conf, payload)
     local red = redis:new()
     red:set_timeout(conf.timeout)
 
-    local ok, err = red:connect(conf.redis_host, conf.redis_port)
+    local authenticated = conf.redis_password and conf.redis_password ~= ""
+    local database = conf.redis_database or 0
+    local isolated = authenticated or database ~= 0
+    local pool = (isolated and "altprobe-isolated:" or "altprobe-default:") ..
+        conf.redis_host .. ":" .. conf.redis_port
+    local ok, err = red:connect(conf.redis_host, conf.redis_port, {pool = pool})
     if not ok then
         return
     end
 
-    if conf.redis_password and conf.redis_password ~= "" then
-        red:auth(conf.redis_password)
+    if conf.redis_username and conf.redis_username ~= "" and not authenticated then
+        core.log.error("redis-logger: Redis username requires a password")
+        red:close()
+        return
+    end
+    if authenticated then
+        if conf.redis_username and conf.redis_username ~= "" then
+            ok, err = red:auth(conf.redis_username, conf.redis_password)
+        else
+            ok, err = red:auth(conf.redis_password)
+        end
+        if not ok then
+            core.log.error("redis-logger: Redis authentication failed")
+            red:close()
+            return
+        end
     end
 
-    if conf.redis_database then
-        red:select(conf.redis_database)
+    if database ~= 0 then
+        ok, err = red:select(database)
+        if not ok then
+            core.log.error("redis-logger: Redis database selection failed")
+            red:close()
+            return
+        end
     end
 
-    red:rpush(conf.redis_key, payload)
-    red:set_keepalive(10000, 100)
+    ok, err = red:rpush(conf.redis_key, payload)
+    if not ok then
+        core.log.error("redis-logger: Redis queue write failed")
+        red:close()
+        return
+    end
+    if isolated then
+        red:close()
+    else
+        red:set_keepalive(10000, 100)
+    end
 end
 
 local function send_to_file(premature, conf, payload)
@@ -191,6 +233,10 @@ function _M.log(conf, ctx)
         http_content_length = ngx.var.http_content_length or "-",
         request_body = ctx.request_body or "",
         response_body = ctx.resp_body or "",
+        host_name = conf.host_name,
+        gateway_origin_id = conf.gateway_origin_id,
+        request_body_truncated = ctx.request_truncated or false,
+        response_body_truncated = ctx.response_truncated or false,
         req_headers = ctx.req_headers or "{}",
         resp_headers = ctx.resp_headers or "{}"
     }

@@ -1,0 +1,2 @@
+langchain-core==1.8.0
+langchain-openai==1.8.0

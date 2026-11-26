@@ -1,0 +1,13 @@
+{
+  "attributes": {
+    "title": "Distinct trace IDs",
+    "description": "Live OTLP observations; original resourceSpans remain in _source.",
+    "visState": "{\"title\": \"Distinct trace IDs\", \"type\": \"metric\", \"params\": {\"fontSize\": 44}, \"aggs\": [{\"id\": \"1\", \"enabled\": true, \"type\": \"cardinality\", \"schema\": \"metric\", \"params\": {\"field\": \"span.trace_id\"}}]}",
+    "uiStateJSON": "{\"vis\": {\"colors\": {\"Count\": \"#00739d\", \"internal\": \"#00739d\", \"gateway-native\": \"#7db6c9\", \"altprobe\": \"#00739d\", \"apisix-native\": \"#7db6c9\"}}}",
+    "version": 1,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"index\": \"altprobe-otel-traces\", \"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

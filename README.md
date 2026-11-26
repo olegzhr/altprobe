@@ -1,158 +1,224 @@
+<div align="center">
+
 # Altprobe
 
-Altprobe is a free collector for AI, MCP, REST API and gateway traffic. It
-collects events from the gateways you already run, normalizes them to OCSF, and
-sends security events, OTEL traces and agent software vulnerability findings to
-OpenSearch. Alertflex is optional. Add Alertflex for MCP/API inventory, traces, 
-incidents, AI explanations and access management.
+![License](https://img.shields.io/badge/Apache-2.0-brightgreen)
+![AI Assisted](https://img.shields.io/badge/AI-Assisted-blueviolet)
+![Live Labs](https://img.shields.io/badge/Live-Labs-blue)
 
-Search events in OpenSearch; use Alertflex to investigate traces and incidents, 
-get AI explanations and manage access.
 
-## What Altprobe provides
+</div>
 
-- Gateway traffic analysis for LLM, MCP and API calls, with prebuilt Altprobe
-  rules and OWASP CRS; Qwen3Guard is optional.
-- Direct AI egress detection by correlating Suricata network events with Falco
-  process and container events.
-- SBOM-based software composition analysis with Trivy or Syft + Grype.
-- Security events in OCSF, with field mappings for OpenSearch Security Analytics.
-- All collected OTEL traces in OTLP/JSON, from built-in collection or external
-  OTLP sources.
-- Six gateway labs with tests, sample traffic and 70+ IDS rules.
+Altprobe is a free open-source collector and correlator for AI, MCP, REST API, and gateway traffic. It collects events from AI gateways, normalizes them into OCSF, and sends these events to OCSF-compatible SIEMs. Additionally, it can work as an OTEL traces collector and an ingester of SBOM and vulnerability scan results (CycloneDX). The optional Alertflex integration adds MCP/API inventory, incidents, Alertflex-triggered traces, and access management.
 
-## How it works
+## AI infrastructure monitoring
 
 ```mermaid
 flowchart LR
-    GW["AI agents / MCP / API<br/>through your gateway"] --> AP["Altprobe<br/>collect + correlate + OCSF"]
-    IDS["Falco + Suricata"] --> AP
-    SBOM["SBOM: Trivy or Syft + Grype"] --> AP
-    AP --> OS["OpenSearch<br/>events, traces, dashboards"]
-    AP -.-> AF["Alertflex (optional)<br/>inventory, traces, incidents, access"]
+    G[AI/API Gateway] -->|HTTP log records| A
+    N[Suricata IDS] -->|network events| A
+    H[OpenShell Sandbox] -->|system events| A
+    OTLP[OpenTelemetry] -->|OTLP traces| A
+    SBOM[SBOM Pipeline] -->|CycloneDX| A
+    A[Altprobe collector / correlator] -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
+    L -->|Asynchronous verdicts| A
+    A -->|OCSF| O[OpenSearch / Splunk / Graylog]
+    A -->|Inventory| C[Alertflex]
 ```
+Altprobe combines gateway, network, sandbox and application telemetry.
 
-The collector is a single Linux service. It reads gateway logs or Redis lists,
-optional IDS events and SBOM reports; it writes OCSF findings and OTEL spans to
-OpenSearch.
+| Capability | What Altprobe observes |
+|---|---|
+| AI gateway traffic | APISIX, Envoy/Agent Router, Kong, Traefik and Higress request/response metadata, HTTP activity, MCP profile |
+| MCP and A2A actions | Tool calls, agent-to-agent calls, credential and data-transfer patterns through API Guard |
+| LLM content | Captured request and response bodies assessed asynchronously via Ollama (Qwen3Guard) or NeMo Guardrails, with verdicts recorded as OCSF 6003 evidence |
+| Model provider egress | DNS, TLS SNI, HTTP host and network flow evidence from Suricata, including direct connections to AI providers |
+| Agent sandbox | Native OCSF events for process activity, application lifecycle, authentication and policy outcomes, when emitted by the sandbox or workload |
+| Agent supply chain | Trivy CycloneDX results as OCSF 2002 vulnerability findings per image and asset |
+| Distributed traces | OTLP traces over gRPC/HTTP from AI services, with a durable spool |
+| In-band correlation | Risk scoring for application-layer activity, MITRE ATLAS mapping and optional Alertflex incident delivery |
 
-## Supported gateways
+### Out-of-band visibility
 
-| Gateway | Connector | Lab |
-|---|---|---|
-| APISIX | [`connectors/apisix`](connectors/apisix/README.md) | [`labs/lab_apisix`](labs/lab_apisix/README.md) |
-| Envoy | [`connectors/envoy`](connectors/envoy/README.md) | [`labs/lab_envoy`](labs/lab_envoy/README.md) |
-| OpenResty | [`connectors/openresty`](connectors/openresty/README.md) | [`labs/lab_openresty`](labs/lab_openresty/README.md) |
-| Kong OSS | [`connectors/kong`](connectors/kong/README.md) | [`labs/lab_kong`](labs/lab_kong/README.md) |
-| Traefik | [`connectors/traefik`](connectors/traefik/README.md) | [`labs/lab_traefik`](labs/lab_traefik/README.md) |
-| Higress | [`connectors/higress`](connectors/higress/README.md) | [`labs/lab_higress`](labs/lab_higress/README.md) |
+- **Sandbox runtime events.** The OpenShell integration forwards native OCSF
+  from the sandbox and instrumented workloads. Depending on what the source
+  emits, records can show process activity, authentication, application
+  lifecycle events and policy outcomes such as denied connections.
+- **Network observations.** Suricata EVE provides DNS, TLS SNI, HTTP host and
+  flow metadata for activity such as a service contacting a model provider
+  directly.
 
-## Quick start
+Altprobe exports both sources directly to the SIEM. The in-band correlator
+processes HTTP and its application-layer detection signals. When a Suricata IDS
+alert includes an HTTP observation, that observation can enter the HTTP
+inspection pipeline.
 
-Start with APISIX:
+[Suricata lab](labs/lab_suricata/README.md) · [OpenShell lab](labs/lab_openshell/README.md)
+
+## Sources and SIEM destinations
+
+Altprobe normalizes security events to OCSF 1.8.0 and exports traces as
+OTLP/JSON. OpenSearch, Splunk and Graylog can each select their own OCSF,
+HTTP and OTEL streams with `*_types`. The optional Alertflex integration
+receives inventory, incidents and triggered traces.
+
+| Source | Input | OCSF 1.8.0 output | OpenSearch | Splunk HEC | Graylog GELF | Alertflex | Lab |
+|---|---|---|---|---|---|---|---|
+| APISIX, Kong, Traefik, Envoy, Higress | Gateway logs, file or Redis list (`proxy_log` / `proxy_redis`) | 4002 HTTP Activity | yes | yes | yes | incidents | `lab_apisix`, `lab_kong`, `lab_traefik`, `lab_envoy`, `lab_higress` |
+| Prebuilt WAF (ModSecurity + OWASP CRS) | CRS verdicts for proxied requests and responses | 2004 Detection Finding | yes | yes | yes | incidents | gateway labs |
+| API Guard (MCP/A2A semantics) | Parsed request metadata and bodies | 6003 API Activity | yes | yes | yes | incidents | gateway labs |
+| In-band correlator | HTTP, MCP and API events with application-layer detection signals | 6003 API Activity | yes | yes | yes | incidents | gateway labs |
+| Suricata | EVE JSON, file or Redis (`suricata_log` / `suricata_redis`) | 4001 DNS, 4002 HTTP, 4005 flow, 4007 TLS, 2004 alerts | yes | yes | yes | incidents | `lab_suricata` |
+| OpenShell | Native OCSF JSONL, file or Redis | original OCSF classes | yes | yes | yes | — | `lab_openshell` |
+| Trivy SBOM | CycloneDX scan output | 2002 Vulnerability Finding | yes | yes | yes | incidents | `lab_sbom` |
+| Guardrails (Ollama / NeMo) | Captured request/response bodies | 6003 API Activity | yes | yes | yes | incidents | `lab_nemo` |
+| OTLP traces | gRPC 4317 / HTTP 4318 from AI services | OTLP/JSON spans | yes | yes | yes | traces | — |
+
+`incidents` means that HIGH/CRITICAL findings are exported through the Alertflex
+incident API when `sinks.alertflex.incident_enabled` is set. Alertflex is not a
+log sink: it receives inventory and API counters, incidents and
+Alertflex-triggered traces.
+
+## Sink configuration
+
+| Sink | Protocol | Configuration | Streams and delivery |
+|---|---|---|---|
+| OpenSearch | HTTP/HTTPS `_bulk`, daily `ocsf-1.8.0-<class>-*` indexes | `sinks.os_url`, `os_user`, `os_pwd`, `os_tls_*`, `os_types` | `OCSF`, `HTTP`, `OTEL`; traces use a durable spool |
+| Splunk | HEC JSON, one event per object | `sinks.splunk_url`, `splunk_token`, `splunk_index`, `splunk_tls_*`, `splunk_types` | `OCSF`, `HTTP`, `OTEL` |
+| Graylog | GELF 1.1 over HTTP | `sinks.graylog_url`, `graylog_tls_*`, `graylog_types` | `OCSF`, `HTTP`, `OTEL`; raw record in `full_message`, `_ocsf_class_uid`, `_stream`, `_altprobe_source`, `_project_id`, `_pipeline` as fields |
+| Alertflex | REST API with collector key | `sinks.af_url`, `af_key`, `sinks.alertflex.*` | inventory and API counters, incidents, triggered traces |
+
+## Alertflex: shadow AI, MCP drift and endpoint policy
+
+Altprobe collects, normalizes and correlates; it does not decide. If you need to
+act on what Altprobe sees — find shadow AI, follow MCP drift and control endpoints
+with policy — consider [Alertflex](https://alertflex.org), the decision layer that
+consumes these events.
+Altprobe produces the evidence for these decisions: OCSF 1.8.0 records with
+consumer and asset identity, API Guard MCP/A2A findings, CRS findings, SBOM
+findings and traces. Set `sinks.af_url` and `af_key` to send inventory and API
+counters, and enable `sinks.alertflex.incident_enabled` to export HIGH/CRITICAL
+findings as Alertflex incidents. Everything else can stay in your SIEM — both
+paths work independently.
+
+## Detections
+
+### Prebuilt WAF
+
+The Debian package ships an embedded ModSecurity engine and the OWASP Core Rule
+Set 4.29.0 rules under `/etc/altprobe/coreruleset`, so no separate WAF has to be
+installed. CRS is activated by creating `crs-setup.conf` from the bundled
+`crs-setup.conf.example` and pointing `altprobe.ruleset_path`
+(`ALTPROBE_RULESET_PATH`, default `/etc/altprobe/coreruleset`) at the ruleset;
+[`labs/common/altprobe/Dockerfile`](labs/common/altprobe/Dockerfile) does exactly
+that and adds the lab `secret_access.conf` rules. Without `crs-setup.conf` the
+collector starts with CRS disabled and logs the reason.
+
+Requests and responses are inspected in the collector process; verdicts are
+emitted as OCSF 2004 Detection Findings, and the CRS verdict takes priority over
+any other rule attribution. An offline package build can bundle a local CRS
+archive with `ALTPROBE_CRS_ARCHIVE` and `ALTPROBE_CRS_ARCHIVE_SHA256`.
+
+### API Guard
+
+API Guard is the semantic detector for API, MCP and A2A traffic. It keeps the
+curated baseline ruleset `api-guard-baseline-v2.5` (122 rules) in
+`etc/api_guard.yaml`; generic SQLi, XSS and path-traversal rules are
+intentionally left to CRS. Rules cover tool abuse, credential transfer, data
+exfiltration, MCP method misuse and agent-to-agent calls, and produce OCSF 6003
+evidence that feeds the correlator.
+
+### Guardrails
+
+`llm_guard` queues captured LLM request and response bodies for asynchronous
+inspection. The gateway continues handling traffic while the collector waits
+for a verdict. Configure either provider:
+
+- `provider: ollama` with a Qwen3Guard GGUF model, formats `qwen3guard`, `json`
+  or `binary_verdict`;
+- `provider: nemo` against a NeMo Guardrails API server
+  (`/v1/chat/completions` with `guardrails.config_id`), where a `Safe` verdict
+  requires a completed input rail reported by NeMo. Missing rail evidence or an
+  incomplete answer produces `invalid_verdict`; an explicit block remains
+  `Unsafe`.
+
+Verdicts are recorded as OCSF 6003 detection evidence alongside local API Guard
+findings.
+
+The inspection queue is bounded. Configure its capacity with
+`altprobe.llm_guard.queue_size` or `LLM_GUARD_QUEUE_SIZE` (128 by default).
+When the queue is full, Altprobe drops new inspection jobs and reports
+queue saturation in its log.
+
+## Screenshots
+
+| OCSF sources | AI/MCP signals |
+|---|---|
+| ![OCSF sources](img/ocsf_sources.png) | ![AI/MCP signals](img/mcp_signals.png) |
+
+| Network flows | Vulnerability findings |
+|---|---|
+| ![Network flows](img/network_flows.png) | ![Vulnerability findings](img/vulnr_findings.png) |
+
+![MITRE ATLAS coverage](img/mitre_atlas.png)
+
+## Install the release
+
+The collector is distributed as `altprobe_1.0.2_amd64.deb` in the
+[v1.0.2 GitHub release](https://github.com/olegzhr/altprobe/releases/tag/v1.0.2).
+Download the selected release snapshot and verify its checksums before installing.
 
 ```bash
-git clone https://github.com/olegzhr/altprobe.git
-cd altprobe/labs/lab_apisix
-docker compose up -d --build --wait --wait-timeout 600
+base=https://github.com/olegzhr/altprobe/releases/download
+python3 labs/common/altprobe/release_metadata.py --base-url "$base" \
+  --version 1.0.2 --download-dir .
+sha256sum -c SHA256SUMS
+sudo apt-get install -y ./altprobe_1.0.2_amd64.deb
 ```
 
-Open:
-
-- Gateway: `http://localhost:9080`
-- OpenSearch: `http://localhost:9200`
-- Dashboards: `http://localhost:5601/app/dashboards`
-- OTEL traces: `http://localhost:5601/app/dashboards#/view/altprobe-otel-traces`
-
-Run the smoke tests:
+The container image is built from the same verified package:
 
 ```bash
-cd ../tests
-python3 -m pip install -r requirements.txt
-LAB_GATEWAY=apisix python3 run_tests.py smoke
+digest=$(python3 labs/common/altprobe/release_metadata.py --base-url "$base" \
+  --version 1.0.2 --print-package-sha256)
+docker build -f docker/Dockerfile --build-arg ALTPROBE_PACKAGE_SHA256="$digest" -t altprobe:release .
 ```
 
-Run one lab at a time; the labs share host ports. See [`labs/README.md`](labs/README.md)
-for the other gateways and [`labs/tests/README.md`](labs/tests/README.md) for all
-test categories.
+Both the image and every lab record the release package digest and the installed
+binary digest in `/usr/local/share/altprobe/release-receipt.json`.
 
-## Dashboards
+## Labs
 
-The labs provision OpenSearch Dashboards with:
+All labs have Docker Compose stacks under [`labs/`](labs/README.md).
+Every lab installs the published Altprobe release package through
+[`labs/common/altprobe/Dockerfile`](labs/common/altprobe/Dockerfile) and verifies it
+against the release `SHA256SUMS`.
 
-- AI / MCP attack signals and tool-abuse signals;
-- OCSF HTTP, API, DNS, TLS and network activity;
-- source-to-destination IP flows and top talkers;
-- MITRE ATT&CK / ATLAS timelines;
-- vulnerability findings from SBOM scans.
+| Lab | Focus |
+|---|---|
+| [`lab_apisix`](labs/lab_apisix/README.md) | APISIX gateway telemetry and the prebuilt WAF |
+| [`lab_envoy`](labs/lab_envoy/README.md) | Envoy AI Gateway |
+| [`lab_higress`](labs/lab_higress/README.md) | Higress gateway |
+| [`lab_kong`](labs/lab_kong/README.md) | Kong OSS |
+| [`lab_traefik`](labs/lab_traefik/README.md) | Traefik |
+| [`lab_nemo`](labs/lab_nemo/README.md) | NeMo Guardrails with LangChain, APISIX and a mock LLM |
+| [`lab_sbom`](labs/lab_sbom/README.md) | Trivy SBOM and OCSF vulnerability findings |
+| [`lab_suricata`](labs/lab_suricata/README.md) | Suricata TLS/DNS/flow and OCSF telemetry |
+| [`lab_openshell`](labs/lab_openshell/README.md) | NVIDIA OpenShell OCSF telemetry |
 
-### AI / MCP Attack Signals
+## Build and test
 
-![AI / MCP Attack Signals](img/mcp_signals.png)
+`bash src/scripts/build.sh` configures, compiles and runs the CTest suite
+locally. `bash scripts/ci/build-test-package.sh` additionally builds and verifies
+the Debian package and writes its provenance. The same command runs in GitHub
+Actions on `ubuntu-22.04` for every push and pull request
+(`.github/workflows/ci.yml`), and the release assets are published after a merged
+pull request. See [build.md](build.md) for dependencies, options and CI details.
 
-### OCSF All Sources Overview
+## Configuration
 
-![OCSF All Sources Overview](img/ocsf_sources.png)
+See the `altprobe.yaml` shipped in the release package (installed as
+`/etc/altprobe/altprobe.yaml`). Container/environment mode
+uses the existing `ALTPROBE_*`, `SOURCES_*`, `SINKS_*` and trace settings.
 
-### Network Flows
 
-![Network Flows](img/network_flows.png)
-
-### MITRE ATT&CK / ATLAS Timeline
-
-![MITRE ATT&CK / ATLAS](img/mitre_atlas.png)
-
-### Vulnerability Findings
-
-![Vulnerability Findings](img/vulnr_findings.png)
-
-## Install from package
-
-```bash
-ALTPROBE_VERSION=1.0.2
-ALTPROBE_RELEASE_BASE_URL="https://github.com/olegzhr/altprobe/releases/download"
-ALTPROBE_SHA256=9d4106796e7bf16bbd9b789aae7c3c36742c4b2a82f69a5dd94b11a1f5b2e25a
-wget "${ALTPROBE_RELEASE_BASE_URL}/v${ALTPROBE_VERSION}/altprobe_${ALTPROBE_VERSION}_amd64.deb"
-echo "${ALTPROBE_SHA256}  altprobe_${ALTPROBE_VERSION}_amd64.deb" | sha256sum -c - \
-  && sudo apt-get update \
-  && sudo apt-get install -y "./altprobe_${ALTPROBE_VERSION}_amd64.deb" \
-  && sudo ldconfig
-```
-
-Ubuntu 22.04 amd64 is the supported package target. The package includes OWASP
-CRS; configure sources and sinks in `/etc/altprobe/altprobe.yaml`.
-
-```bash
-altprobe-start
-altprobe-status
-altprobe-stop
-```
-
-## Repository layout
-
-- `connectors/` — gateway connectors and OpenSearch assets.
-- `labs/` — six gateway labs and the outbound runtime lab.
-- `ids-rules/` — Falco and Suricata rules for direct AI egress and HTTP inspection.
-- `docker/` — base Altprobe container assets.
-- `img/` — dashboard screenshots.
-
-## Documentation
-
-- [Gateway labs](labs/README.md)
-- [Connectors](connectors/README.md)
-- [OpenSearch assets](connectors/opensearch/README.md)
-- [IDS overlay](labs/ids/README.md)
-- [IDS rules](ids-rules/README.md)
-- [Lab tests](labs/tests/README.md)
-
-## Requirements
-
-- Docker and Docker Compose for the labs.
-- Ubuntu 22.04 amd64 for the package install path.
-- OpenSearch or another supported sink for monitoring.
-
-## License
-
-Altprobe binaries and the original code and assets in this repository are
-licensed under the [Apache License, Version 2.0](LICENSE). Third-party
-components retain their respective licenses and notices.

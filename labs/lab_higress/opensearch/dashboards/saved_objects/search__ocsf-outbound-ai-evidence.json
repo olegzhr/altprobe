@@ -1,32 +1,30 @@
 {
-  "attributes": {
-    "title": "Direct AI connections - evidence",
-    "columns": [
-      "time",
-      "outbound_ai.domain",
-      "src_endpoint.ip",
-      "dst_endpoint.ip",
-      "process.name",
-      "process.pid",
-      "outbound_ai.namespace",
-      "outbound_ai.pod_name",
-      "outbound_ai.match_method",
-      "outbound_ai.agent_name",
-      "outbound_ai.agent_session_id",
-      "outbound_ai.agent_tool",
-      "outbound_ai.agent_decision",
-      "outbound_ai.agent_command",
-      "outbound_ai.agent_match"
-    ],
-    "sort": [
-      [
-        "time",
-        "desc"
-      ]
-    ],
-    "kibanaSavedObjectMeta": {
-      "searchSourceJSON": "{\"index\": \"ocsf-6003-api-activity\", \"query\": {\"query\": \"outbound_ai.bypass:true\", \"language\": \"kuery\"}, \"filter\": []}"
-    }
-  },
-  "references": []
+ "attributes": {
+  "title": "Direct AI provider connections - evidence",
+  "columns": [
+   "time",
+   "tls.sni",
+   "src_endpoint.ip",
+   "dst_endpoint.ip",
+   "device.hostname",
+   "severity_id"
+  ],
+  "sort": [
+   [
+    "time",
+    "desc"
+   ]
+  ],
+  "version": 1,
+  "kibanaSavedObjectMeta": {
+   "searchSourceJSON": "{\"index\": \"ocsf-1.8.0-4007-ssh_activity*\", \"query\": {\"query\": \"tls.sni:(*openai.com or *anthropic.com or *googleapis.com or *azure.com or *cohere.ai or *mistral.ai or *groq.com or *together.ai or *huggingface.co or *deepseek.com)\", \"language\": \"kuery\"}, \"filter\": [], \"highlightAll\": true, \"version\": true}"
+  }
+ },
+ "references": [
+  {
+   "id": "ocsf-1.8.0-4007-ssh_activity*",
+   "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+   "type": "index-pattern"
+  }
+ ]
 }

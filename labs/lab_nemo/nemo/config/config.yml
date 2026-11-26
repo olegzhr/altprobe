@@ -1,0 +1,17 @@
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o-mini
+    parameters:
+      base_url: http://mock:4010/v1
+      api_key: mock
+
+rails:
+  input:
+    flows:
+      - nemo check input
+  output:
+    flows: []
+  dialog:
+    single_call:
+      enabled: false

@@ -1,0 +1,108 @@
+# SBOM lab: real Trivy scan -> Altprobe -> OCSF 2002 -> OpenSearch.
+#
+# Trivy scans a pinned npm project with known-vulnerable dependencies. Altprobe
+# runs the scan at startup, converts every CycloneDX vulnerability into an OCSF
+# 2002 finding and writes it to OpenSearch.
+name: af-lab-sbom
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    ports:
+      - 127.0.0.1:19200:9200
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|\"status\":\"yellow\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - 127.0.0.1:5601:5601
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:5601/api/status | grep -q 200"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  opensearch-init:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./opensearch:/setup:ro
+    environment:
+      - OS_URL=http://opensearch:9200
+    entrypoint: ["sh", "/setup/setup_templates.sh"]
+    restart: "no"
+
+  opensearch-dashboards-init:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      opensearch-dashboards:
+        condition: service_healthy
+      opensearch-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./opensearch:/setup:ro
+    environment:
+      - OSD_URL=http://opensearch-dashboards:5601
+    entrypoint: ["sh", "/setup/setup_dashboards.sh"]
+    restart: "no"
+
+  altprobe:
+    build:
+      context: ../..
+      dockerfile: labs/common/altprobe/Dockerfile
+      args:
+        CRS: 'false'
+        TRIVY: 'true'
+    image: altprobe-lab-sbom:local
+    environment:
+      - ALTPROBE_ASSET_NAME=sbom-target
+      - ALTPROBE_HOST_NAME=sbom-node
+      - ALTPROBE_PROJECT_ID=demo-project
+      - ALTPROBE_LOG_DEBUG=true
+      - ALTPROBE_SBOM_CONFIG=/etc/altprobe/sbom.yaml
+      - TRACE_MODE=off
+      - SINKS_OS_URL=http://opensearch:9200
+      - SINKS_OS_USER=admin
+      - SINKS_OS_PWD=admin
+      - SINKS_OS_TLS_VERIFY=false
+      - SINKS_OS_TYPES=OCSF
+      - SINKS_AF_URL=
+      - SINKS_AF_KEY=
+    volumes:
+      - ./target:/opt/sbom-target:ro
+      - ./sbom.yaml:/etc/altprobe/sbom.yaml:ro
+      - trivy-cache:/root/.cache/trivy
+      - altprobe-data:/var/lib/altprobe
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      opensearch-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  opensearch-data: {}
+  trivy-cache: {}
+  altprobe-data: {}

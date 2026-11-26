@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""Replay paired sensor observations; no external AI service is contacted."""
+"""Replay synthetic Suricata EVE records and verify the OCSF documents Altprobe writes.
+
+The overlay feeds the shared `log_suri` Redis list directly, so it exercises the
+Suricata source, the OCSF mapping and the OpenSearch sinks without a live sensor.
+"""
 import datetime as dt
 import json
 import os
 import socket
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 import uuid
+
+TLS_INDEX = "ocsf-1.8.0-4007-ssh_activity*"
+DNS_INDEX = "ocsf-1.8.0-4001-network_activity*"
+FLOW_INDEX = "ocsf-1.8.0-4005-network_activity*"
 
 
 def redis_push(key, value):
@@ -22,6 +30,30 @@ def redis_push(key, value):
 
 def timestamp(offset=0):
     return (dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=offset)).isoformat()
+
+
+def count_with_field(os_url, index, field, deadline=40):
+    """Wait until at least one stored document carries ``field``; return the count."""
+    query = {"size": 0, "query": {"exists": {"field": field}}}
+    last = {}
+    stop = time.monotonic() + deadline
+    while time.monotonic() < stop:
+        try:
+            request = urllib.request.Request(
+                os_url + "/" + index + "/_search",
+                data=json.dumps(query).encode(),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                last = json.load(response)
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                raise
+        total = ((last.get("hits") or {}).get("total") or {}).get("value") or 0
+        if total:
+            return total
+        time.sleep(1)
+    raise AssertionError(f"No documents with {field} in {index}; last response {last!r}")
 
 
 def verify_flows(os_url):
@@ -46,7 +78,7 @@ def verify_flows(os_url):
     while time.monotonic() < deadline:
         try:
             request = urllib.request.Request(
-                os_url + "/ocsf-1.1.0-4005-network_activity*/_search",
+                os_url + "/" + FLOW_INDEX + "/_search",
                 data=json.dumps(query).encode(),
                 headers={"Content-Type": "application/json"},
             )
@@ -69,37 +101,45 @@ def verify_flows(os_url):
 
 def main():
     run = "ids-" + uuid.uuid4().hex[:12]
-    expected = {"direct", "reordered", "dns-connect", "ipv6"}
-    for i, case in enumerate(["direct", "reordered", "dns-connect", "ipv6", "proxy", "dns-only", "non-provider", "wrong-port", "accept", "failed", "stale", "wrong-node"]):
-        client, server = f"10.88.0.{i+10}", f"203.0.113.{i+10}"
-        if case == "ipv6":
-            client, server = "2001:db8:1::4", "2001:db8:2::8"
-        event_time = timestamp(-200 if case == "stale" else 0)
-        fields = {"evt.type": "accept" if case == "accept" else "connect", "evt.rawres": -1 if case == "failed" else 0,
-                  "fd.is_server": case == "accept", "fd.cip": client, "fd.sip": server, "fd.cport": 50000+i,
-                  "fd.sport": 443, "fd.l4proto": "tcp", "proc.name": "python", "proc.pid": 100+i,
-                  "container.id": run+case, "container.name": "lab-ai-agent", "k8s.pod.name": run+"-"+case,
-                  "k8s.ns.name": "ai-gateway" if case == "proxy" else "ai"}
-        falco = {"time": event_time, "hostname": "lab-ai-node", "rule": "AI Outbound Connect", "priority": "Notice", "output_fields": fields}
-        eve = {"timestamp": event_time, "host_name": "other-node" if case == "wrong-node" else "lab-ai-node", "event_type": "tls", "src_ip": client, "dest_ip": server,
-               "src_port": 51000+i if case == "wrong-port" else 50000+i, "dest_port": 443, "proto": "TCP", "flow_id": 1000+i,
-               "tls": {"sni": "api.openai.com.attacker.invalid" if case == "non-provider" else "api.openai.com", "version": "TLS 1.3"}}
-        if case in {"dns-connect", "dns-only"}:
-            eve.update(event_type="dns", src_ip="10.88.0.53", dest_ip=client, src_port=53, dest_port=53000,
-                       dns={"version": 3, "type": "answer", "rcode": "NOERROR", "queries": [{"rrname": "api.openai.com", "rrtype": "A"}],
-                            "answers": [{"rrname": "api.openai.com", "rrtype": "A", "rdata": server}]})
-            eve.pop("tls")
-        pair = [("log_falco", falco), ("log_suri", eve)]
-        if case == "reordered":
-            pair.reverse()
-        if case == "dns-only":
-            pair = [("log_suri", eve)]
-        for key, event in pair:
-            redis_push(key, event)
 
-    # Synthetic Suricata flow records populate the Network Flows (4005)
-    # dashboard: counts, top talkers and the source->destination IP Sankey.
-    # They contain no Falco tuple, so they cannot become bypass findings.
+    # TLS sessions with provider SNI evidence.
+    for i, sni in enumerate(["api.openai.com", "api.anthropic.com", "generativelanguage.googleapis.com"]):
+        redis_push("log_suri", {
+            "timestamp": timestamp(0),
+            "host_name": "lab-ai-node",
+            "event_type": "tls",
+            "src_ip": f"10.88.0.{10 + i}",
+            "src_port": 50000 + i,
+            "dest_ip": f"203.0.113.{10 + i}",
+            "dest_port": 443,
+            "proto": "TCP",
+            "flow_id": 1000 + i,
+            "tls": {"sni": sni, "version": "TLS 1.3"},
+        })
+
+    # DNS answers that resolve a provider name.
+    for i, hostname in enumerate(["api.openai.com", "api.anthropic.com"]):
+        redis_push("log_suri", {
+            "timestamp": timestamp(0),
+            "host_name": "lab-ai-node",
+            "event_type": "dns",
+            "src_ip": "10.88.0.53",
+            "src_port": 53,
+            "dest_ip": f"10.88.0.{20 + i}",
+            "dest_port": 53000 + i,
+            "proto": "UDP",
+            "flow_id": 1500 + i,
+            "dns": {
+                "version": 3,
+                "type": "answer",
+                "rcode": "NOERROR",
+                "queries": [{"rrname": hostname, "rrtype": "A"}],
+                "answers": [{"rrname": hostname, "rrtype": "A", "rdata": f"203.0.113.{20 + i}"}],
+            },
+        })
+
+    # Synthetic flows populate the Network Flows (4005) dashboard: counts, top
+    # talkers and the source->destination IP Sankey.
     flows = [
         ("10.88.10.10", "203.0.113.10", 1200, 2400, 12, 9),
         ("10.88.10.10", "203.0.113.11", 800, 1600, 8, 6),
@@ -109,7 +149,7 @@ def main():
         ("2001:db8:1::4", "2001:db8:2::8", 500, 800, 6, 4),
     ]
     for i, (client, server, sent, received, packets_sent, packets_received) in enumerate(flows):
-        flow = {
+        redis_push("log_suri", {
             "timestamp": timestamp(0),
             "host_name": "lab-ai-node",
             "event_type": "flow",
@@ -128,39 +168,16 @@ def main():
                 "start": timestamp(-5),
                 "end": timestamp(0),
             },
-        }
-        redis_push("log_suri", flow)
+        })
 
     os_url = os.getenv("OS_URL", "http://opensearch:9200").rstrip("/")
-    query = {"size": 100, "query": {"prefix": {"outbound_ai.pod_name": run+"-"}}}
-    deadline = time.monotonic() + 40
-    seen = set()
-    while time.monotonic() < deadline:
-        try:
-            request = urllib.request.Request(os_url+"/ocsf-1.1.0-6003-api_activity*/_search", data=json.dumps(query).encode(), headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(request, timeout=5) as response:
-                result = json.load(response)
-            seen = {hit["_source"]["outbound_ai"]["pod_name"].removeprefix(run+"-") for hit in result["hits"]["hits"]}
-            if seen - expected:
-                raise AssertionError(f"Unexpected bypass findings: {seen - expected}")
-        except urllib.error.HTTPError as exc:
-            if exc.code != 404:
-                raise
-        if seen == expected:
-            # Allow asynchronous queues to expose a negative-case regression.
-            time.sleep(3)
-            with urllib.request.urlopen(request, timeout=5) as response:
-                final = json.load(response)
-            final_cases = {h["_source"]["outbound_ai"]["pod_name"].removeprefix(run+"-") for h in final["hits"]["hits"]}
-            assert final_cases == expected, final_cases
-            flow_buckets = verify_flows(os_url)
-            print(
-                f"PASS {run}: {sorted(expected)}; negative cases produced no bypass findings; "
-                f"{flow_buckets} source->destination flow buckets indexed"
-            )
-            return
-        time.sleep(1)
-    raise AssertionError(f"Expected {expected}, observed {seen}. Use an IDS-capable rebuilt collector binary.")
+    tls_docs = count_with_field(os_url, TLS_INDEX, "tls.sni")
+    dns_docs = count_with_field(os_url, DNS_INDEX, "dns_query.hostname")
+    flow_buckets = verify_flows(os_url)
+    print(
+        f"PASS {run}: OCSF 4007 TLS documents={tls_docs}, "
+        f"4001 DNS documents={dns_docs}, {flow_buckets} source->destination flow buckets indexed"
+    )
 
 
 if __name__ == "__main__":

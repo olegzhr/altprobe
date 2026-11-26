@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "ocsf-1.1.0-4002-http_activity*"
+    "ocsf-1.8.0-4002-http_activity*"
   ],
   "priority": 10,
   "template": {

@@ -1,6 +1,14 @@
-# Local lab logs, caches and virtualenvs excluded from Docker build contexts.
-**/__pycache__/
-**/.pytest_cache/
-**/tests/logs/
+.git
+.local
+**/.local
+**/results
+**/.env
+**/.env.*
+**/__pycache__
+build*
+dist
+native-tests.xml
+labs/lab_*
+labs/ids
+labs/tests
 *.log
-**/.venv/

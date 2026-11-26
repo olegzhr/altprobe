@@ -13,8 +13,7 @@ cd labs/lab_envoy
 docker compose up -d --build --wait --wait-timeout 600
 ```
 
-The image installs the Altprobe package from GitHub Releases. Run one lab
-at a time; all labs share host ports.
+The image installs the published Altprobe release package (`altprobe_1.0.2_amd64.deb`) using the shared [`labs/common/altprobe/Dockerfile`](../common/altprobe/Dockerfile) and verifies it against the release `SHA256SUMS`. Run one lab at a time; all gateway labs share host ports.
 
 ## Open
 
@@ -36,4 +35,16 @@ LAB_GATEWAY=envoy LAB_INDEX_WAIT=60 python3 run_tests.py
 docker compose down
 ```
 
-Add `-v` only to delete the lab's indexed data.
+Plain `down` preserves indexed data and spool volumes.
+
+## Integration scope
+
+This stack exercises Envoy access-log JSON and native gRPC OTLP. Altprobe performs asynchronous collection;
+request authorization remains a separate gateway/ctrlprobe concern.
+Optional Ollama/NeMo content inspection uses `LLM_GUARD_*` on the collector.
+
+For dedicated integrations use [NeMo](../lab_nemo/README.md),
+[Trivy SBOM](../lab_sbom/README.md), [Suricata](../lab_suricata/README.md) or
+[OpenShell](../lab_openshell/README.md). Their test entry points differ from
+the shared gateway suite; see the [lab catalog](../README.md).
+The common Altprobe image contains `/usr/local/share/altprobe/release-receipt.json` with the release package and installed binary hashes. A previous PASS does not verify a newly built image.

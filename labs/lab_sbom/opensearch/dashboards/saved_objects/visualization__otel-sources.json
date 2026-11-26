@@ -1,0 +1,13 @@
+{
+  "attributes": {
+    "title": "Internal / gateway-native",
+    "description": "Live OTLP observations; original resourceSpans remain in _source.",
+    "visState": "{\"title\": \"Internal / gateway-native\", \"type\": \"pie\", \"params\": {\"isDonut\": true, \"addLegend\": true}, \"aggs\": [{\"id\": \"1\", \"enabled\": true, \"type\": \"count\", \"schema\": \"metric\", \"params\": {}}, {\"id\": \"2\", \"enabled\": true, \"type\": \"terms\", \"schema\": \"segment\", \"params\": {\"field\": \"span.source\", \"size\": 5, \"order\": \"desc\", \"orderBy\": \"1\"}}]}",
+    "uiStateJSON": "{\"vis\": {\"colors\": {\"Count\": \"#00739d\", \"internal\": \"#00739d\", \"gateway-native\": \"#7db6c9\", \"altprobe\": \"#00739d\", \"apisix-native\": \"#7db6c9\"}}}",
+    "version": 1,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"index\": \"altprobe-otel-traces\", \"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

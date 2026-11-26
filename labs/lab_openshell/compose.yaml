@@ -1,0 +1,132 @@
+name: af-openshell-lab
+services:
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'no']
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: 'true'
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      bootstrap.memory_lock: 'true'
+    ulimits:
+      memlock: {soft: -1, hard: -1}
+    ports: ['127.0.0.1:19200:9200']
+    volumes: [opensearch-data:/usr/share/opensearch/data]
+    healthcheck:
+      test: [CMD-SHELL, "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|\"status\":\"yellow\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: 'true'
+    ports: ['127.0.0.1:15601:5601']
+    healthcheck:
+      test: [CMD-SHELL, "curl -s -o /dev/null -w '%{http_code}' http://localhost:5601/api/status | grep -q 200"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+    depends_on:
+      opensearch: {condition: service_healthy}
+  opensearch-init:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      opensearch: {condition: service_healthy}
+    volumes: [./opensearch:/setup:ro]
+    environment: [OS_URL=http://opensearch:9200]
+    entrypoint: [sh, /setup/setup_templates.sh]
+    restart: 'no'
+  opensearch-dashboards-init:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      opensearch-dashboards: {condition: service_healthy}
+      opensearch-init: {condition: service_completed_successfully}
+    volumes: [./opensearch:/setup:ro]
+    environment: [OSD_URL=http://opensearch-dashboards:5601]
+    entrypoint: [sh, /setup/setup_dashboards.sh]
+    restart: 'no'
+  etcd:
+    image: bitnamilegacy/etcd:3.5.11
+    environment:
+      ALLOW_NONE_AUTHENTICATION: 'yes'
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+  mock:
+    build: ./mock
+    environment:
+      LAB_GATEWAY: apisix
+      LAB_PROBE_HOST: openshell-lab
+    ports: ['127.0.0.1:18003:8000']
+  apisix:
+    build: ./apisix
+    environment:
+      UPSTREAM_HOST: mock
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_KEY: log_proxy
+    ports: ['127.0.0.1:19080:9080']
+    depends_on: [etcd, mock]
+  openshell:
+    build: ./openshell
+    profiles: [simulator]
+    volumes: [./openshell-logs:/var/log/openshell]
+    depends_on: [apisix]
+    environment:
+      OPENSHELL_OCSF_LOG: /var/log/openshell/ocsf.jsonl
+      OPENSHELL_HOST: openshell-sandbox
+      OPENSHELL_CONTAINER: ai-client
+      MODEL_URL: http://apisix:9080/test-api/v1/chat/completions
+  shipper:
+    build:
+      context: ../../connectors/shipper_altprobe
+      dockerfile: Dockerfile
+    entrypoint: [/bin/sh, -c]
+    command: ["until [ -s /var/log/openshell/ocsf.jsonl ]; do sleep 1; done; exec python /app/shipper.py --config /etc/shipper/config.json --once"]
+    volumes:
+      - ./shipper/config.json:/etc/shipper/config.json:ro
+      - ./openshell-logs:/var/log/openshell:ro
+    depends_on:
+      redis: {condition: service_healthy}
+  altprobe:
+    build:
+      context: ../..
+      dockerfile: labs/common/altprobe/Dockerfile
+      args:
+        CRS: 'false'
+    environment:
+      ALTPROBE_ASSET_NAME: openshell-lab
+      ALTPROBE_HOST_NAME: openshell-sandbox
+      ALTPROBE_PROJECT_ID: openshell-lab
+      ALTPROBE_LOG_DEBUG: 'true'
+      SOURCES_REDIS_HOST: redis
+      SOURCES_REDIS_PORT: '6379'
+      SOURCES_OPENSHELL_REDIS: log_openshell
+      TRACE_MODE: 'off'
+      SINKS_OS_URL: http://opensearch:9200
+      SINKS_OS_USER: admin
+      SINKS_OS_PWD: admin
+      SINKS_OS_TLS_VERIFY: 'false'
+      SINKS_OS_TYPES: OCSF,HTTP,OTEL
+      SINKS_AF_URL: ''
+      SINKS_AF_KEY: ''
+    depends_on:
+      redis: {condition: service_healthy}
+      opensearch: {condition: service_healthy}
+      opensearch-init: {condition: service_completed_successfully}
+      shipper: {condition: service_started}
+volumes:
+  opensearch-data: {}
+  openshell-logs: {}
+
+
+

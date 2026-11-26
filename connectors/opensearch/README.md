@@ -78,3 +78,16 @@ OpenSearch configuration.
 
 `ui/` contains the lab dashboard theme and nginx proxy used by the labs. It is
 optional and does not modify indexed data.
+
+## Current integration evidence
+
+NeMo/Ollama assessments use OCSF 6003 (`unmapped.llm_guard`). An absent or
+incomplete NeMo input-rail result is `invalid_verdict`, never a successful Safe
+assessment. Agent-sidecar/proxy events produce OCSF 2004 with process context
+where available. Suricata TLS and flows use 4007 and 4005. Trivy SBOM
+vulnerabilities use 2002. OpenShell records retain their native OCSF classes.
+Native OTLP remains in `otel-v1-traces*`, separate from those findings.
+
+Use the [integration labs](../../labs/README.md) for source-specific tests.
+Dashboard presence and old documents are not evidence of a new run: NeMo,
+SBOM and Suricata require run receipts and current image/binary hashes.

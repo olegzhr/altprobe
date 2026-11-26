@@ -1,0 +1,12 @@
+{
+  "redis_host": "redis",
+  "redis_port": 6379,
+  "sources": {
+    "suricata": {"path": "/var/log/suricata/eve.json", "redis_key": "log_suri",
+                 "consumer_id": "42", "consumer_name": "claude-code-dev",
+                 "host_name": "lab-node",
+                 "event_types": ["tls", "dns", "flow", "http"]},
+    "openshell": {"path": "/var/log/openshell/ocsf.jsonl", "redis_key": "log_openshell",
+                  "consumer_id": "42", "consumer_name": "claude-code-dev"}
+  }
+}

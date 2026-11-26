@@ -21,12 +21,10 @@ function Handler:access(conf)
   ctx.request_missing = ngx.req.get_body_file() ~= nil
   ctx.request_size = tonumber(ngx.var.content_length) or #(body or "")
   ctx.request_truncated = ctx.request_missing or ctx.request_size > #ctx.request_body
-  ctx.headers = scrub(kong.request.get_headers())
-  -- Strip gateway credentials even on telemetry-only routes.
-  kong.service.request.clear_header("apikey")
+  local raw_headers = kong.request.get_headers()
+  ctx.headers = scrub(raw_headers)
   local consumer = kong.client.get_consumer()
   ctx.consumer = consumer and consumer.username or "-"
-
 end
 
 function Handler:header_filter(conf)

@@ -1,0 +1,8 @@
+define bot refuse unsafe
+  "Blocked by NeMo Guardrails: the request matched an input rail."
+
+define flow nemo check input
+  $decision = execute nemo_check_input_action
+  if $decision == "block"
+    bot refuse unsafe
+    stop

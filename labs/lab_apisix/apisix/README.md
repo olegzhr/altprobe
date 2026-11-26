@@ -38,10 +38,20 @@ plugin_attr:
 
 Settings: `output_type`, `redis_host`, `redis_port`, `redis_password`,
 `redis_database`, `redis_key`, `log_file_path`, `host_name`, `timeout`,
-`max_body_size`.
+`max_body_size`, `gateway_origin_id`.
 
 Notes:
 
 - keep `plugins` at the top YAML level in APISIX 3.9+;
 - plugin methods use dot notation (`_M.log`);
 - Redis writes must run outside the log phase via `ngx.timer.at`.
+
+
+## Collector integration
+
+This gateway feeds Altprobe's proxy source; authorization is configured
+separately from the logger. Use a stable deployment `gateway_origin_id` and
+unique per-request observation IDs. The [parent lab](../README.md) describes
+its workload and ports. The separate [NeMo lab](../../lab_nemo/README.md)
+routes APISIX 3.18 traffic to a real NeMo API server and audits input-rail
+enforcement; it has its own configuration and run-scoped test entry point.

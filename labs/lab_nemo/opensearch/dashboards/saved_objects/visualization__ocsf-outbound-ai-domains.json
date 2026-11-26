@@ -1,0 +1,13 @@
+{
+ "attributes": {
+  "title": "AI provider TLS SNI (top 15)",
+  "visState": "{\"title\":\"AI provider TLS SNI (top 15)\",\"type\":\"vega\",\"aggs\":[],\"params\":{\"spec\":\"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"data\\\": {\\\"url\\\": {\\\"index\\\": \\\"ocsf-1.8.0-4007-ssh_activity*\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"time\\\", \\\"body\\\": {\\\"size\\\": 0, \\\"aggs\\\": {\\\"providers\\\": {\\\"filter\\\": {\\\"bool\\\": {\\\"should\\\": [{\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*openai.com\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*anthropic.com\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*googleapis.com\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*azure.com\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*cohere.ai\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*mistral.ai\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*groq.com\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*together.ai\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*huggingface.co\\\"}}, {\\\"wildcard\\\": {\\\"tls.sni\\\": \\\"*deepseek.com\\\"}}], \\\"minimum_should_match\\\": 1}}, \\\"aggs\\\": {\\\"items\\\": {\\\"terms\\\": {\\\"field\\\": \\\"tls.sni\\\", \\\"size\\\": 15, \\\"order\\\": {\\\"_count\\\": \\\"desc\\\"}}}}}}}}, \\\"format\\\": {\\\"property\\\": \\\"aggregations.providers.items.buckets\\\"}}, \\\"mark\\\": {\\\"type\\\": \\\"bar\\\", \\\"color\\\": \\\"#00739d\\\"}, \\\"encoding\\\": {\\\"y\\\": {\\\"field\\\": \\\"key\\\", \\\"type\\\": \\\"nominal\\\", \\\"sort\\\": \\\"-x\\\", \\\"axis\\\": {\\\"title\\\": null}}, \\\"x\\\": {\\\"field\\\": \\\"doc_count\\\", \\\"type\\\": \\\"quantitative\\\", \\\"axis\\\": {\\\"title\\\": \\\"events\\\"}}}}\"}}",
+  "uiStateJSON": "{}",
+  "description": "",
+  "version": 1,
+  "kibanaSavedObjectMeta": {
+   "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+  }
+ },
+ "references": []
+}
