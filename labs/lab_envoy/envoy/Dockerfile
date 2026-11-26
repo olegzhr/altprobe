@@ -1,10 +1,12 @@
-FROM envoyproxy/ai-gateway-cli:latest AS aigw
+# Образ зафиксирован по digest: тег `latest` изменяем, digest — нет.
+# Обновление: docker buildx imagetools inspect envoyproxy/ai-gateway-cli:latest
+FROM envoyproxy/ai-gateway-cli@sha256:f2380af10e7beeca263fb01b2315cd6b5d4cd86169dee7150a221da3119b3110 AS aigw
 
 # Runs the Envoy data-plane binary that ships inside the Envoy AI Gateway CLI
 # image. The CLI itself (`aigw run`) generates its own Envoy config and does
 # not expose the file access-log config Altprobe's proxy file source needs, so
 # the lab drives the bundled Envoy directly with a static envoy.yaml.
-FROM envoyproxy/ai-gateway-cli:latest
+FROM envoyproxy/ai-gateway-cli@sha256:f2380af10e7beeca263fb01b2315cd6b5d4cd86169dee7150a221da3119b3110
 
 USER root
 
