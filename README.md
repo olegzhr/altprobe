@@ -9,10 +9,7 @@
 
 </div>
 
-Altprobe is a free open-source collector and correlator for AI, MCP, REST API, and gateway traffic. It collects events from AI gateways, 
-normalizes them to the OCSF scheme, and sends these events to OCSF-compatible SIEMs. 
-Additionally, it can work as an OTEL traces collector and an agent for SBOM and software vulnerability scanning. 
-The optional Alertflex integration adds MCP/API inventory, triggers for traces, and access management.
+Altprobe is a free open-source collector and correlator for AI, MCP, REST API, and gateway traffic. It collects events from AI gateways, normalizes them into OCSF, and sends these events to OCSF-compatible SIEMs. Additionally, it can work as an OTEL traces collector and an ingester of SBOM and vulnerability scan results (CycloneDX). The optional Alertflex integration adds MCP/API inventory, incidents, Alertflex-triggered traces, and access management.
 
 ## AI infrastructure monitoring
 
