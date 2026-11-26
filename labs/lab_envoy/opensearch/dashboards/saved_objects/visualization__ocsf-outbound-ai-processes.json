@@ -1,13 +1,13 @@
 {
-  "attributes": {
-    "title": "Connecting processes",
-    "visState": "{\"title\": \"Connecting processes\", \"type\": \"vega\", \"aggs\": [], \"params\": {\"spec\": \"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"data\\\": {\\\"url\\\": {\\\"index\\\": \\\"ocsf-1.1.0-6003-api_activity*\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"time\\\", \\\"body\\\": {\\\"size\\\": 0, \\\"aggs\\\": {\\\"outbound\\\": {\\\"filter\\\": {\\\"term\\\": {\\\"outbound_ai.bypass\\\": true}}, \\\"aggs\\\": {\\\"items\\\": {\\\"terms\\\": {\\\"field\\\": \\\"process.name\\\", \\\"size\\\": 15}}}}}}}, \\\"format\\\": {\\\"property\\\": \\\"aggregations.outbound.items.buckets\\\"}}, \\\"mark\\\": {\\\"type\\\": \\\"bar\\\", \\\"color\\\": \\\"#00739d\\\"}, \\\"encoding\\\": {\\\"y\\\": {\\\"field\\\": \\\"key\\\", \\\"type\\\": \\\"nominal\\\", \\\"sort\\\": \\\"-x\\\", \\\"title\\\": \\\"Connecting processes\\\"}, \\\"x\\\": {\\\"field\\\": \\\"doc_count\\\", \\\"type\\\": \\\"quantitative\\\", \\\"title\\\": \\\"Findings\\\"}, \\\"tooltip\\\": [{\\\"field\\\": \\\"key\\\"}, {\\\"field\\\": \\\"doc_count\\\"}]}, \\\"background\\\": \\\"#FFFFFF\\\", \\\"config\\\": {\\\"background\\\": \\\"#FFFFFF\\\", \\\"view\\\": {\\\"stroke\\\": null}, \\\"axis\\\": {\\\"labelFont\\\": \\\"Manrope, Arial, sans-serif\\\", \\\"titleFont\\\": \\\"Manrope, Arial, sans-serif\\\", \\\"labelColor\\\": \\\"#526a75\\\", \\\"titleColor\\\": \\\"#112b36\\\", \\\"gridColor\\\": \\\"#E5E7EB\\\", \\\"domainColor\\\": \\\"#D3DAE6\\\", \\\"tickColor\\\": \\\"#D3DAE6\\\", \\\"labelFontSize\\\": 11, \\\"titleFontSize\\\": 12}, \\\"legend\\\": {\\\"labelColor\\\": \\\"#112b36\\\", \\\"titleColor\\\": \\\"#112b36\\\", \\\"labelFontSize\\\": 12}, \\\"range\\\": {\\\"category\\\": [\\\"#00739d\\\", \\\"#7db6c9\\\", \\\"#112c39\\\", \\\"#bce8b3\\\", \\\"#526a75\\\", \\\"#a4d2e2\\\", \\\"#5d9f6b\\\", \\\"#e8bc6b\\\", \\\"#c5a15e\\\", \\\"#91a9b3\\\"]}}}\"}}",
-    "uiStateJSON": "{}",
-    "description": "Falco successful connect joined to Suricata provider evidence outside configured Proxy Gateway.",
-    "version": "1",
-    "kibanaSavedObjectMeta": {
-      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
-    }
-  },
-  "references": []
+ "attributes": {
+  "title": "Provider DNS lookups (top 15)",
+  "visState": "{\"title\":\"Provider DNS lookups (top 15)\",\"type\":\"vega\",\"aggs\":[],\"params\":{\"spec\":\"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"data\\\": {\\\"url\\\": {\\\"index\\\": \\\"ocsf-1.8.0-4001-network_activity*\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"time\\\", \\\"body\\\": {\\\"size\\\": 0, \\\"aggs\\\": {\\\"providers\\\": {\\\"filter\\\": {\\\"bool\\\": {\\\"should\\\": [{\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*openai.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*anthropic.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*googleapis.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*azure.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*cohere.ai\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*mistral.ai\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*groq.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*together.ai\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*huggingface.co\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*deepseek.com\\\"}}], \\\"minimum_should_match\\\": 1}}, \\\"aggs\\\": {\\\"items\\\": {\\\"terms\\\": {\\\"field\\\": \\\"dns_query.hostname\\\", \\\"size\\\": 15, \\\"order\\\": {\\\"_count\\\": \\\"desc\\\"}}}}}}}}, \\\"format\\\": {\\\"property\\\": \\\"aggregations.providers.items.buckets\\\"}}, \\\"mark\\\": {\\\"type\\\": \\\"bar\\\", \\\"color\\\": \\\"#4f9c8f\\\"}, \\\"encoding\\\": {\\\"y\\\": {\\\"field\\\": \\\"key\\\", \\\"type\\\": \\\"nominal\\\", \\\"sort\\\": \\\"-x\\\", \\\"axis\\\": {\\\"title\\\": null}}, \\\"x\\\": {\\\"field\\\": \\\"doc_count\\\", \\\"type\\\": \\\"quantitative\\\", \\\"axis\\\": {\\\"title\\\": \\\"events\\\"}}}}\"}}",
+  "uiStateJSON": "{}",
+  "description": "",
+  "version": 1,
+  "kibanaSavedObjectMeta": {
+   "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+  }
+ },
+ "references": []
 }

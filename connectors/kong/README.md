@@ -30,3 +30,12 @@ plugins:
 
 Set `SOURCES_PROXY_REDIS=log_proxy` and the matching Redis host/port.
 Authorization, cookie and API-key headers are redacted; body capture is bounded.
+
+## Lab and content inspection
+
+Use the [Kong lab](../../labs/lab_kong/README.md) and the
+[integration catalog](../README.md). The logger runs asynchronously; authentication/enforcement is configured separately in the gateway.
+Optional Ollama/NeMo inspection is configured on Altprobe through `LLM_GUARD_*`;
+it consumes the captured request/response bodies and writes OCSF assessments.
+Capture limits remain significant: incomplete or oversized bodies must not be
+interpreted as a successful content check.

@@ -1,25 +1,31 @@
-# OpenSearch assets
+# OpenSearch assets for lab_kong
 
-Initialization registers OCSF index templates, the OTLP ingest pipeline and
-saved objects:
+From the parent lab directory, the Compose init services install the templates,
+OTLP projection pipeline and saved objects in this directory:
 
 ```bash
 docker compose run --rm opensearch-init
 docker compose run --rm opensearch-dashboards-init
 ```
 
-Open `http://localhost:5601/app/dashboards`.
+Open Dashboards at `http://127.0.0.1:5601/app/dashboards`.
+Gateway HTTP/API findings, SBOM fixture records and native/internal OTLP are distinct streams. Optional LLM Guard assessments appear as OCSF 6003.
 
-Dashboards cover AI/MCP signals, HTTP/API/DNS/TLS, network flows, MITRE
-ATT&CK/ATLAS, direct AI egress and vulnerability findings. The Network Flows
-panel is a source-to-destination IP Sankey using `src_endpoint.ip` and
-`dst_endpoint.ip`; no MaxMind or geographic data is used.
+Canonical assets are `templates/`, `pipelines/`, `dashboards/index_patterns/`
+and `dashboards/saved_objects/`. Setup resolves paths relative to each script;
+files in legacy top-level export folders are not the installer input.
+Native OTLP, when configured, is projected into `otel-v1-traces*` with `span.*`
+fields and `@timestamp`, separately from OCSF findings. Network-flow panels use
+source/destination IP fields and do not require geographic databases.
 
-`otel-v1-traces*` stores OTLP/JSON spans with searchable `span.*` fields and a
-derived `@timestamp`. It is separate from OCSF findings.
+See the [parent lab](../README.md) for workload, actual ports and verification.
+NeMo, SBOM and Suricata verification requires current run receipts and matching
+source/config/image/binary hashes; historical documents cannot prove a new run.
+OpenShell's presence verifier is an indexed-data smoke check.
 
-The `dashboard-ui` service on port 5601 serves the website palette, Manrope fonts
-and panel styling. `ui/theme.css` and `ui/default.conf` are mirrored in every lab.
-
-For older raw-OTLP indices, update the template/pipeline and reindex to populate
-the `span.*` projection.
+Provisioning overwrites bundled templates/saved objects and removes a fixed
+list of obsolete objects. Preserve user edits before refreshing assets.
+Templates affect new indices; migrate older mappings into a new index and
+verify before switching aliases. Data volumes and local PKI must be preserved.
+For standalone deployments and TLS/auth settings use the
+[OpenSearch connector guide](../../../connectors/opensearch/README.md).

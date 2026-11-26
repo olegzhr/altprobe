@@ -1,0 +1,30 @@
+{
+ "attributes": {
+  "title": "Direct AI provider connections - evidence",
+  "columns": [
+   "time",
+   "tls.sni",
+   "src_endpoint.ip",
+   "dst_endpoint.ip",
+   "device.hostname",
+   "severity_id"
+  ],
+  "sort": [
+   [
+    "time",
+    "desc"
+   ]
+  ],
+  "version": 1,
+  "kibanaSavedObjectMeta": {
+   "searchSourceJSON": "{\"index\": \"ocsf-1.8.0-4007-ssh_activity*\", \"query\": {\"query\": \"tls.sni:(*openai.com or *anthropic.com or *googleapis.com or *azure.com or *cohere.ai or *mistral.ai or *groq.com or *together.ai or *huggingface.co or *deepseek.com)\", \"language\": \"kuery\"}, \"filter\": [], \"highlightAll\": true, \"version\": true}"
+  }
+ },
+ "references": [
+  {
+   "id": "ocsf-1.8.0-4007-ssh_activity*",
+   "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+   "type": "index-pattern"
+  }
+ ]
+}

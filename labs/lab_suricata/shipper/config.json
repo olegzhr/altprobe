@@ -1,0 +1,13 @@
+{
+  "redis_host": "redis",
+  "redis_port": 6379,
+  "sources": {
+    "suricata": {
+      "path": "/var/log/suricata/eve.json",
+      "redis_key": "log_suri",
+      "host_name": "suricata-node",
+      "normalize": "suricata",
+      "event_types": ["tls", "dns", "flow", "http"]
+    }
+  }
+}

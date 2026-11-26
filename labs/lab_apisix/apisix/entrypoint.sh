@@ -44,7 +44,7 @@ REDIS_KEY="${REDIS_KEY:-log_proxy}"
 curl -fsS -X PUT "$API/plugin_metadata/opentelemetry" "${ADMIN_AUTH[@]}" \
   -H "Content-Type: application/json" \
   -d '{"resource":{"service.name":"apisix-native"},"collector":{"address":"127.0.0.1:4318","request_timeout":3},"batch_span_processor":{"batch_timeout":2,"inactive_timeout":1,"max_export_batch_size":16}}' >/dev/null
-PLUGINS='{"opentelemetry":{"sampler":{"name":"always_on"}},"redis-logger":{"output_type":"redis","redis_host":"'$REDIS_HOST'","redis_port":'$REDIS_PORT',"redis_key":"'$REDIS_KEY'","log_file_path":"/usr/local/apisix/logs/proxy-json.log"}}'
+PLUGINS='{"opentelemetry":{"sampler":{"name":"always_on"}},"redis-logger":{"output_type":"redis","redis_host":"'$REDIS_HOST'","redis_port":'$REDIS_PORT',"redis_key":"'$REDIS_KEY'","host_name":"altprobe-apisix-lab","gateway_origin_id":"apisix-lab","log_file_path":"/usr/local/apisix/logs/proxy-json.log"}}'
 
 create_route() {
   local id=$1 uri=$2 upstream=$3
@@ -68,6 +68,7 @@ UPSTREAM_MCP='{"nodes":{"'$UPSTREAM_HOST':8000":1},"type":"roundrobin"}'
 
 create_route 1 "/mcp*" "$UPSTREAM_MCP"
 create_route 3 "/test-api*" "$UPSTREAM_MCP"
+create_route 7 "/lab*" "$UPSTREAM_MCP"
 
 # AI Gateway route. APISIX forwards the request to the local mock's
 # OpenAI-compatible endpoint; no external model provider is contacted.

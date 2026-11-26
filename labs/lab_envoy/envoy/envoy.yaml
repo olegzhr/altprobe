@@ -33,6 +33,10 @@ static_resources:
                 route:
                   cluster: mock
               - match:
+                  prefix: /lab
+                route:
+                  cluster: mock
+              - match:
                   prefix: /ai-gateway/v1/chat/completions
                 route:
                   cluster: mock
@@ -60,7 +64,7 @@ static_resources:
                   \  md:set(\"envoy.lua\", \"request_body\", requestBody)\n  md:set(\"envoy.lua\", \"mcp_method\"\
                   , mcp_method)\n  md:set(\"envoy.lua\", \"mcp_session_id\", mcp_sid)\n  md:set(\"envoy.lua\", \"\
                   http_content_type\", h_content_type)\n  md:set(\"envoy.lua\", \"http_content_length\", h_content_length)\n\
-                  end\n\nfunction envoy_on_response(response_handle)\n  local max_body = 8192\n  local responseBody\
+                  end\n\nfunction envoy_on_response(response_handle)\n  local max_body = 4096\n  local responseBody\
                   \ = \"\"\n  for chunk in response_handle:bodyChunks() do\n    if chunk:length() > 0 and #responseBody\
                   \ < max_body then\n      local remaining = max_body - #responseBody\n      local len = chunk:length()\n\
                   \      if len > remaining then len = remaining end\n      responseBody = responseBody .. chunk:getBytes(0,\
@@ -77,7 +81,7 @@ static_resources:
               log_format:
                 json_format:
                   gateway_origin_id: envoy-lab
-                  host_name: envoy-lab
+                  host_name: altprobe-envoy-lab
                   request_id: '%REQ(X-REQUEST-ID)%'
                   server_port: '%DOWNSTREAM_LOCAL_PORT%'
                   request_uri: '%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%'

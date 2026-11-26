@@ -1,0 +1,13 @@
+{
+  "attributes": {
+    "title": "P95 span duration (ms)",
+    "description": "Live OTLP observations; original resourceSpans remain in _source.",
+    "visState": "{\"title\": \"P95 span duration (ms)\", \"type\": \"metric\", \"params\": {\"fontSize\": 44}, \"aggs\": [{\"id\": \"1\", \"enabled\": true, \"type\": \"percentiles\", \"schema\": \"metric\", \"params\": {\"field\": \"span.duration_ms\", \"percents\": [95]}}]}",
+    "uiStateJSON": "{\"vis\": {\"colors\": {\"Count\": \"#00739d\", \"internal\": \"#00739d\", \"gateway-native\": \"#7db6c9\", \"altprobe\": \"#00739d\", \"apisix-native\": \"#7db6c9\"}}}",
+    "version": 1,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"index\": \"altprobe-otel-traces\", \"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

@@ -1,0 +1,56 @@
+Altprobe
+Copyright 2021-2026 Oleg Zharkov
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+------------------------------------------------------------------------
+Third-party components used by Altprobe
+OpenTelemetry protocol schemas (proto/opentelemetry): OpenTelemetry Authors,
+Apache License 2.0, https://github.com/open-telemetry/opentelemetry-proto
+Pinned revision and file hashes: proto/opentelemetry/UPSTREAM.json.
+Qwen3Guard prompt template (src/qwen3guard_template.inc): Qwen Team,
+Apache License 2.0, https://huggingface.co/Qwen/Qwen3Guard-Gen-0.6B
+Base64 encoder (src/shared/base64.h): Copyright (C) 2013 Tomas Kislan and
+Adam Rudd, MIT License.
+------------------------------------------------------------------------
+
+The following libraries are linked into or shipped with Altprobe.
+They are all dynamically linked distribution-packages of the target
+operating system, and their full source code is freely available from
+the projects listed below. Each component retains its own copyright and
+license. See the corresponding project's documentation for the full
+license text.
+
+  * libdaemon                      (LGPL-2.1+)      https://0pointer.de/lennart/projects/libdaemon/
+  * Boost C++ Libraries            (BSL-1.0)        https://www.boost.org
+  * hiredis                        (BSD-3-Clause)   https://github.com/redis/hiredis
+  * yaml-cpp                       (MIT)            https://github.com/jbeder/yaml-cpp
+  * ModSecurity                    (Apache-2.0)     https://github.com/owasp-modsecurity/ModSecurity
+  * OpenSSL                        (Apache-2.0)     https://www.openssl.org
+  * ModSecurity OWASP Core Rule Set (Apache-2.0)    https://coreruleset.org
+
+LGPL notice
+-----------
+
+libdaemon is licensed under the GNU Lesser General Public License,
+version 2.1 (or later). Altprobe links against libdaemon as a
+dynamically-loaded shared library of the target system. The source code
+of libdaemon is available at:
+
+    https://0pointer.de/lennart/projects/libdaemon/
+
+Under the terms of the LGPL, recipients may relink the libdaemon
+library with modified versions of it. Because libdaemon is linked
+dynamically, the complete Altprobe object files are sufficient to
+relink against your own build of libdaemon without redistribution of any
+proprietary portions of Altprobe.

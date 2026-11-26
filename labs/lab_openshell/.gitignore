@@ -1,0 +1,15 @@
+.local/
+results/
+openshell-logs/*
+!openshell-logs/.gitkeep
+openshell/tls/
+openshell/cli/
+openshell/supervisor/
+openshell/gateway-bin
+openshell/python-slim.tar
+openshell/*.deb
+openshell/*.log
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.DS_Store

@@ -21,10 +21,10 @@ LAB_OS_BASE = os.environ.get("LAB_OS_BASE", "http://localhost:9200")
 LAB_INDEX_WAIT = int(os.environ.get("LAB_INDEX_WAIT", "10"))
 
 OSCF = {
-    "http": "ocsf-1.1.0-4002-http_activity*",
-    "detection": "ocsf-1.1.0-2004-detection_finding*",
-    "vulnerability": "ocsf-1.1.0-2002-vulnerability_finding*",
-    "api": "ocsf-1.1.0-6003-api_activity*",
+    "http": "ocsf-1.8.0-4002-http_activity*",
+    "detection": "ocsf-1.8.0-2004-detection_finding*",
+    "vulnerability": "ocsf-1.8.0-2002-vulnerability_finding*",
+    "api": "ocsf-1.8.0-6003-api_activity*",
 }
 
 SESSION = requests.Session()

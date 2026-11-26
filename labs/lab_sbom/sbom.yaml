@@ -1,0 +1,10 @@
+# SBOM lab pipeline: a real Trivy filesystem scan of a pinned npm project.
+#
+# The first run downloads the Trivy vulnerability database into
+# /root/.cache/trivy (persisted as a Docker volume); subsequent runs reuse it.
+# scan_interval is minutes; the scanner runs once at startup and then sleeps.
+scan_interval: 60
+pipeline:
+  - service_name: "lab-sbom-target"
+    scan_command: "trivy fs --scanners vuln --format cyclonedx --output /var/lib/altprobe/sbom.cdx.json /opt/sbom-target"
+    scan_output: "/var/lib/altprobe/sbom.cdx.json"

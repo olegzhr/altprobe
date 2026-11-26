@@ -1,0 +1,13 @@
+{
+ "attributes": {
+  "title": "Provider DNS lookups (top 15)",
+  "visState": "{\"title\":\"Provider DNS lookups (top 15)\",\"type\":\"vega\",\"aggs\":[],\"params\":{\"spec\":\"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"data\\\": {\\\"url\\\": {\\\"index\\\": \\\"ocsf-1.8.0-4001-network_activity*\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"time\\\", \\\"body\\\": {\\\"size\\\": 0, \\\"aggs\\\": {\\\"providers\\\": {\\\"filter\\\": {\\\"bool\\\": {\\\"should\\\": [{\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*openai.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*anthropic.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*googleapis.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*azure.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*cohere.ai\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*mistral.ai\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*groq.com\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*together.ai\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*huggingface.co\\\"}}, {\\\"wildcard\\\": {\\\"dns_query.hostname\\\": \\\"*deepseek.com\\\"}}], \\\"minimum_should_match\\\": 1}}, \\\"aggs\\\": {\\\"items\\\": {\\\"terms\\\": {\\\"field\\\": \\\"dns_query.hostname\\\", \\\"size\\\": 15, \\\"order\\\": {\\\"_count\\\": \\\"desc\\\"}}}}}}}}, \\\"format\\\": {\\\"property\\\": \\\"aggregations.providers.items.buckets\\\"}}, \\\"mark\\\": {\\\"type\\\": \\\"bar\\\", \\\"color\\\": \\\"#4f9c8f\\\"}, \\\"encoding\\\": {\\\"y\\\": {\\\"field\\\": \\\"key\\\", \\\"type\\\": \\\"nominal\\\", \\\"sort\\\": \\\"-x\\\", \\\"axis\\\": {\\\"title\\\": null}}, \\\"x\\\": {\\\"field\\\": \\\"doc_count\\\", \\\"type\\\": \\\"quantitative\\\", \\\"axis\\\": {\\\"title\\\": \\\"events\\\"}}}}\"}}",
+  "uiStateJSON": "{}",
+  "description": "",
+  "version": 1,
+  "kibanaSavedObjectMeta": {
+   "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+  }
+ },
+ "references": []
+}

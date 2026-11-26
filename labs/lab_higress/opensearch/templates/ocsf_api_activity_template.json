@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "ocsf-1.1.0-6003-api_activity*"
+    "ocsf-1.8.0-6003-api_activity*"
   ],
   "priority": 10,
   "template": {
@@ -614,9 +614,6 @@
               "type": "keyword"
             },
             "provider_evidence": {
-              "type": "keyword"
-            },
-            "falco_rule": {
               "type": "keyword"
             },
             "network_rule": {

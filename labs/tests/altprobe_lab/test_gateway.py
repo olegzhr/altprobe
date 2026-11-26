@@ -1,10 +1,12 @@
-"""Tests for this lab's real gateway -> Redis -> Altprobe -> OpenSearch pipeline."""
+"""Tests for this lab's real gateway -> Altprobe -> OpenSearch pipeline."""
 import json
 import os
 from pathlib import Path
 import queue
 import re
 import socket
+import subprocess
+import tempfile
 import threading
 import time
 import uuid
@@ -18,7 +20,7 @@ CONFIG = {
     "mcp_protected": os.getenv("LAB_PROFILE", "demo") == "cloud",
     "host_name": "altprobe-" + os.getenv("LAB_GATEWAY", "") + "-lab",
 }
-pytestmark = pytest.mark.skipif(CONFIG["gateway"] not in ("kong", "traefik", "higress"), reason="Select LAB_GATEWAY for the extended gateway labs")
+pytestmark = pytest.mark.skipif(not CONFIG["gateway"], reason="Set LAB_GATEWAY for a gateway lab")
 BASE = os.getenv('LAB_BASE', 'http://localhost:9080')
 MOCK = os.getenv('LAB_MOCK_BASE', 'http://localhost:8000')
 OS = os.getenv('LAB_OS_BASE', 'http://localhost:9200')
@@ -36,8 +38,49 @@ def eventually(predicate, timeout=150):
     raise AssertionError(f'Condition not reached in {timeout}s; last={last!r}')
 
 
+def _envoy_access_log_wait(uri, timeout=20):
+    """Envoy lab writes JSON access logs to a volume; Redis is not used."""
+    path = Path(tempfile.gettempdir()) / "altprobe-envoy-access.log"
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        subprocess.run(
+            ["docker", "cp", "lab-envoy-gateway:/var/log/envoy/access.log", str(path)],
+            check=False, capture_output=True, text=True,
+        )
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            lines = []
+        for line in reversed(lines):
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if event.get("request_uri") != uri:
+                continue
+            request_body = event.get("request_body") or ""
+            response_body = event.get("response_body") or ""
+            try:
+                request_size = int(event.get("http_content_length") or 0)
+            except (TypeError, ValueError):
+                request_size = 0
+            try:
+                response_size = int(event.get("body_bytes_sent") or 0)
+            except (TypeError, ValueError):
+                response_size = 0
+            event["request_body_truncated"] = request_size > len(request_body.encode())
+            event["response_body_truncated"] = response_size > len(response_body.encode())
+            return event
+        time.sleep(1)
+    raise AssertionError(f"No Envoy access log event for {uri}")
+
+
 @pytest.fixture
 def tap():
+    if CONFIG["gateway"] == "envoy":
+        yield _envoy_access_log_wait
+        return
+
     """Observe RPUSH without stealing entries from the running collector."""
     connection = socket.create_connection((os.getenv('LAB_REDIS_HOST','localhost'),int(os.getenv('LAB_REDIS_PORT','16379'))), timeout=5)
     connection.settimeout(None)

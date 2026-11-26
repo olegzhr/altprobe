@@ -12,6 +12,8 @@ USER root
 # tag bump does not require editing a hardcoded path).
 COPY --from=aigw /home/nonroot/.local/share/aigw/envoy-versions/*/bin/envoy /usr/local/bin/envoy
 COPY --chown=nonroot:nonroot envoy.yaml /etc/envoy/envoy.yaml
+# The AI Gateway image is distroless (no /bin/sh), so create the log file by
+# copying an empty file instead of running mkdir/touch in a shell.
 COPY --chown=nonroot:nonroot logs/access.log /var/log/envoy/access.log
 
 USER nonroot

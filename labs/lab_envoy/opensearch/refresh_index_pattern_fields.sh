@@ -32,11 +32,11 @@ curl() {
 
 # pattern-id | wildcard
 PATTERNS=(
-  "ocsf-2002-vulnerability-finding|ocsf-1.1.0-2002-vulnerability_finding*"
-  "ocsf-2004-detection-finding|ocsf-1.1.0-2004-detection_finding*"
-  "ocsf-4002-http-activity|ocsf-1.1.0-4002-http_activity*"
-  "ocsf-6003-api-activity|ocsf-1.1.0-6003-api_activity*"
-  "ocsf-all|ocsf-1.1.0-*"
+  "ocsf-2002-vulnerability-finding|ocsf-1.8.0-2002-vulnerability_finding*"
+  "ocsf-2004-detection-finding|ocsf-1.8.0-2004-detection_finding*"
+  "ocsf-4002-http-activity|ocsf-1.8.0-4002-http_activity*"
+  "ocsf-6003-api-activity|ocsf-1.8.0-6003-api_activity*"
+  "ocsf-all|ocsf-1.8.0-*"
 )
 TIMEFIELD="time"
 

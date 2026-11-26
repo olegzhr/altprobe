@@ -1,27 +1,30 @@
-# Local lab logs, caches and virtualenvs
+.local/
+build*/
+/dist/
+/native-tests.xml
 **/__pycache__/
-*.py[cod]
 **/.pytest_cache/
-**/tests/logs/
-*.log
-# Keep the placeholder access log the Envoy lab image copies in at build time.
-!labs/lab_envoy/envoy/logs/access.log
-**/.venv/
 .venv/
-
-# Local secrets and runtime test output
 .env
 .env.*
-*.local.json
-**/tests/results/
-**/.lab-runtime/
-
-# OS / editor
+!.env.example
+*.log
+*.pyc
+*.o
+*.a
+*.deb
+*.zip
+*.tgz
+**/results/
+labs/**/logs/
+!labs/lab_envoy/envoy/logs/
+!labs/lab_envoy/envoy/logs/access.log
+labs/**/altprobe/altprobe
+labs/**/openshell-logs/*
+!labs/**/openshell-logs/.gitkeep
+labs/**/openshell/tls/
+labs/**/openshell/cli/
+labs/**/openshell/supervisor/
+labs/**/openshell/gateway-bin
+labs/**/openshell/python-slim.tar
 .DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.swp
-
-# Local lab run logs
-.local/

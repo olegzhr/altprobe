@@ -54,7 +54,6 @@ def test_internal_spans_for_gateway_traffic():
         assert 'class_uid' not in doc, 'OTLP must not be represented as an OCSF finding'
 
 
-@pytest.mark.skipif(GATEWAY=='openresty',reason='This OpenResty build has no native OTLP module; internal spans are tested')
 def test_native_gateway_preserves_w3c_trace_and_parent_ids():
     trace_id = uuid.uuid4().hex
     parent = uuid.uuid4().hex[:16]

@@ -1,0 +1,7 @@
+{
+  "redis_host": "redis",
+  "redis_port": 6379,
+  "sources": {
+    "openshell": {"path": "/var/log/openshell/ocsf.jsonl", "redis_key": "log_openshell"}
+  }
+}

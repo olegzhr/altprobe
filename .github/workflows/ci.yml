@@ -1,0 +1,111 @@
+name: build
+
+# Altprobe is built and verified on GitHub-hosted runners. The runner image
+# must match the Ubuntu release used by the published Docker images
+# (labs/common/altprobe/Dockerfile, ubuntu:22.04), because the .deb records
+# dpkg-shlibdeps dependencies of that release.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  ALTPROBE_VERSION: "1.0.2"
+  BUILD_JOBS: "2"
+
+jobs:
+  build-test-package:
+    name: build, test and package
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: false
+
+      - name: Verify Traefik connectors
+        run: |
+          (cd connectors/traefik && go test ./...)
+          (cd labs/lab_traefik/traefik && go test ./...)
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake pkg-config python3 dpkg-dev curl ca-certificates lua5.1 lua-cjson \
+            libboost-thread-dev libboost-iostreams-dev libboost-regex-dev \
+            libhiredis-dev libyaml-cpp-dev libmodsecurity-dev libssl-dev \
+            libdaemon-dev zlib1g-dev \
+            protobuf-compiler protobuf-compiler-grpc libgrpc++-dev libprotobuf-dev
+
+      - name: Verify Lua connectors and release consumers
+        run: |
+          lua5.1 labs/tests/test_connector_records.lua "$GITHUB_WORKSPACE"
+          python3 -B -m unittest discover -s labs/tests -p test_source_runs.py -v
+
+      - name: Build, test and package
+        env:
+          ALTPROBE_BUILD_DIR: ${{ runner.temp }}/build
+          ALTPROBE_DIST_DIR: ${{ github.workspace }}/dist
+          ALTPROBE_JUNIT: ${{ github.workspace }}/native-tests.xml
+        run: bash scripts/ci/build-test-package.sh
+
+      - name: Show build provenance
+        run: cat dist/build-provenance.json
+
+      - name: Upload verified release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: altprobe-release
+          path: |
+            dist/
+            native-tests.xml
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    name: publish v1.0.2 release assets
+    needs: build-test-package
+    # Publishing stays disabled for pull requests and manual runs: the script
+    # repeats these checks and also verifies the protected branch and the
+    # merged pull request through the GitHub API.
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref_name == 'master' || github.ref_name == 'main') &&
+      github.repository == 'olegzhr/altprobe'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: read
+    concurrency:
+      group: altprobe-release-v1.0.2
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download verified artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: altprobe-release
+
+      - name: Publish verified release assets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/ci/publish_release.py
