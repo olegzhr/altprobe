@@ -18,12 +18,12 @@ Add Alertflex for MCP/API inventory, traces, incidents, AI explanations, and acc
 
 ```mermaid
 flowchart LR
-    G[AI/API Gateway] -->|HTTP log records| A[Altprobe collector / correlator]
-    N[Suricata IDS] -->|network events| A[Altprobe collector / correlator]
-    H[OpenShell Sandbox] -->|system events| A[Altprobe collector / correlator]
-    OTLP[OpenTelemetry] -->|OTLP traces| A[Altprobe collector / correlator]
-    SBOM[SBOM Pipeline] -->|CycloneDX| A[Altprobe collector / correlator]
-    A -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
+    G[AI/API Gateway] -->|HTTP log records| A
+    N[Suricata IDS] -->|network events| A
+    H[OpenShell Sandbox] -->|system events| A
+    OTLP[OpenTelemetry] -->|OTLP traces| A
+    SBOM[SBOM Pipeline] -->|CycloneDX| A
+    A[Altprobe collector / correlator] -->|Captured LLM content| L[Ollama / NVIDIA NeMo Guardrails]
     L -->|Asynchronous verdicts| A
     A -->|OCSF| O[OpenSearch / Splunk / Graylog]
     A -->|Inventory| C[Alertflex]
