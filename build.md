@@ -65,9 +65,7 @@ This command runs the release guards, builds and tests the tree through
 and `NOTICE` to `dist/`, and `native-tests.xml` to the repository root. To keep
 compiler artifacts on the WSL filesystem, set `ALTPROBE_BUILD_DIR` to an
 absolute path. `BUILD_JOBS`, `ALTPROBE_DIST_DIR` and `ALTPROBE_JUNIT` override
-the other build outputs. For an offline build with an existing OWASP CRS
-archive, set `ALTPROBE_CRS_ARCHIVE` and `ALTPROBE_CRS_ARCHIVE_SHA256` to the
-archive path and its trusted SHA-256.
+the other build outputs.
 
 The package installs the collector and its service helpers under
 `/usr/local/bin` and configuration under `/etc/altprobe`. Build the package on
