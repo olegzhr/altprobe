@@ -9,23 +9,10 @@
 
 </div>
 
-Altprobe is an open-source security collector for AI agents, MCP and APIs.
-It collects and correlates events from the sources, normalizes them to OCSF, and sends them to SIEM.
-Additionally altprobe combines **in-band event correlation** with asynchronous **embedded WAF** and **LLM Guardrails**.
-
-- **In-band correlator.** Scores HTTP, MCP and API activity using application
-  events, API Guard findings, WAF detections and Guardrails verdicts.
-- **[Embedded WAF](#prebuilt-waf).** ModSecurity and OWASP CRS inspect captured
-  HTTP requests and responses and emit detection findings.
-- **[LLM Guardrails](#guardrails).** The optional `llm_guard`
-  integration queues captured LLM content for Qwen3Guard via Ollama or NVIDIA
-  NeMo Guardrails. Gateway requests proceed while Altprobe records verdicts as
-  OCSF 6003 evidence.
-
-Altprobe also exports [out-of-band telemetry](#out-of-band-visibility)
-directly to its configured log destinations. This includes sandbox runtime
-events from OpenShell and network observations from Suricata. OpenSearch,
-Splunk and Graylog can receive OCSF 1.8.0 events and OTLP traces.
+Altprobe is a free collector and correlator for AI, MCP, REST API, and gateway traffic. It collects events from AI gateways, 
+normalizes them to the OCSF scheme, and sends these events to OCSF-compatible SIEMs. 
+Additionally, it can work as an OTEL traces collector and an agent scanner for SBOM and software vulnerability scanning. 
+Add Alertflex for MCP/API inventory, traces, incidents, AI explanations, and access management.
 
 ## AI infrastructure monitoring
 
