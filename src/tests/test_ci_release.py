@@ -103,6 +103,19 @@ class ReleasePublication(unittest.TestCase):
             self.assertEqual(client.uploads, uploads)
             self.assertEqual(client.updates, 1)
 
+    def test_release_note_is_replaced_not_appended(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dist = self.release_files(Path(folder))
+            client = self.AssetClient()
+            publisher.publish_assets(client, client.release, dist, '1-1', 'a' * 40)
+            (dist / 'altprobe_1.0.2_amd64.deb').write_bytes(b'next package')
+            self.release_files(dist, rewrite_sums_only=True)
+            publisher.publish_assets(client, client.release, dist, '1-2', 'b' * 40)
+            self.assertEqual(client.body.count('Release assets use stable names'), 1)
+            package_sha = hashlib.sha256((dist / 'altprobe_1.0.2_amd64.deb').read_bytes()).hexdigest()
+            self.assertIn('sha256:' + package_sha, client.body)
+            self.assertNotIn('sha256:' + hashlib.sha256(b'altprobe_1.0.2_amd64.deb').hexdigest(), client.body)
+
     def test_previous_asset_is_renamed_and_deleted_after_success(self):
         with tempfile.TemporaryDirectory() as folder:
             dist = self.release_files(Path(folder))
@@ -135,10 +148,11 @@ class ReleasePublication(unittest.TestCase):
             self.assertEqual(client.updates, 0)
 
     @staticmethod
-    def release_files(dist):
+    def release_files(dist, rewrite_sums_only=False):
         files = sorted(set(publisher.RELEASE_FILES) - {'SHA256SUMS'})
-        for name in files:
-            (dist / name).write_bytes(name.encode())
+        if not rewrite_sums_only:
+            for name in files:
+                (dist / name).write_bytes(name.encode())
         (dist / 'SHA256SUMS').write_text(''.join(
             f'{hashlib.sha256((dist / name).read_bytes()).hexdigest()}  {name}\n'
             for name in files), encoding='utf-8')

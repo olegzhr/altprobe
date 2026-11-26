@@ -21,7 +21,9 @@ REPOSITORY = 'olegzhr/altprobe'
 TAG = 'v1.0.2'
 TARGET_BRANCHES = ('main', 'master')
 RELEASE_FILES = ('altprobe_1.0.2_amd64.deb', 'build-provenance.json', 'LICENSE', 'NOTICE', 'SHA256SUMS')
-NOTE = re.compile(r'<!-- altprobe-release: [^>]*-->\n?')
+NOTE_BLOCK = re.compile(r'<!-- altprobe-release:begin -->.*?<!-- altprobe-release:end -->\n?', re.S)
+LEGACY_MARKER = re.compile(r'<!-- altprobe-release: [^>]*-->\n?')
+LEGACY_NOTE = re.compile(r'^Release assets use stable names:.*\n?', re.M)
 
 
 class GitHub:
@@ -110,11 +112,15 @@ def write_release_note(client, release, package_sha256, commit=''):
     marker = f'<!-- altprobe-release: sha256:{package_sha256} -->'
     if marker in body:
         return False
-    cleaned = NOTE.sub('', body).rstrip()
+    cleaned = NOTE_BLOCK.sub('', body)
+    cleaned = LEGACY_MARKER.sub('', cleaned)
+    cleaned = LEGACY_NOTE.sub('', cleaned).rstrip()
     details = [f'`{RELEASE_FILES[0]}` sha256 `{package_sha256}`']
     if commit:
         details.append(f'commit `{commit[:12]}`')
-    note = marker + '\n' + 'Release assets use stable names: ' + ', '.join(details) + '. Verify with `SHA256SUMS`.'
+    note = ('<!-- altprobe-release:begin -->\n' + marker + '\n'
+            'Release assets use stable names: ' + ', '.join(details) + '. Verify with `SHA256SUMS`.\n'
+            '<!-- altprobe-release:end -->')
     updated = (cleaned + '\n\n' if cleaned else '') + note + '\n'
     client.request('PATCH', release_url, data={'body': updated})
     return True
