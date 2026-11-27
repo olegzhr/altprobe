@@ -287,15 +287,6 @@ against the release `SHA256SUMS`.
 | [`lab_suricata`](labs/lab_suricata/README.md) | Suricata TLS/DNS/flow and OCSF telemetry |
 | [`lab_openshell`](labs/lab_openshell/README.md) | NVIDIA OpenShell OCSF telemetry |
 
-## Build and test
-
-`bash src/scripts/build.sh` configures, compiles and runs the CTest suite
-locally. `bash scripts/ci/build-test-package.sh` additionally builds and verifies
-the Debian package and writes its provenance. The same command runs in GitHub
-Actions on `ubuntu-22.04` for every push and pull request
-(`.github/workflows/ci.yml`), and the release assets are published after a merged
-pull request. See [build.md](build.md) for dependencies, options and CI details.
-
 ## Configuration
 
 See the `altprobe.yaml` shipped in the release package (installed as
