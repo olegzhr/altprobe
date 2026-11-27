@@ -107,17 +107,17 @@ flowchart LR
 | In-band correlation | Risk scoring for application-layer activity, MITRE ATLAS mapping and optional Alertflex incident delivery |
 
 ### Visibility by plane
-In-band. The gateway's internal Log Plugin captures HTTP request/response
+- **In-band** - The gateway's internal Log Plugin captures HTTP request/response
 metadata and bodies. API Guard adds semantic MCP/A2A detection, the
 correlator adds risk scoring and MITRE ATLAS mapping, and CRS verdicts cover
 proxied requests and responses.
 
-Out-of-band — sandbox runtime events. The OpenShell integration forwards
+- **Out-of-band — Sandbox runtime events** The OpenShell integration forwards
 native OCSF from the sandbox and instrumented workloads. Depending on what the
 source emits, records can show process activity, authentication, application
 lifecycle events and policy outcomes such as denied connections.
 
-Out-of-band — network observations. Suricata runs with IDS rules that flag
+- **Out-of-band - network observations** Suricata runs with IDS rules that flag
 direct connections to unknown LLM providers outside the AI Gateway. EVE
 provides DNS, TLS SNI, HTTP host and flow metadata, so Altprobe can surface
 activity such as a service or agent contacting a model provider directly —
