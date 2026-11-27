@@ -44,7 +44,6 @@ flowchart LR
         direction TB
         REDIS[("Redis<br/>(message bus)")]
         A["Altprobe<br/>Collector / Correlator"]
-        L["Ollama /<br/>NVIDIA NeMo Guardrails"]
     end
 
     SIEM["📊 SIEM<br/>(OCSF)"]
@@ -56,8 +55,6 @@ flowchart LR
     SHIP -->|events| REDIS
 
     REDIS -->|read| A
-    A -->|Captured LLM content| L
-    L -->|Asynchronous verdicts| A
 
     A -->|OCSF| SIEM
 
@@ -74,7 +71,7 @@ flowchart LR
     class LLM,MCP inband
     class SBX,SUR,SHIP outband
     class REDIS bus
-    class A,L core
+    class A core
     class SIEM sink
 ```
 
