@@ -11,8 +11,7 @@
 
 Altprobe is a free open-source collector and correlator for AI, MCP, REST API, and gateway traffic. It collects events from AI gateways, normalizes them into OCSF, and sends these events to OCSF-compatible SIEMs. Additionally, it can work as an OTEL traces collector and an ingester of SBOM and vulnerability scan results (CycloneDX). The optional Alertflex integration adds MCP/API inventory, incidents, Alertflex-triggered traces, and access management.
 
-## AI infrastructure monitoring
-
+## Monitoring architecture
 Altprobe combines gateway, network, sandbox and application telemetry. Collection runs through two independent planes that converge on a single message bus (Redis) and are consumed by the Altprobe collector/correlator:
 
 - **In-band** — the AI/API Gateway with an internal Log Plugin captures HTTP request/response and ships events to Redis.
@@ -80,9 +79,8 @@ flowchart LR
     class SIEM sink
 ```
 
-## Sources, outputs and destinations
-
-The overview above shows the collection planes; this view details which sources feed Altprobe, what OCSF classes they produce, and where they are delivered. The Ollama / NeMo Guardrails verdict loop and the Alertflex inventory path are shown here as well.
+## Data flow overview
+The architecture above shows the collection planes; this view details which sources feed Altprobe, what OCSF classes they produce, and where they are delivered. The Ollama / NeMo Guardrails verdict loop and the Alertflex inventory path are shown here as well.
 
 ```mermaid
 flowchart LR
@@ -108,22 +106,27 @@ flowchart LR
 | Distributed traces | OTLP traces over gRPC/HTTP from AI services, with a durable spool |
 | In-band correlation | Risk scoring for application-layer activity, MITRE ATLAS mapping and optional Alertflex incident delivery |
 
-### Out-of-band visibility
+### Visibility by plane
+In-band. The gateway's internal Log Plugin captures HTTP request/response
+metadata and bodies. API Guard adds semantic MCP/A2A detection, the
+correlator adds risk scoring and MITRE ATLAS mapping, and CRS verdicts cover
+proxied requests and responses.
 
-- **Sandbox runtime events.** The OpenShell integration forwards native OCSF
-  from the sandbox and instrumented workloads. Depending on what the source
-  emits, records can show process activity, authentication, application
-  lifecycle events and policy outcomes such as denied connections.
-- **Network observations.** Suricata runs with IDS rules that flag direct
-  connections to unknown LLM providers outside the AI Gateway. EVE provides DNS,
-  TLS SNI, HTTP host and flow metadata, so Altprobe can surface activity such as
-  a service or agent contacting a model provider directly — including traffic
-  that never passes through the gateway.
+Out-of-band — sandbox runtime events. The OpenShell integration forwards
+native OCSF from the sandbox and instrumented workloads. Depending on what the
+source emits, records can show process activity, authentication, application
+lifecycle events and policy outcomes such as denied connections.
 
-Altprobe exports both sources directly to the SIEM. The in-band correlator
-processes HTTP and its application-layer detection signals. When a Suricata IDS
-alert includes an HTTP observation, that observation can enter the HTTP
-inspection pipeline.
+Out-of-band — network observations. Suricata runs with IDS rules that flag
+direct connections to unknown LLM providers outside the AI Gateway. EVE
+provides DNS, TLS SNI, HTTP host and flow metadata, so Altprobe can surface
+activity such as a service or agent contacting a model provider directly —
+including traffic that never passes through the gateway.
+
+Altprobe exports both out-of-band sources directly to the SIEM. The in-band
+correlator processes HTTP and its application-layer detection signals. When a
+Suricata IDS alert includes an HTTP observation, that observation can enter the
+HTTP inspection pipeline.
 
 [Suricata lab](labs/lab_suricata/README.md) · [OpenShell lab](labs/lab_openshell/README.md)
 
