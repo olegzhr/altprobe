@@ -25,22 +25,6 @@ flowchart LR
     A -->|OCSF| O[OpenSearch / Splunk / Graylog]
     A -->|Inventory| C[Alertflex]
 ```
-
-<details>
-<summary>Text view (use this if the diagram does not render)</summary>
-
-- **Inputs:** AI/API gateway logs (`HTTP log records`), Suricata IDS (`network
-  events`), OpenShell sandbox (`system events`), OpenTelemetry (`OTLP traces`)
-  and the SBOM pipeline (`CycloneDX`).
-- **Collector / correlator:** normalizes every input into OCSF, correlates
-  application-layer activity and scores risk.
-- **Guardrails:** captured LLM content goes to Ollama or NVIDIA NeMo Guardrails;
-  verdicts return asynchronously to the collector.
-- **Outputs:** OCSF to OpenSearch, Splunk or Graylog; inventory and incidents to
-  Alertflex.
-
-</details>
-
 Altprobe combines gateway, network, sandbox and application telemetry.
 
 | Capability | What Altprobe observes |
