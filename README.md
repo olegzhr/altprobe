@@ -13,6 +13,11 @@ Altprobe is a free open-source collector and correlator for AI, MCP, REST API, a
 
 ## AI infrastructure monitoring
 
+Altprobe combines gateway, network, sandbox and application telemetry. Collection runs through two independent planes that converge on a single message bus (Redis) and are consumed by the Altprobe collector/correlator:
+
+- **In-band** — the AI/API Gateway with an internal Log Plugin captures HTTP request/response and ships events to Redis.
+- **Out-of-band** — the OpenShell Sandbox (isolated runtime for the AI Agent) and Suricata IDS ship logs through a Python **Shipper** module into Redis.
+
 ```mermaid
 flowchart LR
     AGENT["🤖 AI Agent"]
@@ -75,7 +80,9 @@ flowchart LR
     class SIEM sink
 ```
 
-Altprobe combines gateway, network, sandbox and application telemetry.
+## Sources, outputs and destinations
+
+The overview above shows the collection planes; this view details which sources feed Altprobe, what OCSF classes they produce, and where they are delivered. The Ollama / NeMo Guardrails verdict loop and the Alertflex inventory path are shown here as well.
 
 ```mermaid
 flowchart LR
