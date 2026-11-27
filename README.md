@@ -15,6 +15,73 @@ Altprobe is a free open-source collector and correlator for AI, MCP, REST API, a
 
 ```mermaid
 flowchart LR
+    AGENT["🤖 AI Agent"]
+
+    subgraph INBAND["🌐 In-band monitoring"]
+        direction TB
+        subgraph GWNODE["AI/API Gateway"]
+            direction TB
+            GW["Gateway core"]
+            PLUG["Log Plugin<br/>(internal, HTTP request/response)"]
+            GW -->|internal callback| PLUG
+        end
+        LLM["LLM"]
+        MCP["MCP"]
+        GW <-->|requests| LLM
+        GW <-->|requests| MCP
+    end
+
+    subgraph OUTBAND["🔍 Out-band monitoring"]
+        direction TB
+        SBX["OpenShell Sandbox<br/>(isolated runtime)"]
+        SUR["Suricata IDS"]
+        SHIP["Shipper<br/>(Python module)"]
+        SUR -->|logs| SHIP
+        SBX -->|logs| SHIP
+    end
+
+    subgraph CORE["⚙️ Processing"]
+        direction TB
+        REDIS[("Redis<br/>(message bus)")]
+        A["Altprobe<br/>Collector / Correlator"]
+        L["Ollama /<br/>NVIDIA NeMo Guardrails"]
+    end
+
+    SIEM["📊 SIEM<br/>(OCSF)"]
+
+    AGENT -->|requests| GW
+    AGENT -.->|runs in| SBX
+
+    PLUG -->|events| REDIS
+    SHIP -->|events| REDIS
+
+    REDIS -->|read| A
+    A -->|Captured LLM content| L
+    L -->|Asynchronous verdicts| A
+
+    A -->|OCSF| SIEM
+
+    classDef agent fill:#fce4ec,stroke:#ad1457,color:#880e4f
+    classDef gateway fill:#ede7f6,stroke:#4527a0,color:#311b92
+    classDef inband fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
+    classDef outband fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef bus fill:#ffebee,stroke:#c62828,color:#b71c1c
+    classDef core fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    classDef sink fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+
+    class AGENT agent
+    class GW,PLUG gateway
+    class LLM,MCP inband
+    class SBX,SUR,SHIP outband
+    class REDIS bus
+    class A,L core
+    class SIEM sink
+```
+
+Altprobe combines gateway, network, sandbox and application telemetry.
+
+```mermaid
+flowchart LR
     G[AI/API Gateway] -->|HTTP log records| A
     N[Suricata IDS] -->|network events| A
     H[OpenShell Sandbox] -->|system events| A
@@ -25,7 +92,6 @@ flowchart LR
     A -->|OCSF| O[OpenSearch / Splunk / Graylog]
     A -->|Inventory| C[Alertflex]
 ```
-Altprobe combines gateway, network, sandbox and application telemetry.
 
 | Capability | What Altprobe observes |
 |---|---|
