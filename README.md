@@ -102,7 +102,7 @@ flowchart LR
 | AI gateway traffic | APISIX, Envoy/Agent Router, Kong, Traefik and Higress request/response metadata, HTTP activity, MCP profile |
 | MCP and A2A actions | Tool calls, agent-to-agent calls, credential and data-transfer patterns through API Guard |
 | LLM content | Captured request and response bodies assessed asynchronously via Ollama (Qwen3Guard) or NeMo Guardrails, with verdicts recorded as OCSF 6003 evidence |
-| Model provider egress | DNS, TLS SNI, HTTP host and network flow evidence from Suricata, including direct connections to AI providers |
+| Model provider egress | Suricata with IDS rules flags direct connections to unknown LLM providers outside the AI Gateway — DNS, TLS SNI, HTTP host and flow evidence, including traffic that bypasses the gateway |
 | Agent sandbox | Native OCSF events for process activity, application lifecycle, authentication and policy outcomes, when emitted by the sandbox or workload |
 | Agent supply chain | Trivy CycloneDX results as OCSF 2002 vulnerability findings per image and asset |
 | Distributed traces | OTLP traces over gRPC/HTTP from AI services, with a durable spool |
@@ -114,9 +114,11 @@ flowchart LR
   from the sandbox and instrumented workloads. Depending on what the source
   emits, records can show process activity, authentication, application
   lifecycle events and policy outcomes such as denied connections.
-- **Network observations.** Suricata EVE provides DNS, TLS SNI, HTTP host and
-  flow metadata for activity such as a service contacting a model provider
-  directly.
+- **Network observations.** Suricata runs with IDS rules that flag direct
+  connections to unknown LLM providers outside the AI Gateway. EVE provides DNS,
+  TLS SNI, HTTP host and flow metadata, so Altprobe can surface activity such as
+  a service or agent contacting a model provider directly — including traffic
+  that never passes through the gateway.
 
 Altprobe exports both sources directly to the SIEM. The in-band correlator
 processes HTTP and its application-layer detection signals. When a Suricata IDS
